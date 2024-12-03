@@ -93,8 +93,8 @@ colonSeparator = ":"
 indent :: String
 indent = "  "
 
-times :: Int -> String -> String
-times i s = intercalate "" (replicate i s)
+times :: Int -> [a] -> [a]
+times i s = concat $ replicate i s
 
 strip :: String -> String
 strip xs = reverse $ dropWhile (== '\n') (reverse xs)
