@@ -1,14 +1,14 @@
 package examples
 
 object adts:
-  sealed trait Rgb
-  case object Red extends Rgb
-  case object Green extends Rgb
-  case object Blue extends Rgb
+  enum Rgb:
+    case Red
+    case Green
+    case Blue
 
-  sealed trait Bool
-  case object True extends Bool
-  case object False extends Bool
+  enum Bool:
+    case True
+    case False
 
   final case class RgbPair(snd: Bool, fst: Rgb)
 

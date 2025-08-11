@@ -17,3 +17,6 @@
 ## 0.1.0.3
 * add flag `--scala-dialect=Scala3` and support output for Scala3
 * test generated Scala 2 and Scala 3 code in CI build
+
+## 0.1.0.4
+* add enum support for Scala3 dialect
