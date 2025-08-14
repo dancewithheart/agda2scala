@@ -2,11 +2,11 @@ name := "exampleScala2"
 
 version := "0.0.1"
 
-scalaVersion := "2.13.15"
+scalaVersion := "2.13.16"
 
 resolvers ++= Resolver.sonatypeOssRepos("snapshots")
 
-lazy val zioVersion = "2.1.11"
+lazy val zioVersion = "2.1.20"
 
 libraryDependencies ++= Seq(
   "dev.zio" %% "zio" % zioVersion,
