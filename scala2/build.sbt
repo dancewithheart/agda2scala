@@ -16,6 +16,12 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-test-magnolia" % zioVersion % Test
 )
 
+Compile / tpolecatScalacOptions ~= { opts =>
+  // for simplicity in adts examples
+  import org.typelevel.scalacoptions.ScalacOptions
+  opts.filterNot(_ == ScalacOptions.fatalWarnings)
+}
+
 scalacOptions ++= Seq(
   "-encoding", "UTF-8"
 )
