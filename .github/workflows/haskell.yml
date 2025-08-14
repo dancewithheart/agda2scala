@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checks-out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up GHC
         uses: haskell-actions/setup@v2
@@ -58,16 +58,16 @@ jobs:
       - name: Compile example Agda code to Scala 3
         run: cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
 
-      - name: Set up JVM including SBT
+      - name: Set up JVM
         uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
           java-version: '21'
-
+      - name: Set up Scala and SBT
+        uses: sbt/setup-sbt@v1
       - name: compile & test result Scala 2 code
         run: sbt clean test
         working-directory: ./scala2
-
       - name: compile & test result Scala 3 code
         run: sbt clean test
         working-directory: ./scala3
