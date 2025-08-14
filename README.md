@@ -1,4 +1,4 @@
-[![CI](https://github.com/lemastero/agda2scala/actions/workflows/haskell.yml/badge.svg?branch=main)](https://github.com/lemastero/agda2scala/actions?query=workflow%3A%22build%22+branch%3Amain)
+[![CI](https://github.com/dancewithheart/agda2scala/actions/workflows/haskell.yml/badge.svg?branch=main)](https://github.com/dancewithheart/agda2scala/actions?query=workflow%3A%22build%22+branch%3Amain)
 
 # agda2scala
 
