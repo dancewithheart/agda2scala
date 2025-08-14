@@ -1,4 +1,4 @@
-val zioVersion = "2.1.11"
+val zioVersion = "2.1.20"
 
 lazy val root = project
   .in(file("."))
@@ -8,7 +8,7 @@ lazy val root = project
         name := "scala3",
         organization := "examples",
         version := "0.0.1",
-        scalaVersion := "3.4.3"
+        scalaVersion := "3.7.2"
       )
     ),
     libraryDependencies ++= Seq(
