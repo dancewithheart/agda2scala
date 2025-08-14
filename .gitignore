@@ -8,3 +8,5 @@ target
 .metals
 .DS_Store
 MAlonzo
+.updates.lock
+**/.bsp/
