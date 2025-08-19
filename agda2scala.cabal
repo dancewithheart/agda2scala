@@ -20,7 +20,7 @@ extra-doc-files:    README.md, CHANGELOG.md
 
 source-repository head
   type:     git
-  location: https://github.com/lemastero/agda2scala.git
+  location: https://github.com/dancewithheart/agda2scala.git
 
 common warnings
   ghc-options: -Wall
@@ -34,11 +34,11 @@ library
                        Agda.Compiler.Scala.PrintScala3
                        Paths_agda2scala
   autogen-modules:     Paths_agda2scala
-  build-depends:       base >= 4.13 && < 4.21,
-                       containers > 0.6 && < 0.8,
-                       Agda >= 2.7 && < 2.8,
-                       deepseq >= 1.4.4 && < 1.6,
-                       text >= 1.2.3.1
+  build-depends:       base       >= 4.13  && < 4.22,
+                       containers >  0.6   && < 0.9,
+                       Agda       >= 2.8.0 && < 2.9.0,
+                       deepseq    >= 1.4.4 && < 1.6,
+                       text       >= 2.0.2 && < 2.2
   default-language:    Haskell2010
   import:              warnings
 
@@ -47,8 +47,8 @@ executable agda2scala
   main-is:          Main.hs
   other-modules:    Paths_agda2scala
   autogen-modules:  Paths_agda2scala
-  build-depends:    base >= 4.13 && < 4.21,
-                    Agda >= 2.7 && < 2.8,
+  build-depends:    base   >= 4.13  && < 4.22,
+                    Agda   >= 2.8.0 && < 2.9.0,
                     agda2scala
   default-language: Haskell2010
   import:           warnings
@@ -59,7 +59,7 @@ test-suite agda2scala-test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
   main-is:          Main.hs
-  build-depends:    base >= 4.13 && < 4.21,
-                    Agda >= 2.7 && < 2.8,
-                    HUnit >= 1.6.2.0,
+  build-depends:    base   >= 4.13  && < 4.22,
+                    Agda   >= 2.8.0 && < 2.9.0,
+                    HUnit  >= 1.6.2.0,
                     agda2scala
