@@ -4,6 +4,9 @@ jobs:
   runhaskell:
     name: agda2scala
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc: [9.10.1] # [9.6.6, 9.8.2, 9.10.1]
     steps:
       - name: Checks-out repository
         uses: actions/checkout@v5
@@ -12,8 +15,8 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup
         with:
-          ghc-version: '9.8.1'
-          cabal-version: '3.10.1.0'
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: '3.10.3'
           cabal-update: true
 
       - name: Configure the build
