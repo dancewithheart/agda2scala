@@ -13,7 +13,7 @@ import Data.Maybe ( fromMaybe )
 import Data.Map ( Map )
 import qualified Data.Text as T
 import Data.Version ( showVersion )
-import System.Console.GetOpt ( OptDescr(Option), ArgDescr(ReqArg) )
+import Agda.Utils.GetOpt ( OptDescr(Option), ArgDescr(ReqArg) )
 
 import Paths_agda2scala ( version )
 
@@ -56,8 +56,10 @@ type ScalaDefinition = ScalaExpr
 {- Backend contains implementations of hooks called around compilation of Agda code -}
 scalaBackend' :: Backend' ScalaFlags ScalaEnv ScalaModuleEnv ScalaModule ScalaDefinition
 scalaBackend' = Backend'
-  { backendName           = "agda2scala"
+  { backendName           = T.pack "agda2scala"
   , backendVersion        = scalaBackendVersion
+  , backendInteractTop    = Nothing
+  , backendInteractHole   = Nothing
   , options               = defaultOptions
   , commandLineFlags      = scalaCmdLineFlags
   , isEnabled             = const True
@@ -70,8 +72,8 @@ scalaBackend' = Backend'
   , mayEraseType          = const $ return True
   }
 
-scalaBackendVersion :: Maybe String
-scalaBackendVersion = Just (showVersion version)
+scalaBackendVersion :: Maybe T.Text
+scalaBackendVersion = Just $ T.pack $ showVersion version
 
 defaultOptions :: ScalaFlags
 defaultOptions = Options{ optOutDir = Nothing, scalaDialect = Nothing }
@@ -101,7 +103,7 @@ scalaCompileDef :: ScalaEnv
   -> TCM ScalaDefinition
 scalaCompileDef _ _ isMain Defn{theDef = theDef, defName = defName}
   = withCurrentModule (qnameModule defName)
-  $ getUniqueCompilerPragma "AGDA2SCALA" defName >>= handlePragma defName theDef
+  $ getUniqueCompilerPragma (T.pack "AGDA2SCALA") defName >>= handlePragma defName theDef
   
 handlePragma :: QName -> Defn -> Maybe CompilerPragma -> TCMT IO ScalaDefinition
 handlePragma defName theDef pragma = case pragma of
