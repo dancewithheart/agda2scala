@@ -11,6 +11,7 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
   , ScalaName
   , ScalaTerm(..)
   , ScalaType(..)
+  , ScalaTypeScheme(..)
   , SeVar(..) )
 
 printScala2 :: ScalaExpr -> String
@@ -30,7 +31,7 @@ printScala2 def = case def of
   (SeFun fName args resType funBody) ->
     "def" <> exprSeparator <> fName
     <> "(" <> combineThem (map printVar args) <> ")"
-    <> ":" <> exprSeparator <> (printType resType) <> exprSeparator
+    <> ":" <> exprSeparator <> (printType (ssType resType)) <> exprSeparator
     <> "=" <> exprSeparator <> (printTerm funBody)
     <> defsSeparator
   (SeProd name args) -> printCaseClass name args <> defsSeparator

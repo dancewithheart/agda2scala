@@ -18,7 +18,8 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , ScalaType(..)
   , ScalaTerm(..)
   , ScalaExpr(..)
-  , SeVar(..) )
+  , SeVar(..)
+  , scalaTypeScheme )
 
 compileDefn :: QName -> Defn -> CompilerPragma -> ScalaExpr
 compileDefn defName theDef _pragma = case theDef of
@@ -48,7 +49,7 @@ compileFunction defName funCompiled funClauses =
   SeFun
     (fromQName defName) -- ++ "\n FULL FUNCTION DEFINITION \n[\n" ++ (show theDef) ++ "\n]\n")
     (funArgs funClauses)
-    (compileFunctionResultType funClauses)
+    (scalaTypeScheme (compileFunctionResultType funClauses))
     -- you can get body of the function using:
     -- - FunctionData _funCompiled
     -- - FunctionData _funClauses Clause clauseBody

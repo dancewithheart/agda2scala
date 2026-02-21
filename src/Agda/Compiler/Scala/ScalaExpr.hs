@@ -4,6 +4,8 @@ module Agda.Compiler.Scala.ScalaExpr (
  ScalaExpr(..),
  SeVar(..),
  ScalaTerm(..),
+ ScalaTypeScheme(..),
+ scalaTypeScheme,
  unHandled
  ) where
 
@@ -11,8 +13,18 @@ type ScalaName = String
 
 data ScalaType
   = STyName ScalaName            -- Int, MyType
+  | STyVar ScalaName             -- A
   | STyFun ScalaType ScalaType   -- Int => String
+  | STyApp ScalaName [ScalaType] -- Either[A,B], List[A]
   deriving (Eq, Show)
+
+data ScalaTypeScheme = ScalaTypeScheme
+  { ssTyParams :: [ScalaName] -- [A,B]
+  ,  ssType     :: ScalaType  -- A => B
+  } deriving (Eq, Show)
+
+scalaTypeScheme :: ScalaType -> ScalaTypeScheme
+scalaTypeScheme st = ScalaTypeScheme{ ssTyParams = [], ssType = st}
 
 data ScalaTerm
   = STeVar ScalaName
@@ -27,12 +39,11 @@ data ScalaTerm
 data SeVar = SeVar ScalaName ScalaType
   deriving (Eq, Show)
 
-{- Represent Scala language extracted from internal Agda compiler representation -}
 data ScalaExpr
   = SePackage [ScalaName] [ScalaExpr]
   | SeSum ScalaName [ScalaName]
   | SeProd ScalaName [SeVar]
-  | SeFun ScalaName [SeVar] ScalaType ScalaTerm
+  | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
   | SeUnhandled ScalaName String
   deriving (Eq, Show)
 
