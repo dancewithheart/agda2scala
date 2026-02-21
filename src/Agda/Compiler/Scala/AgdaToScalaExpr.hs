@@ -20,8 +20,8 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , ScalaExpr(..)
   , SeVar(..) )
 
-compileDefn :: QName -> Defn -> ScalaExpr
-compileDefn defName theDef = case theDef of 
+compileDefn :: QName -> Defn -> CompilerPragma -> ScalaExpr
+compileDefn defName theDef _pragma = case theDef of
   Datatype{dataCons = dataCons} ->
     compileDataType defName dataCons
   Function{funCompiled = funCompiled, funClauses = funClauses} ->

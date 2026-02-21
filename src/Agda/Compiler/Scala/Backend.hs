@@ -96,20 +96,27 @@ outDirOpt dir opts = return opts{ optOutDir = Just dir }
 scalaDialectOpt :: Monad m => String -> Options -> m Options
 scalaDialectOpt sVer opts = return opts{ scalaDialect = Just sVer }
 
+pragmaTag :: T.Text
+pragmaTag = T.pack "AGDA2SCALA"
+
+lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
+lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
+
 scalaCompileDef :: ScalaEnv
   -> ScalaModuleEnv
   -> IsMain
   -> Definition
   -> TCM ScalaDefinition
-scalaCompileDef _ _ isMain Defn{theDef = theDef, defName = defName}
-  = withCurrentModule (qnameModule defName)
-  $ getUniqueCompilerPragma (T.pack "AGDA2SCALA") defName >>= handlePragma defName theDef
-  
-handlePragma :: QName -> Defn -> Maybe CompilerPragma -> TCMT IO ScalaDefinition
-handlePragma defName theDef pragma = case pragma of
-  Nothing -> return $ Unhandled "" ""
-  Just (CompilerPragma _ _) -> 
-    return $ compileDefn defName theDef
+scalaCompileDef _ _ _isMain Defn{theDef = theDef, defName = defName}
+  = withCurrentModule (qnameModule defName) $ do
+  modulePragma <- lookupScalaPragma defName
+  case modulePragma of
+    Nothing -> return $ noPragmaResult defName theDef
+    Just pragma -> pure (compileDefn defName theDef pragma)
+
+noPragmaResult :: QName -> Defn -> ScalaDefinition
+--noPragmaResult defName _theDef = Unhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
+noPragmaResult defName _theDef = Unhandled "" ""
 
 scalaPostCompile :: ScalaEnv
   -> IsMain
@@ -159,5 +166,5 @@ compileModule mName cdefs =
 moduleName :: TopLevelModuleName -> [String]
 moduleName n = Nel.toList (fmap T.unpack (moduleNameParts n)) -- (Nel.last (moduleNameParts n))
 
-compileLog :: String -> TCMT IO ()
+compileLog :: String -> TCM ()
 compileLog msg = liftIO $ putStrLn msg
