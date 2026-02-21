@@ -59,6 +59,9 @@ test-suite agda2scala-test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
   main-is:          Main.hs
+  other-modules:    PrintScala2Test
+                    PrintScala3Test
+                    ScalaBackendTest
   build-depends:    base   >= 4.13  && < 4.22,
                     Agda   >= 2.8.0 && < 2.9.0,
                     HUnit  >= 1.6.2.0,
