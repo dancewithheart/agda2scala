@@ -14,7 +14,11 @@ import Agda.TypeChecking.Telescope ( teleNamedArgs, teleArgs, teleArgNames )
 
 import Agda.Syntax.Common.Pretty ( prettyShow )
 
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaType, FunBody, ScalaExpr(..), SeVar(..) )
+import Agda.Compiler.Scala.ScalaExpr ( ScalaName
+  , ScalaType(..)
+  , ScalaTerm(..)
+  , ScalaExpr(..)
+  , SeVar(..) )
 
 compileDefn :: QName -> Defn -> ScalaExpr
 compileDefn defName theDef = case theDef of 
@@ -31,7 +35,7 @@ compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
 compileRecord defName recFields recTel = SeProd (fromQName defName) (foldl varsFromTelescope [] recTel)
 
 varsFromTelescope :: [SeVar] -> Dom Type -> [SeVar]
-varsFromTelescope xs dt = SeVar (nameFromDom dt) (fromDom dt) : xs
+varsFromTelescope xs dt = SeVar (nameFromDom dt) (STyName (fromDom dt)) : xs
 
 compileDataType :: QName -> [QName] -> ScalaExpr
 compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
@@ -93,8 +97,8 @@ fromDom :: Dom Type -> ScalaName
 fromDom x = fromType (unDom x)
 
 compileFunctionResultType :: [Clause] -> ScalaType
-compileFunctionResultType [Clause{clauseType = ct}] = fromMaybeType ct
-compileFunctionResultType (Clause{clauseType = ct} : xs) = fromMaybeType ct
+compileFunctionResultType [Clause{clauseType = ct}] = STyName (fromMaybeType ct)
+compileFunctionResultType (Clause{clauseType = ct} : xs) = STyName (fromMaybeType ct)
 compileFunctionResultType other = error "Fatal error - function has not clause."
 
 fromMaybeType :: Maybe (Arg Type) -> ScalaName
@@ -116,19 +120,19 @@ fromTerm t = case t of
   Var n elims -> "\nunhandled fromTerm Var \n[" ++ show t ++ "]\n"
   other -> error ("\nunhandled fromTerm [" ++ show other ++ "]\n")
 
-compileFunctionBody :: Maybe CompiledClauses -> FunBody
+compileFunctionBody :: Maybe CompiledClauses -> ScalaTerm
 compileFunctionBody (Just funDef) = fromCompiledClauses funDef
 compileFunctionBody funDef = error "Fatal error - function body is not compiled."
 
 -- https://hackage.haskell.org/package/Agda/docs/Agda-TypeChecking-CompiledClause.html#t:CompiledClauses
-fromCompiledClauses :: CompiledClauses -> FunBody
+fromCompiledClauses :: CompiledClauses -> ScalaTerm
 fromCompiledClauses cc = case cc of
-  (Case argInt caseCompiledClauseTerm) -> "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
+  (Case argInt caseCompiledClauseTerm) -> STError "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
   (Done (x:xs) term) -> fromArgName x
-  other               -> "\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n"
+  other               -> STError ("\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n")
 
-fromArgName :: Arg ArgName -> FunBody
-fromArgName = unArg
+fromArgName :: Arg ArgName -> ScalaTerm
+fromArgName an = STeVar (unArg an)
 
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName
