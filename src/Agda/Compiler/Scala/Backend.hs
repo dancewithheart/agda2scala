@@ -22,13 +22,11 @@ import Agda.Compiler.Backend
 import Agda.Interaction.Options ( OptDescr )
 import Agda.Compiler.Common ( curIF, compileDir )
 import Agda.Syntax.Abstract.Name ( QName )
-import Agda.Syntax.Common.Pretty ( prettyShow )
 import Agda.Syntax.Common ( moduleNameParts )
 import Agda.Syntax.Internal ( qnameModule )
 import Agda.Syntax.TopLevelModuleName ( TopLevelModuleName, moduleNameToFileName )
-import Agda.TypeChecking.Monad
 
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaExpr(..), unHandled )
+import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..), unHandled )
 import Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn )
 import Agda.Compiler.Scala.PrintScala2 ( printScala2 )
 import Agda.Compiler.Scala.PrintScala3 ( printScala3 )
@@ -115,8 +113,8 @@ scalaCompileDef _ _ _isMain Defn{theDef = theDef, defName = defName}
     Just pragma -> pure (compileDefn defName theDef pragma)
 
 noPragmaResult :: QName -> Defn -> ScalaDefinition
---noPragmaResult defName _theDef = Unhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
-noPragmaResult defName _theDef = Unhandled "" ""
+--noPragmaResult defName _theDef = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
+noPragmaResult _defName _theDef = SeUnhandled "" ""
 
 scalaPostCompile :: ScalaEnv
   -> IsMain
@@ -139,7 +137,7 @@ scalaPostModule :: ScalaEnv
   -> TopLevelModuleName
   -> [ScalaDefinition]
   -> TCM ScalaModule
-scalaPostModule env modEnv isMain mName cdefs = do
+scalaPostModule env _modEnv _isMain mName cdefs = do
   outDir <- compileDir
   compileLog $ "compiling " <> mkOutFile outDir
   unless (all unHandled cdefs)

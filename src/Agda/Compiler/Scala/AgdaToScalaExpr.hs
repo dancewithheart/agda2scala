@@ -29,7 +29,7 @@ compileDefn defName theDef _pragma = case theDef of
   RecordDefn(RecordData{_recFields = recFields, _recTel = recTel}) ->
     compileRecord defName recFields recTel
   other ->
-    Unhandled "compileDefn other" (show defName ++ "\n = \n" ++ show theDef)
+    SeUnhandled "compileDefn other" (show defName ++ "\n = \n" ++ show theDef)
 
 compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
 compileRecord defName recFields recTel = SeProd (fromQName defName) (foldl varsFromTelescope [] recTel)
@@ -127,9 +127,9 @@ compileFunctionBody funDef = error "Fatal error - function body is not compiled.
 -- https://hackage.haskell.org/package/Agda/docs/Agda-TypeChecking-CompiledClause.html#t:CompiledClauses
 fromCompiledClauses :: CompiledClauses -> ScalaTerm
 fromCompiledClauses cc = case cc of
-  (Case argInt caseCompiledClauseTerm) -> STError "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
-  (Done (x:xs) term) -> fromArgName x
-  other               -> STError ("\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n")
+  (Case argInt _caseCompiledClauseTerm) -> STeError "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
+  (Done (x:_xs) _term) -> fromArgName x
+  other               -> STeError ("\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n")
 
 fromArgName :: Arg ArgName -> ScalaTerm
 fromArgName an = STeVar (unArg an)

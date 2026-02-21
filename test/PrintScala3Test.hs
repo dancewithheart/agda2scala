@@ -47,7 +47,7 @@ testPrintScala3 = TestCase
     moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
     rgbAdt = SeSum "Rgb" ["Red","Green","Blue"]
     colorAdt = SeSum "Color" ["Light","Dark"]
-    blank = Unhandled "" ""
+    blank = SeUnhandled "" ""
 
 testPrintCaseClass :: Test
 testPrintCaseClass = TestCase

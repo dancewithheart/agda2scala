@@ -9,19 +9,19 @@ module Agda.Compiler.Scala.ScalaExpr (
 
 type ScalaName = String
 
-data ScalaTerm
-  = STeVar ScalaName
-  | STApp ScalaTerm [ScalaTerm]
-  | STLam [ScalaName] ScalaTerm
-  | STLitInt Int
-  | STLitBool Bool
-  | STLitString String
-  | STError String
+data ScalaType
+  = STyName ScalaName            -- Int, MyType
+  | STyFun ScalaType ScalaType   -- Int => String
   deriving (Eq, Show)
 
-data ScalaType
-  = STyName ScalaName           -- Int, MyType
-  | STyFun ScalaType ScalaType  -- Int => String
+data ScalaTerm
+  = STeVar ScalaName
+  | STeApp ScalaTerm [ScalaTerm]
+  | STeLam [ScalaName] ScalaTerm
+  | STeLitInt Int
+  | STeLitBool Bool
+  | STeLitString String
+  | STeError String
   deriving (Eq, Show)
 
 data SeVar = SeVar ScalaName ScalaType
@@ -31,11 +31,11 @@ data SeVar = SeVar ScalaName ScalaType
 data ScalaExpr
   = SePackage [ScalaName] [ScalaExpr]
   | SeSum ScalaName [ScalaName]
-  | SeFun ScalaName [SeVar] ScalaType ScalaTerm
   | SeProd ScalaName [SeVar]
-  | Unhandled ScalaName String
+  | SeFun ScalaName [SeVar] ScalaType ScalaTerm
+  | SeUnhandled ScalaName String
   deriving (Eq, Show)
 
 unHandled :: ScalaExpr -> Bool
-unHandled (Unhandled _ _) = True
+unHandled (SeUnhandled _ _) = True
 unHandled _               = False

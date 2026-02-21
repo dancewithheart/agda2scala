@@ -30,8 +30,8 @@ printScala3 def = case def of
     <> "=" <> exprSeparator <> (printTerm funBody)
     <> defsSeparator
   (SeProd name args) -> printCaseClass name args <> defsSeparator
-  (Unhandled "" payload) -> ""
-  (Unhandled name payload) -> "TODO " ++ show name ++ " " ++ show payload
+  (SeUnhandled "" payload) -> ""
+  (SeUnhandled name payload) -> "TODO " ++ show name ++ " " ++ show payload
   other -> "unsupported printScala3 " ++ show other
 
 printCaseClass :: ScalaName -> [SeVar] -> String
@@ -43,12 +43,12 @@ printType (STyFun a b) = (printType a) <> " => " <>  (printType b)
 
 printTerm :: ScalaTerm -> String
 printTerm (STeVar scalaName) = scalaName
-printTerm (STApp st sts) = (printTerm st) <> "(" <> (show sts)  <> ")"
-printTerm (STLam sns st) = (combineLines sns) <> " => " <> (printTerm st)
-printTerm (STLitInt n) = show n
-printTerm (STLitBool b) = show b
-printTerm (STLitString s) = show s
-printTerm (STError err) = "error " <> err
+printTerm (STeApp st sts) = (printTerm st) <> "(" <> (show sts)  <> ")"
+printTerm (STeLam sns st) = (combineLines sns) <> " => " <> (printTerm st)
+printTerm (STeLitInt n) = show n
+printTerm (STeLitBool b) = show b
+printTerm (STeLitString s) = show s
+printTerm (STeError err) = "error " <> err
 
 printVar :: SeVar -> String
 printVar (SeVar sName sType) = sName <> colonSeparator <> exprSeparator <> (printType sType)
