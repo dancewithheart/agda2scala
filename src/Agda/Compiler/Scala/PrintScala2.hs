@@ -7,7 +7,11 @@ module Agda.Compiler.Scala.PrintScala2 ( printScala2
   ) where
 
 import Data.List ( intercalate )
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaExpr(..), SeVar(..))
+import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
+  , ScalaName
+  , ScalaTerm(..)
+  , ScalaType(..)
+  , SeVar(..) )
 
 printScala2 :: ScalaExpr -> String
 printScala2 def = case def of
@@ -26,8 +30,8 @@ printScala2 def = case def of
   (SeFun fName args resType funBody) ->
     "def" <> exprSeparator <> fName
     <> "(" <> combineThem (map printVar args) <> ")"
-    <> ":" <> exprSeparator <> resType <> exprSeparator
-    <> "=" <> exprSeparator <> funBody
+    <> ":" <> exprSeparator <> (printType resType) <> exprSeparator
+    <> "=" <> exprSeparator <> (printTerm funBody)
     <> defsSeparator
   (SeProd name args) -> printCaseClass name args <> defsSeparator
   (Unhandled "" payload) -> ""
@@ -37,8 +41,21 @@ printScala2 def = case def of
 printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> (printExpr args) <> ")"
 
+printType :: ScalaType -> String
+printType (STyName scalaName) = scalaName
+printType (STyFun a b) = (printType a) <> " => " <>  (printType b)
+
+printTerm :: ScalaTerm -> String
+printTerm (STeVar scalaName) = scalaName
+printTerm (STApp st sts) = (printTerm st) <> "(" <> (show sts)  <> ")"
+printTerm (STLam sns st) = (combineLines sns) <> " => " <> (printTerm st)
+printTerm (STLitInt n) = show n
+printTerm (STLitBool b) = show b
+printTerm (STLitString s) = show s
+printTerm (STError err) = "error " <> err
+
 printVar :: SeVar -> String
-printVar (SeVar sName sType) = sName <> ":" <> exprSeparator <> sType
+printVar (SeVar sName sType) = sName <> ":" <> exprSeparator <> (printType sType)
 
 printExpr :: [SeVar] -> String
 printExpr names = combineThem (map printVar names)

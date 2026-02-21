@@ -64,10 +64,10 @@ scalaBackend' = Backend'
   , commandLineFlags      = scalaCmdLineFlags
   , isEnabled             = const True
   , preCompile            = return
-  , compileDef            = scalaCompileDef
+  , compileDef            = scalaCompileDef -- Agda definitions => ScalaExpr (Scala AST)
   , postCompile           = scalaPostCompile
   , preModule             = scalaPreModule
-  , postModule            = scalaPostModule
+  , postModule            = scalaPostModule -- render a whole module to Scala source code as strubg and write it to a file
   , scopeCheckingSuffices = False
   , mayEraseType          = const $ return True
   }

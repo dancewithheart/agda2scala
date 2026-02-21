@@ -9,7 +9,9 @@ import Agda.Compiler.Scala.PrintScala2 (
   , combineLines
   , printCaseClass
   )
-import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..), SeVar(..) )
+import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
+  , ScalaType(..)
+  , SeVar(..) )
 
 testPrintCaseObject :: Test
 testPrintCaseObject = TestCase
@@ -63,7 +65,7 @@ testPrintCaseClass :: Test
 testPrintCaseClass = TestCase
   (assertEqual "printCaseClass"
     "final case class RgbPair(snd: Bool, fst: Rgb)"
-    (printCaseClass "RgbPair" [SeVar "snd" "Bool", SeVar "fst" "Rgb"]))
+    (printCaseClass "RgbPair" [SeVar "snd" (STyName "Bool"), SeVar "fst" (STyName "Rgb")]))
     
 
 printScala2Tests :: Test
