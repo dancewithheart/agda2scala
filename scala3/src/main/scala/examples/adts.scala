@@ -12,6 +12,6 @@ object adts:
 
   final case class RgbPair(snd: Bool, fst: Rgb)
 
-  def idRgb(theArg: Rgb): Rgb = theArg
+  def idRgb(x0: Rgb): Rgb = theArg
 
-  def constRgbPair(rgbArg: Rgb, rgbPairArg: RgbPair): RgbPair = rgbPairArg
+  def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg

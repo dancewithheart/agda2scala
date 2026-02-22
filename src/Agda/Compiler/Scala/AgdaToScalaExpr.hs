@@ -11,7 +11,9 @@ import Agda.TypeChecking.Monad.Base ( Definition(..) )
 import Agda.TypeChecking.Monad
 import Agda.TypeChecking.CompiledClause ( CompiledClauses(..), CompiledClauses'(..) )
 import Agda.TypeChecking.Telescope ( teleNamedArgs, teleArgs, teleArgNames )
+import Agda.TypeChecking.Substitute (absBody)
 
+import Agda.Syntax.Common (Hiding(..), getHiding)
 import Agda.Syntax.Common.Pretty ( prettyShow )
 
 import Agda.Compiler.Scala.ScalaExpr ( ScalaName
@@ -45,45 +47,38 @@ compileFunction :: QName
   -> Maybe CompiledClauses
   -> [Clause]
   -> ScalaExpr
-compileFunction defName defTy funCompiled funClauses =
-  SeFun
-    (fromQName defName) -- ++ "\n FULL FUNCTION DEFINITION \n[\n" ++ (show theDef) ++ "\n]\n")
-    (funArgs funClauses)
-    (scalaTypeScheme (compileFunctionResultType funClauses))
-    -- you can get body of the function using:
-    -- - FunctionData _funCompiled
-    -- - FunctionData _funClauses Clause clauseBody
-    -- see:
-    -- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-TypeChecking-Monad-Base.html#t:FunctionData
-    -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Clause
-    -- at this point both contain the same info (at least in simple cases)
-    (compileFunctionBody funCompiled)
-
-funArgs :: [Clause] -> [SeVar]
-funArgs [] = []
-funArgs (c : cs) = funArgsFromClause c
-
-funArgsFromClause :: Clause -> [SeVar]
-funArgsFromClause c@Clause{clauseTel = clauseTel} = case parsedArgs of
-    [(SeVar "" varType)] -> [SeVar (hackyFunArgNameFromClause c) varType]
-    args                 -> args
+compileFunction defName defTy funCompiled _funClauses =
+  SeFun (fromQName defName) args (scalaTypeScheme retTy) (compileFunctionBody funCompiled)
   where
-    parsedArgs = foldl varsFromTelescope [] clauseTel
+    (args, retTy) = funArgsAndReturnFromType defTy
 
--- this is extremely hacky way to get function argument name
--- for identity function
--- I apparently do not understand enough how this works
--- or perhaps this is bug in Agda compiler :)
-hackyFunArgNameFromClause :: Clause -> ScalaName
-hackyFunArgNameFromClause fc = hackyFunArgNameFromDeBruijnPattern (namedThing (unArg
-  (head         -- TODO perhaps iterate here
-    (namedClausePats fc))))
+funArgsAndReturnFromType :: Type -> ([SeVar], ScalaType)
+funArgsAndReturnFromType ty0 = go 0 ty0
+  where
+    go :: Int -> Type -> ([SeVar], ScalaType)
+    go i ty =
+      case ty of
+        El _ t -> goTerm i t
+        _      -> ([], STyName (fromType ty))  -- fallback
 
-hackyFunArgNameFromDeBruijnPattern :: DeBruijnPattern -> ScalaName
-hackyFunArgNameFromDeBruijnPattern d = case d of
-    VarP a b -> (dbPatVarName b)
-    a@(ConP x y z) -> "\n hackyFunArgNameFromDeBruijnPattern \n[\n" ++ show a ++ "\n]\n" 
-    other -> error ("hackyFunArgNameFromDeBruijnPattern " ++ show other)
+    goTerm :: Int -> Term -> ([SeVar], ScalaType)
+    goTerm i t = case t of
+      Pi dom absTy ->
+        let domTy   = STyName (fromDom dom)  -- you already have fromDom :: Dom Type -> ScalaName
+            nm      = case domName dom of
+                        Nothing -> "x" <> show i
+                        Just a  -> namedNameToStr a
+            arg     = SeVar nm domTy
+            restTy  = absBody absTy
+            (args, ret) = go (i + 1) restTy
+        in
+          -- for now: keep only explicit args
+          case getHiding dom of
+            Hidden -> (args, ret)               -- drop implicit for now
+            _      -> (arg : args, ret)
+
+      _ ->
+        ([], STyName (fromTerm t))
 
 nameFromDom :: Dom Type -> ScalaName
 nameFromDom dt = case (domName dt) of
