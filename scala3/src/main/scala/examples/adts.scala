@@ -10,7 +10,7 @@ object adts:
     case True
     case False
 
-  final case class RgbPair(snd: Bool, fst: Rgb)
+  final case class RgbPair(fst: Rgb, snd: Bool)
 
   def idRgb(x0: Rgb): Rgb = theArg
 

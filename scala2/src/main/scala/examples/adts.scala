@@ -11,7 +11,7 @@ sealed trait Bool
 case object True extends Bool
 case object False extends Bool
 
-final case class RgbPair(snd: Bool, fst: Rgb)
+final case class RgbPair(fst: Rgb, snd: Bool)
 
 def idRgb(x0: Rgb): Rgb = theArg
 

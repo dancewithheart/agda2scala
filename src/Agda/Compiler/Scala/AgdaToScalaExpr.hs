@@ -34,10 +34,10 @@ compileDefn Defn{theDef = theDef, defName = qn, defType = dt} _pragma = case the
     SeUnhandled "compileDefn other" (show qn ++ "\n = \n" ++ show theDef)
 
 compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
-compileRecord defName recFields recTel = SeProd (fromQName defName) (foldl varsFromTelescope [] recTel)
+compileRecord defName _recFields recTel = SeProd (fromQName defName) (foldr (\dt xs -> varsFromDom dt : xs) [] recTel)
 
-varsFromTelescope :: [SeVar] -> Dom Type -> [SeVar]
-varsFromTelescope xs dt = SeVar (nameFromDom dt) (STyName (fromDom dt)) : xs
+varsFromDom :: Dom Type -> SeVar
+varsFromDom dt = SeVar (nameFromDom dt) (STyName (fromDom dt))
 
 compileDataType :: QName -> [QName] -> ScalaExpr
 compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
