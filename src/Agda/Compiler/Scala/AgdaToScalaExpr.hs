@@ -5,6 +5,7 @@ import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common.Pretty ( prettyShow )
 import Agda.Syntax.Common (Hiding(..), getHiding)
 import Agda.Syntax.Common ( Arg(..), ArgName, Named(..), NamedName, WithOrigin(..), Ranged(..) )
+import Agda.Syntax.Literal ( Literal(..) )
 import Agda.Syntax.Internal (
   Clause(..), DeBruijnPattern, DBPatVar(..), Dom(..), Dom'(..), unDom, PatternInfo(..), Pattern'(..),
   qnameName, qnameModule, Telescope, Tele(..), Term(..), Type, Type''(..) )
@@ -46,9 +47,10 @@ compileFunction :: QName
   -> [Clause]
   -> ScalaExpr
 compileFunction defName defTy funCompiled _funClauses =
-  SeFun (fromQName defName) args (scalaTypeScheme retTy) (compileFunctionBody funCompiled)
+  SeFun (fromQName defName) args (scalaTypeScheme retTy) (compileFunctionBody argNames funCompiled)
   where
     (args, retTy) = funArgsAndReturnFromType defTy
+    argNames      = [ n | SeVar n _ <- args ]
 
 funArgsAndReturnFromType :: Type -> ([SeVar], ScalaType)
 funArgsAndReturnFromType ty0 = go 0 ty0
@@ -116,19 +118,40 @@ fromTerm t = case t of
   Sort _           -> "Type"
   _                -> "unhandled term: " <> take 60 (show t)
 
-compileFunctionBody :: Maybe CompiledClauses -> ScalaTerm
-compileFunctionBody (Just funDef) = fromCompiledClauses funDef
-compileFunctionBody funDef = error "Fatal error - function body is not compiled."
+compileFunctionBody :: [ScalaName] -> Maybe CompiledClauses -> ScalaTerm
+compileFunctionBody argNames (Just funDef) = fromCompiledClauses argNames funDef
+compileFunctionBody _        Nothing = STeError "Function body is not compiled."
 
 -- https://hackage.haskell.org/package/Agda/docs/Agda-TypeChecking-CompiledClause.html#t:CompiledClauses
-fromCompiledClauses :: CompiledClauses -> ScalaTerm
-fromCompiledClauses cc = case cc of
-  (Case argInt _caseCompiledClauseTerm) -> STeError "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
-  (Done (x:_xs) _term) -> fromArgName x
-  other               -> STeError ("\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n")
+fromCompiledClauses :: [ScalaName] -> CompiledClauses -> ScalaTerm
+fromCompiledClauses argNames cc = case cc of
+  (Case argInt _caseCompiledClauseTerm) -> STeError "Case (pattern matching) not implemented yet"
+  (Done (x:_xs) term) -> compileBodyTerm (reverse argNames) term -- reverse to get most recent binder
+  other               -> STeError ("unhandled fromCompiledClauses: " <> take 60 (show other))
 
-fromArgName :: Arg ArgName -> ScalaTerm
-fromArgName an = STeVar (unArg an)
+-- env[0] = last argument, env[1] = second last, etc.
+compileBodyTerm :: [ScalaName] -> Term -> ScalaTerm
+compileBodyTerm env t =
+  case t of
+    Var i _elims ->
+      case drop i env of
+        (v:_) -> STeVar v
+        []    -> STeError ("Var index out of range: " <> show i)
+
+    -- If the body is literally a named definition (e.g. constructor / constant),
+    -- keep old behaviour for now:
+    Def qn _elims ->
+      STeVar (fromQName qn)
+
+    -- expand these gradually:
+    Lit (LitNat n)     -> STeLitInt (fromIntegral n)
+    Lit (LitWord64 n)  -> STeLitInt (fromIntegral n)
+    Lit (LitString s)  -> STeLitString (show s)  -- adjust unpacking depending on literal type
+
+    _ ->
+      STeError ("compileBodyTerm: unhandled term: " <> take 120 (show t))
+
+
 
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName

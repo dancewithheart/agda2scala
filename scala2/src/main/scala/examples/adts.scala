@@ -13,7 +13,7 @@ case object False extends Bool
 
 final case class RgbPair(fst: Rgb, snd: Bool)
 
-def idRgb(x0: Rgb): Rgb = theArg
+def idRgb(x0: Rgb): Rgb = x0
 
 def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 }
