@@ -42,7 +42,7 @@ compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
 compileRecord defName _recFields recTel = SeProd (fromQName defName) (foldr (\dt xs -> varsFromDom dt : xs) [] recTel)
 
 varsFromDom :: Dom Type -> SeVar
-varsFromDom dt = SeVar (nameFromDom dt) (STyName (fromDom dt))
+varsFromDom dt = SeVar (nameFromDom dt) (fromDom dt)
 
 compileDataType :: QName -> [QName] -> ScalaExpr
 compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
@@ -65,12 +65,12 @@ funArgsAndReturnFromType ty0 = go 0 ty0
     go i ty =
       case ty of
         El _ t -> goTerm i t
-        _      -> ([], STyName (fromType ty))  -- fallback
+        _      -> ([], fromType ty)  -- fallback
 
     goTerm :: Int -> Term -> ([SeVar], ScalaType)
     goTerm i t = case t of
       Pi dom absTy ->
-        let domTy   = STyName (fromDom dom)  -- you already have fromDom :: Dom Type -> ScalaName
+        let domTy   = fromDom dom
             nm      = chooseBinderName i dom
             arg     = SeVar nm domTy
             restTy  = absBody absTy
@@ -82,7 +82,7 @@ funArgsAndReturnFromType ty0 = go 0 ty0
             _      -> (arg : args, ret)
 
       _ ->
-        ([], STyName (fromTerm t))
+        ([], fromTerm t)
 
 chooseBinderName :: Int -> Dom Type -> ScalaName
 chooseBinderName i dom =
@@ -99,25 +99,27 @@ nameFromDom dt = case (domName dt) of
 namedNameToStr :: NamedName -> ScalaName
 namedNameToStr n = rangedThing (woThing n)
 
-fromDom :: Dom Type -> ScalaName
+fromDom :: Dom Type -> ScalaType
 fromDom x = fromType (unDom x)
 
-fromArgType :: Arg Type -> ScalaName
+fromArgType :: Arg Type -> ScalaType
 fromArgType arg = fromType (unArg arg)
 
-fromType :: Type -> ScalaName
+fromType :: Type -> ScalaType
 fromType t = case t of
   El _ ue -> fromTerm ue
   other -> error ("unhandled fromType [" ++ show other ++ "]")
 
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
-fromTerm :: Term -> ScalaName
-fromTerm t = case t of
-  Def qName _elims -> fromQName qName
-  Var n _elims     -> "t" <> show n        -- temporary type variable name
-  Con c _elims _   -> fromQName (conName c) -- constructor
-  Sort _           -> "Type"
-  _                -> "unhandled term: " <> take 60 (show t)
+fromTerm :: Term -> ScalaType
+fromTerm t =
+  let ty = case t of
+              Def qName _elims -> fromQName qName
+              Var n _elims     -> "t" <> show n        -- temporary type variable name
+              Con c _elims _   -> fromQName (conName c) -- constructor
+              Sort _           -> "Type"
+              _                -> "unhandled term: " <> take 60 (show t)
+  in STyName ty
 
 compileFunctionBody :: [ScalaName] -> Maybe CompiledClauses -> ScalaTerm
 compileFunctionBody argNames (Just funDef) = fromCompiledClauses argNames funDef
