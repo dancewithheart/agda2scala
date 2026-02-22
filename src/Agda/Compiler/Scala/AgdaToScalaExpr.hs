@@ -3,6 +3,7 @@ module Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn ) where
 import Agda.Compiler.Backend ( funCompiled, funClauses, Defn(..), RecordData(..))
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common.Pretty ( prettyShow )
+import Agda.Syntax.Common (Hiding(..), getHiding)
 import Agda.Syntax.Common ( Arg(..), ArgName, Named(..), NamedName, WithOrigin(..), Ranged(..) )
 import Agda.Syntax.Internal (
   Clause(..), DeBruijnPattern, DBPatVar(..), Dom(..), Dom'(..), unDom, PatternInfo(..), Pattern'(..),
@@ -12,9 +13,6 @@ import Agda.TypeChecking.Monad
 import Agda.TypeChecking.CompiledClause ( CompiledClauses(..), CompiledClauses'(..) )
 import Agda.TypeChecking.Telescope ( teleNamedArgs, teleArgs, teleArgNames )
 import Agda.TypeChecking.Substitute (absBody)
-
-import Agda.Syntax.Common (Hiding(..), getHiding)
-import Agda.Syntax.Common.Pretty ( prettyShow )
 
 import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , ScalaType(..)
@@ -109,12 +107,14 @@ fromType t = case t of
   El _ ue -> fromTerm ue
   other -> error ("unhandled fromType [" ++ show other ++ "]")
 
--- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-Syntax-Internal.html#t:Term
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
 fromTerm :: Term -> ScalaName
 fromTerm t = case t of
-  Def qName elims -> fromQName qName
-  Var n elims -> "\nunhandled fromTerm Var \n[" ++ show t ++ "]\n"
-  other -> error ("\nunhandled fromTerm [" ++ show other ++ "]\n")
+  Def qName _elims -> fromQName qName
+  Var n _elims     -> "t" <> show n  -- temporary type variable name
+  Con c _elims _   -> prettyShow c  -- constructor
+  Sort _           -> "Type"
+  _                -> "unhandled term: " <> take 60 (show t)
 
 compileFunctionBody :: Maybe CompiledClauses -> ScalaTerm
 compileFunctionBody (Just funDef) = fromCompiledClauses funDef
