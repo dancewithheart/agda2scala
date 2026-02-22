@@ -18,13 +18,13 @@ object RgbSpec extends JUnitRunnableSpec:
       assert(idRgb(Blue))(equalTo(Blue))
     },
     test("const on RgbPair") {
-      assert(constRgbPair(Red, RgbPair(True, Blue)))(
+      assert(constRgbPair(RgbPair(True, Blue), Red))(
         equalTo(RgbPair(True, Blue))
       )
-      assert(constRgbPair(Green, RgbPair(False, Red)))(
+      assert(constRgbPair(RgbPair(False, Red), Green))(
         equalTo(RgbPair(False, Red))
       )
-      assert(constRgbPair(Blue, RgbPair(True, Blue)))(
+      assert(constRgbPair(RgbPair(True, Blue), Blue))(
         equalTo(RgbPair(True, Blue))
       )
     }
