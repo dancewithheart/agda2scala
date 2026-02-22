@@ -26,6 +26,8 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , SeVar(..)
   , scalaTypeScheme )
 
+import Agda.Compiler.Scala.NameEnv ( sanitizeScalaIdent )
+
 compileDefn :: Definition -> CompilerPragma -> ScalaExpr
 compileDefn Defn{theDef = theDef, defName = qn, defType = dt} _pragma = case theDef of
   Datatype{dataCons = dc} -> compileDataType qn dc
@@ -69,9 +71,7 @@ funArgsAndReturnFromType ty0 = go 0 ty0
     goTerm i t = case t of
       Pi dom absTy ->
         let domTy   = STyName (fromDom dom)  -- you already have fromDom :: Dom Type -> ScalaName
-            nm      = case domName dom of
-                        Nothing -> "x" <> show i
-                        Just a  -> namedNameToStr a
+            nm      = chooseBinderName i dom
             arg     = SeVar nm domTy
             restTy  = absBody absTy
             (args, ret) = go (i + 1) restTy
@@ -84,26 +84,23 @@ funArgsAndReturnFromType ty0 = go 0 ty0
       _ ->
         ([], STyName (fromTerm t))
 
+chooseBinderName :: Int -> Dom Type -> ScalaName
+chooseBinderName i dom =
+  case domName dom of
+    Just a  -> sanitizeScalaIdent (namedNameToStr a)
+    Nothing -> "x" <> show i
+
 nameFromDom :: Dom Type -> ScalaName
 nameFromDom dt = case (domName dt) of
   Nothing -> ""
   Just a -> namedNameToStr a
 
--- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-Syntax-Common.html#t:NamedName
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Common.html#t:NamedName
 namedNameToStr :: NamedName -> ScalaName
 namedNameToStr n = rangedThing (woThing n)
 
 fromDom :: Dom Type -> ScalaName
 fromDom x = fromType (unDom x)
-
-compileFunctionResultType :: [Clause] -> ScalaType
-compileFunctionResultType [Clause{clauseType = ct}] = STyName (fromMaybeType ct)
-compileFunctionResultType (Clause{clauseType = ct} : xs) = STyName (fromMaybeType ct)
-compileFunctionResultType other = error "Fatal error - function has not clause."
-
-fromMaybeType :: Maybe (Arg Type) -> ScalaName
-fromMaybeType (Just argType) = fromArgType argType
-fromMaybeType other = error ("\nunhandled fromMaybeType \n[" ++ show other ++ "]\n")
 
 fromArgType :: Arg Type -> ScalaName
 fromArgType arg = fromType (unArg arg)
@@ -117,8 +114,8 @@ fromType t = case t of
 fromTerm :: Term -> ScalaName
 fromTerm t = case t of
   Def qName _elims -> fromQName qName
-  Var n _elims     -> "t" <> show n  -- temporary type variable name
-  Con c _elims _   -> prettyShow c  -- constructor
+  Var n _elims     -> "t" <> show n        -- temporary type variable name
+  Con c _elims _   -> fromQName (conName c) -- constructor
   Sort _           -> "Type"
   _                -> "unhandled term: " <> take 60 (show t)
 
@@ -161,8 +158,6 @@ compileBodyTerm env t =
 
     _ ->
       STeError ("compileBodyTerm: unhandled term: " <> take 120 (show t))
-
-
 
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName
