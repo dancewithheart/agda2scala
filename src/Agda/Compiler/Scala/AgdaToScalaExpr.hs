@@ -1,5 +1,7 @@
 module Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn ) where
-  
+
+import qualified Data.Text as T
+
 import Agda.Compiler.Backend ( funCompiled, funClauses, Defn(..), RecordData(..))
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common.Pretty ( prettyShow )
@@ -9,6 +11,8 @@ import Agda.Syntax.Literal ( Literal(..) )
 import Agda.Syntax.Internal (
   Clause(..), DeBruijnPattern, DBPatVar(..), Dom(..), Dom'(..), unDom, PatternInfo(..), Pattern'(..),
   qnameName, qnameModule, Telescope, Tele(..), Term(..), Type, Type''(..) )
+import Agda.Syntax.Internal (Elim'(..), Elim(..))        -- Apply, Proj, ...
+import Agda.Syntax.Internal (ConHead(..))     -- conName
 import Agda.TypeChecking.Monad.Base ( Definition(..) )
 import Agda.TypeChecking.Monad
 import Agda.TypeChecking.CompiledClause ( CompiledClauses(..), CompiledClauses'(..) )
@@ -126,7 +130,7 @@ compileFunctionBody _        Nothing = STeError "Function body is not compiled."
 fromCompiledClauses :: [ScalaName] -> CompiledClauses -> ScalaTerm
 fromCompiledClauses argNames cc = case cc of
   (Case argInt _caseCompiledClauseTerm) -> STeError "Case (pattern matching) not implemented yet"
-  (Done (x:_xs) term) -> compileBodyTerm (reverse argNames) term -- reverse to get most recent binder
+  (Done _ term) -> compileBodyTerm (reverse argNames) term -- reverse to get most recent binder
   other               -> STeError ("unhandled fromCompiledClauses: " <> take 60 (show other))
 
 -- env[0] = last argument, env[1] = second last, etc.
@@ -138,15 +142,22 @@ compileBodyTerm env t =
         (v:_) -> STeVar v
         []    -> STeError ("Var index out of range: " <> show i)
 
-    -- If the body is literally a named definition (e.g. constructor / constant),
-    -- keep old behaviour for now:
     Def qn _elims ->
       STeVar (fromQName qn)
+
+    Con conHead _conInfo elims ->
+      case args of
+         [] -> f
+         _  -> STeApp f args
+      where
+        f    = STeVar (fromQName (conName conHead))
+        args = [ compileBodyTerm env (unArg a) | Apply a <- elims ]
+
 
     -- expand these gradually:
     Lit (LitNat n)     -> STeLitInt (fromIntegral n)
     Lit (LitWord64 n)  -> STeLitInt (fromIntegral n)
-    Lit (LitString s)  -> STeLitString (show s)  -- adjust unpacking depending on literal type
+    Lit (LitString s)  -> STeLitString (T.unpack s)
 
     _ ->
       STeError ("compileBodyTerm: unhandled term: " <> take 120 (show t))
