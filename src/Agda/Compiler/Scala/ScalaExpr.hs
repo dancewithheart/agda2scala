@@ -5,6 +5,7 @@ module Agda.Compiler.Scala.ScalaExpr (
  SeVar(..),
  ScalaTerm(..),
  ScalaTypeScheme(..),
+ ScalaCtor(..),
  scalaTypeScheme,
  unHandled
  ) where
@@ -39,9 +40,14 @@ data ScalaTerm
 data SeVar = SeVar ScalaName ScalaType
   deriving (Eq, Show)
 
+data ScalaCtor = ScalaCtor
+  { scName :: ScalaName
+  , scArgs :: [ScalaType]
+  } deriving (Eq, Show)
+
 data ScalaExpr
   = SePackage [ScalaName] [ScalaExpr]
-  | SeSum ScalaName [ScalaName]
+  | SeSum ScalaName [ScalaCtor]
   | SeProd ScalaName [SeVar]
   | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
   | SeUnhandled ScalaName String

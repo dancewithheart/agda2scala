@@ -10,6 +10,10 @@ object adts:
     case True
     case False
 
+  enum Color:
+    case Light(x0: Rgb)
+    case Dark(x0: Rgb)
+
   final case class RgbPair(fst: Rgb, snd: Bool)
 
   def idRgb(x0: Rgb): Rgb = x0
@@ -20,4 +24,4 @@ object adts:
 
   def hello(): String = "hi"
 
-  def two(): Nat = 2
+  def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"

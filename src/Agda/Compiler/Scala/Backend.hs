@@ -114,7 +114,7 @@ scalaCompileDef _ _ _ def@Defn{theDef = theDef, defName = qn}
   modulePragma <- lookupScalaPragma qn
   case modulePragma of
     Nothing -> return $ noPragmaResult def
-    Just pragma -> pure (compileDefn def pragma)
+    Just pragma -> compileDefn def pragma
 
 lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
 lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName

@@ -1,6 +1,7 @@
 package examples
 
-object adts {
+object adts
+{
 
 sealed trait Rgb
 case object Red extends Rgb
@@ -10,6 +11,10 @@ case object Blue extends Rgb
 sealed trait Bool
 case object True extends Bool
 case object False extends Bool
+
+sealed trait Color
+final case class Light(x0: Rgb) extends Color
+final case class Dark(x0: Rgb) extends Color
 
 final case class RgbPair(fst: Rgb, snd: Bool)
 
@@ -21,5 +26,5 @@ def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 
 def hello(): String = "hi"
 
-def two(): Nat = 2
+def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
 }

@@ -1,4 +1,5 @@
-module Agda.Compiler.Scala.PrintScala2 ( printScala2
+module Agda.Compiler.Scala.PrintScala2
+  ( printScala2
   , printCaseObject
   , printSealedTrait
   , printPackageAndObject
@@ -6,99 +7,148 @@ module Agda.Compiler.Scala.PrintScala2 ( printScala2
   , combineLines
   ) where
 
-import Data.List ( intercalate )
-import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
+import Data.List (intercalate, dropWhileEnd)
+
+import Agda.Compiler.Scala.ScalaExpr
+  ( ScalaExpr(..)
+  , ScalaCtor(..)
   , ScalaName
   , ScalaTerm(..)
   , ScalaType(..)
   , ScalaTypeScheme(..)
-  , SeVar(..) )
+  , SeVar(..)
+  )
 
 printScala2 :: ScalaExpr -> String
 printScala2 def = case def of
-  (SePackage pNames defs) ->
-    (printPackageAndObject pNames) <> exprSeparator
-      <> bracket (
-      blankLine -- between package declaration and first definition
-      <> combineLines (map printScala2 defs)
-      )
-      <> blankLine -- EOF
-  (SeSum adtName adtCases) ->
-    (printSealedTrait adtName)
-    <> defsSeparator
-    <> combineLines (map (printCaseObject adtName) adtCases)
-    <> defsSeparator
-  (SeFun fName args resType funBody) ->
-    "def" <> exprSeparator <> fName
-    <> "(" <> combineThem (map printVar args) <> ")"
-    <> ":" <> exprSeparator <> (printType (ssType resType)) <> exprSeparator
-    <> "=" <> exprSeparator <> (printTerm funBody)
-    <> defsSeparator
-  (SeProd name args) -> printCaseClass name args <> defsSeparator
-  (SeUnhandled "" payload) -> ""
-  (SeUnhandled name payload) -> "TODO " ++ (show name) ++ " " ++ (show payload)
-  other -> "unsupported printScala2 " ++ (show other)
+  SePackage pNames defs ->
+    printPackageAndObject pNames <> nl <>
+    bracket (
+      nl <> combineLines (map printScala2 defs)
+    )
+    <> nl
+  SeSum adtName ctors ->
+    printSealedTrait adtName <> nl <>
+    combineLines (map (printCtor adtName) ctors)
+    <> nl
 
-printCaseClass :: ScalaName -> [SeVar] -> String
-printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> (printExpr args) <> ")"
+  SeFun fName args resScheme body ->
+    "def" <> sp <> fName <>
+    "(" <> intercalate ", " (map printVar args) <> ")" <>
+    ":" <> sp <> printType (ssType resScheme) <> sp <>
+    "=" <> sp <> printTerm body <>
+    nl
+  SeProd name args ->
+    printCaseClass name args <> nl
+  SeUnhandled "" _payload ->
+    ""  -- filtered out
+  SeUnhandled name payload ->
+    "/* TODO " <> show name <> " " <> show payload <> " */" <> nl
+  other ->
+    "/* unsupported printScala2: " <> show other <> " */" <> nl
 
-printType :: ScalaType -> String
-printType (STyName scalaName) = scalaName
-printType (STyFun a b) = (printType a) <> " => " <>  (printType b)
+-- ===== Sum types ============================================================
 
-printTerm :: ScalaTerm -> String
-printTerm (STeVar scalaName) = scalaName
-printTerm (STeApp st sts) = (printTerm st) <> "(" <> (show sts)  <> ")"
-printTerm (STeLam sns st) = (combineLines sns) <> " => " <> (printTerm st)
-printTerm (STeLitInt n) = show n
-printTerm (STeLitBool b) = show b
-printTerm (STeLitString s) = show s
-printTerm (STeError err) = "error " <> err
+printCtor :: ScalaName -> ScalaCtor -> String
+printCtor superName (ScalaCtor cName []) =
+  printCaseObject superName cName
 
-printVar :: SeVar -> String
-printVar (SeVar sName sType) = sName <> ":" <> exprSeparator <> (printType sType)
+printCtor superName (ScalaCtor cName argTys) =
+  "final case class" <> sp <> cName <>
+  "(" <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys) <> ")" <>
+  sp <> "extends" <> sp <> superName
 
-printExpr :: [SeVar] -> String
-printExpr names = combineThem (map printVar names)
-
-combineThem :: [String] -> String
-combineThem xs = intercalate ", " xs
+ctorParam :: Int -> ScalaType -> String
+ctorParam i ty = "x" <> show i <> ":" <> sp <> printType ty
 
 printSealedTrait :: ScalaName -> String
-printSealedTrait adtName = "sealed trait" <> exprSeparator <> adtName
+printSealedTrait adtName = "sealed trait" <> sp <> adtName
 
 printCaseObject :: ScalaName -> ScalaName -> String
 printCaseObject superName caseName =
-  "case object" <> exprSeparator <> caseName <> exprSeparator <> "extends" <> exprSeparator <> superName
+  "case object" <> sp <> caseName <> sp <> "extends" <> sp <> superName
+
+-- ===== Product types ========================================================
+
+printCaseClass :: ScalaName -> [SeVar] -> String
+printCaseClass name args =
+  "final case class" <> sp <> name <>
+  "(" <> intercalate ", " (map printVar args) <> ")"
+
+-- ===== Terms ================================================================
+
+printTerm :: ScalaTerm -> String
+printTerm x = case x of
+  STeVar n -> n
+  STeApp f xs ->
+    printTerm f <> "(" <> intercalate ", " (map printTerm xs) <> ")"
+  STeLam names body ->
+    "(" <> intercalate ", " names <> ")" <> sp <> "=>" <> sp <> printTerm body
+  STeLitInt n -> show n
+  STeLitBool b -> if b then "true" else "false"   -- Scala lowercase
+  STeLitString s -> "\"" <> escapeScalaString s <> "\""
+  STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+
+-- Escaping for Scala string literal content (no surrounding quotes).
+escapeScalaString :: String -> String
+escapeScalaString = concatMap $ \c -> case c of
+  '\\' -> "\\\\"
+  '\"' -> "\\\""
+  '\n' -> "\\n"
+  '\r' -> "\\r"
+  '\t' -> "\\t"
+  '\b' -> "\\b"
+  '\f' -> "\\f"
+  _ | c < ' '  -> unicodeEscape c
+    | otherwise -> [c]
+  where
+    unicodeEscape ch =
+      let n = fromEnum ch
+          hex = "0123456789abcdef"
+          h k = hex !! ((n `div` (16^k)) `mod` 16)
+      in ['\\','u', h 3, h 2, h 1, h 0]
+
+-- ===== Types ================================================================
+
+printType :: ScalaType -> String
+printType x = case x of
+  STyName n -> n
+  STyVar v  -> v
+  STyApp n ts ->
+    n <> "[" <> intercalate ", " (map printType ts) <> "]"
+  STyFun a b ->
+    printType a <> sp <> "=>" <> sp <> printType b
+
+-- ===== Vars / packages ======================================================
+
+printVar :: SeVar -> String
+printVar (SeVar sName sType) = sName <> ":" <> sp <> printType sType
 
 printPackageAndObject :: [ScalaName] -> String
 printPackageAndObject [] = ""
-printPackageAndObject (oname:[]) = printObject oname
-printPackageAndObject pName = printPackage (init pName)
-  <> defsSeparator <> defsSeparator
-  <> (printObject (last pName))
-  
+printPackageAndObject [oname] = printObject oname
+printPackageAndObject pName =
+  printPackage (init pName) <> nl <> nl
+    <> printObject (last pName)
+
 printPackage :: [ScalaName] -> String
 printPackage [] = ""
-printPackage pName = "package" <> exprSeparator <> (intercalate "." pName)
+printPackage pName = "package" <> sp <> intercalate "." pName
 
 printObject :: ScalaName -> String
-printObject pName = "object" <> exprSeparator <> pName
+printObject pName = "object" <> sp <> pName
+
+-- ===== Formatting helpers ===================================================
 
 bracket :: String -> String
 bracket str = "{\n" <> str <> "\n}"
 
-defsSeparator :: String
-defsSeparator = "\n"
-
-blankLine :: String
-blankLine = "\n"
-
-exprSeparator :: String
-exprSeparator = " "
-
-strip :: String -> String
-strip xs = (reverse $ dropWhile (== '\n') (reverse xs)) 
+sp, nl :: String
+sp = " "
+nl = "\n"
 
 combineLines :: [String] -> String
-combineLines xs = strip $ unlines (filter (not . null) xs)
+combineLines xs = strip (unlines (filter (not . null) xs))
+
+strip :: String -> String
+strip = dropWhileEnd (== '\n')

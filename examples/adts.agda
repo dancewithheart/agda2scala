@@ -20,7 +20,7 @@ data Bool : Set where
 data Color : Set where
   Light : Rgb -> Color
   Dark : Rgb -> Color
--- TODO {-# COMPILE AGDA2SCALA Color #-}
+{-# COMPILE AGDA2SCALA Color #-}
 
 -- simple sum type - case class
 
@@ -54,7 +54,12 @@ hello : String
 hello = "hi"
 {-# COMPILE AGDA2SCALA hello #-}
 
+-- literals String with escape characters
+withEscapes : String
+withEscapes = "line1\nline2\t\"quote\"\\backslash"
+{-# COMPILE AGDA2SCALA withEscapes #-}
+
 -- literals Nat
 two : Nat
 two = 2
-{-# COMPILE AGDA2SCALA two #-}
+-- TODO {-# COMPILE AGDA2SCALA two #-}

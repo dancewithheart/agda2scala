@@ -8,6 +8,7 @@ module Agda.Compiler.Scala.PrintScala3 ( printScala3
 
 import Data.List ( intercalate )
 import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
+  , ScalaCtor(..)
   , ScalaName
   , ScalaTerm(..)
   , ScalaType(..)
@@ -20,9 +21,9 @@ printScala3 def = case def of
     printPackageAndObject pNames
       <> bracket (map printScala3 defs)
       <> blankLine -- EOF
-  (SeSum adtName adtCases) ->
+  (SeSum adtName ctors) ->
     printEnum adtName
-    <> bracketWithIndent (map printEnumCase adtCases) 2
+    <> bracketWithIndent (map printEnumCtor ctors) 2
     <> defsSeparator
   (SeFun fName args resType funBody) ->
     "def" <> exprSeparator <> fName
@@ -34,6 +35,17 @@ printScala3 def = case def of
   (SeUnhandled "" payload) -> ""
   (SeUnhandled name payload) -> "TODO " ++ show name ++ " " ++ show payload
   other -> "unsupported printScala3 " ++ show other
+
+printEnumCtor :: ScalaCtor -> String
+printEnumCtor (ScalaCtor cName []) =
+  "case" <> exprSeparator <> cName
+
+printEnumCtor (ScalaCtor cName argTys) =
+  "case" <> exprSeparator <> cName
+  <> "(" <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys) <> ")"
+
+ctorParam :: Int -> ScalaType -> String
+ctorParam i ty = "x" <> show i <> colonSeparator <> exprSeparator <> printType ty
 
 printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"

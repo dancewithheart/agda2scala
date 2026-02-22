@@ -11,7 +11,7 @@ import Agda.Syntax.Literal ( Literal(..) )
 import Agda.Syntax.Internal (
   Clause(..), DeBruijnPattern, DBPatVar(..), Dom(..), Dom'(..), unDom, PatternInfo(..), Pattern'(..),
   qnameName, qnameModule, Telescope, Tele(..), Term(..), Type, Type''(..) )
-import Agda.Syntax.Internal (Elim'(..), Elim(..))        -- Apply, Proj, ...
+import Agda.Syntax.Internal (Elim'(..))        -- Apply, Proj, ...
 import Agda.Syntax.Internal (ConHead(..))     -- conName
 import Agda.TypeChecking.Monad.Base ( Definition(..) )
 import Agda.TypeChecking.Monad
@@ -24,19 +24,17 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , ScalaTerm(..)
   , ScalaExpr(..)
   , SeVar(..)
-  , scalaTypeScheme )
+  , scalaTypeScheme
+  , ScalaCtor(..) )
 
 import Agda.Compiler.Scala.NameEnv ( sanitizeScalaIdent )
 
-compileDefn :: Definition -> CompilerPragma -> ScalaExpr
+compileDefn :: Definition -> CompilerPragma -> TCM ScalaExpr
 compileDefn Defn{theDef = theDef, defName = qn, defType = dt} _pragma = case theDef of
-  Datatype{dataCons = dc} -> compileDataType qn dc
-  Function{funCompiled = funCompiled, funClauses = funClauses} ->
-    compileFunction qn dt funCompiled funClauses
-  RecordDefn(RecordData{_recFields = recFields, _recTel = recTel}) ->
-    compileRecord qn recFields recTel
-  other ->
-    SeUnhandled "compileDefn other" (show qn ++ "\n = \n" ++ show theDef)
+  Datatype{dataCons = cons}                              -> compileDataType qn cons
+  Function{funCompiled = cc, funClauses = cls}           -> pure $ compileFunction qn dt cc cls
+  RecordDefn(RecordData{_recFields = fs, _recTel = tel}) -> pure $ compileRecord qn fs tel
+  other -> pure $ SeUnhandled "compileDefn other" (show qn ++ "\n = \n" ++ show theDef)
 
 compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
 compileRecord defName _recFields recTel = SeProd (fromQName defName) (foldr (\dt xs -> varsFromDom dt : xs) [] recTel)
@@ -44,8 +42,39 @@ compileRecord defName _recFields recTel = SeProd (fromQName defName) (foldr (\dt
 varsFromDom :: Dom Type -> SeVar
 varsFromDom dt = SeVar (nameFromDom dt) (fromDom dt)
 
-compileDataType :: QName -> [QName] -> ScalaExpr
-compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
+compileDataType :: QName -> [QName] -> TCM ScalaExpr
+compileDataType typeName cons = do
+  ctors <- traverse compileCtor cons
+  pure $ SeSum (fromQName typeName) ctors
+
+compileCtor :: QName -> TCM ScalaCtor
+compileCtor conQName = do
+  conDef <- getConstInfo conQName
+  let conTy = defType conDef
+      argTys = ctorArgTypesFromType conTy
+  pure $ ScalaCtor
+    { scName = fromQName conQName
+    , scArgs = argTys
+    }
+
+-- Constructor type looks like: (a : A) -> (b : B) -> T params...
+-- We want argument types only (explicit for now), stop at the return.
+ctorArgTypesFromType :: Type -> [ScalaType]
+ctorArgTypesFromType ty0 = go ty0
+  where
+    go ty = case ty of
+      El _ t -> goTerm t
+      _      -> []
+
+    goTerm t = case t of
+      Pi dom absTy ->
+        let domTy = fromDom dom
+            rest  = absBody absTy
+        in case getHiding dom of
+             Hidden -> go rest        -- ignore implicit args for now
+             _      -> domTy : go rest
+      _ ->
+        []
 
 compileFunction :: QName
   -> Type

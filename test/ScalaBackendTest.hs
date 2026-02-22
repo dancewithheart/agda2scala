@@ -14,7 +14,7 @@ import Agda.Compiler.Scala.Backend
   , selectPrinter
   , shouldWriteModule )
 import Agda.Compiler.Scala.NameEnv ( emptyNameEnv )
-import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..) )
+import Agda.Compiler.Scala.ScalaExpr ( ScalaCtor(..), ScalaExpr(..) )
 import Agda.Compiler.Scala.PrintScala2 ( printScala2 )
 import Agda.Compiler.Scala.PrintScala3 ( printScala3 )
 
@@ -61,7 +61,7 @@ testShouldWriteModule = TestCase $ do
   assertEqual "all unhandled => don't write"
     False (shouldWriteModule [SeUnhandled "" ""])
   assertEqual "some handled => write"
-    True (shouldWriteModule [SeUnhandled "" "", SeSum "Rgb" ["Red"]])
+    True (shouldWriteModule [SeUnhandled "" "", SeSum "Rgb" [ScalaCtor{scName = "Red", scArgs = [] } ]] )
 
 backendTests :: Test
 backendTests = TestList [
