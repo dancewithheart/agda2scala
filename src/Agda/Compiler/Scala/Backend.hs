@@ -109,12 +109,12 @@ scalaCompileDef :: ScalaEnv
   -> IsMain
   -> Definition
   -> TCM ScalaDefinition
-scalaCompileDef _ _ _isMain Defn{theDef = theDef, defName = defName}
-  = withCurrentModule (qnameModule defName) $ do
-  modulePragma <- lookupScalaPragma defName
+scalaCompileDef _ _ _ def@Defn{theDef = theDef, defName = qn}
+  = withCurrentModule (qnameModule qn) $ do
+  modulePragma <- lookupScalaPragma qn
   case modulePragma of
-    Nothing -> return $ noPragmaResult defName theDef
-    Just pragma -> pure (compileDefn defName theDef pragma)
+    Nothing -> return $ noPragmaResult def
+    Just pragma -> pure (compileDefn def pragma)
 
 lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
 lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
@@ -122,9 +122,9 @@ lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
 pragmaTag :: T.Text
 pragmaTag = T.pack "AGDA2SCALA"
 
-noPragmaResult :: QName -> Defn -> ScalaDefinition
---noPragmaResult defName _theDef = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
-noPragmaResult _defName _theDef = SeUnhandled "" ""
+noPragmaResult :: Definition -> ScalaDefinition
+--noPragmaResult Defn{defName = defName} = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
+noPragmaResult def = SeUnhandled "" ""
 
 scalaPostCompile :: ScalaEnv
   -> IsMain

@@ -21,16 +21,15 @@ import Agda.Compiler.Scala.ScalaExpr ( ScalaName
   , SeVar(..)
   , scalaTypeScheme )
 
-compileDefn :: QName -> Defn -> CompilerPragma -> ScalaExpr
-compileDefn defName theDef _pragma = case theDef of
-  Datatype{dataCons = dataCons} ->
-    compileDataType defName dataCons
+compileDefn :: Definition -> CompilerPragma -> ScalaExpr
+compileDefn Defn{theDef = theDef, defName = qn, defType = dt} _pragma = case theDef of
+  Datatype{dataCons = dc} -> compileDataType qn dc
   Function{funCompiled = funCompiled, funClauses = funClauses} ->
-    compileFunction defName funCompiled funClauses
+    compileFunction qn dt funCompiled funClauses
   RecordDefn(RecordData{_recFields = recFields, _recTel = recTel}) ->
-    compileRecord defName recFields recTel
+    compileRecord qn recFields recTel
   other ->
-    SeUnhandled "compileDefn other" (show defName ++ "\n = \n" ++ show theDef)
+    SeUnhandled "compileDefn other" (show qn ++ "\n = \n" ++ show theDef)
 
 compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
 compileRecord defName recFields recTel = SeProd (fromQName defName) (foldl varsFromTelescope [] recTel)
@@ -42,10 +41,11 @@ compileDataType :: QName -> [QName] -> ScalaExpr
 compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
 
 compileFunction :: QName
+  -> Type
   -> Maybe CompiledClauses
   -> [Clause]
   -> ScalaExpr
-compileFunction defName funCompiled funClauses =
+compileFunction defName defTy funCompiled funClauses =
   SeFun
     (fromQName defName) -- ++ "\n FULL FUNCTION DEFINITION \n[\n" ++ (show theDef) ++ "\n]\n")
     (funArgs funClauses)
