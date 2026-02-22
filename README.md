@@ -9,7 +9,7 @@ Basic usage:
 cabal run -- agda2scala ./examples/adts.agda
 ```
 
-## example with supported features
+compile following Agda code:
 
 ```agda
 module examples.adts where
@@ -26,6 +26,8 @@ data Color : Set where
   Dark : Rgb -> Color
 {-# COMPILE AGDA2SCALA Color #-}
 
+-- product types
+
 record RgbPair : Set where
   constructor mkRgbPair
   field
@@ -35,51 +37,40 @@ record RgbPair : Set where
 
 -- simple functions: const, id
 
-constRgbPair : (rgbPairArg : RgbPair) -> (rgbArg : Rgb) -> RgbPair
-constRgbPair rgbPairArg rgbArg = rgbPairArg
-{-# COMPILE AGDA2SCALA constRgbPair #-}
+const : (rgbPairArg : RgbPair) -> (rgbArg : Rgb) -> RgbPair
+const rgbPairArg rgbArg = rgbPairArg
+{-# COMPILE AGDA2SCALA const #-}
 
 -- literals String
 
 hello : String
-hello = "hi"
+hello = "Hello World!"
 {-# COMPILE AGDA2SCALA hello #-}
 ```
 
+into Scala code:
+
+```scala
+package examples
+
+object adts:
+  enum Rgb:
+    case Red
+    case Green
+    case Blue
+
+  enum Color:
+    case Light(x0: Rgb)
+    case Dark(x0: Rgb)
+
+  final case class RgbPair(fst: Rgb, snd: Bool)
+
+  def const(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
+
+  def hello(): String = "Hello World!"
+```
+
 More [Agda examples](./examples/adts.agda)
-
-## end-to-end tests
-
-There are [Scala 3](./scala3) and [Scala 2](./scala2) projects for code
-generated from [Agda examples](./examples/adts.agda)
-
-They have unit tests, that use code generated from examples.
-
-```text
-                agda2scala                
-                (generate)                     sbt test
-Agda examples ==============> src/main/scala <============ src/test/scala
-
-checks:
-* compile Agda examples
-* run Scala unit tests that calls Scala code
-```
-
-Those tests are run on CI - Github Actions
-
-Generate Scala 2 code from Agda examples and running tests:
-```shell
-cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
-cd ../scala2
-sbt ~test
-```
-
-generate Scala 3 code:
-```shell
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
-cd ../scala3
-sbt ~test
-```
 
 ## Working with source code
 
@@ -129,6 +120,39 @@ cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=sca
 cabal run -- agda2scala --help
 cabal run -- agda2scala ./examples/adts.agda
 cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+```
+
+## end-to-end tests
+
+There are [Scala 3](./scala3) and [Scala 2](./scala2) projects for code
+generated from [Agda examples](./examples/adts.agda)
+
+They have unit tests, that use code generated from examples.
+
+```text
+                agda2scala                
+                (generate)                     sbt test
+Agda examples ==============> src/main/scala <============ src/test/scala
+
+checks:
+* compile Agda examples
+* run Scala unit tests that calls Scala code
+```
+
+Those tests are run on CI - Github Actions
+
+Generate Scala 2 code from Agda examples and running tests:
+```shell
+cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+cd ../scala2
+sbt ~test
+```
+
+generate Scala 3 code:
+```shell
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
+cd ../scala3
+sbt ~test
 ```
 
 ## Resources
