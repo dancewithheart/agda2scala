@@ -3,11 +3,9 @@ package examples
 import zio.test.Assertion.equalTo
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.assert
-
-import examples.adts.{Rgb, idRgb}
-import examples.adts.Rgb.{Red, Green, Blue}
-import examples.adts.{RgbPair, constRgbPair}
-import examples.adts.Bool.{True, False}
+import examples.adts.{Rgb, RgbPair, constRgbPair, hello, idRgb}
+import examples.adts.Rgb.{Blue, Green, Red}
+import examples.adts.Bool.{False, True}
 
 object RgbSpec extends JUnitRunnableSpec:
 
@@ -27,5 +25,8 @@ object RgbSpec extends JUnitRunnableSpec:
       assert(constRgbPair(RgbPair(Blue, True), Blue))(
         equalTo(RgbPair(Blue, True))
       )
+    },
+    test("hello returns Hello World string") {
+      assert(hello())(equalTo("Hello, world!"))
     }
   )
