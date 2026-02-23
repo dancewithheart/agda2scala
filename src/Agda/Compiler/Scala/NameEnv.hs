@@ -4,6 +4,8 @@ module Agda.Compiler.Scala.NameEnv
  , sanitizeScalaIdent
  , allocFreshLocal
  , allocQName
+ , registerCtors
+ , lookupCtorOwner
  ) where
 
 import qualified Data.Char as Char
@@ -14,8 +16,10 @@ import           Data.HashMap.Strict (HashMap)
 
 import Agda.Syntax.Abstract.Name ( QName )
 
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName )
+import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaCtor(..) )
 
+-- Scala 3 keywords: https://scala-lang.org/files/archive/spec/3.4/01-lexical-syntax.html#regular-keywords
+-- Scala 2 keywords: https://scala-lang.org/files/archive/spec/2.13/01-lexical-syntax.html#identifiers
 scalaKeywords :: HashSet String
 scalaKeywords = HS.fromList
   [ "type","val","var","def","class","object","trait","enum","given","using"
@@ -25,9 +29,10 @@ scalaKeywords = HS.fromList
   ]
 
 data NameEnv = NameEnv
-  { neQNameToScala :: HashMap QName ScalaName  -- stable mapping for globals
-  , neTaken        :: HashSet ScalaName        -- names already used in this module
-  , neCounter      :: Int                      -- deterministic freshening
+  { neQNameToScala :: HashMap QName ScalaName     -- stable mapping for globals
+  , neTaken        :: HashSet ScalaName           -- names already used in this module
+  , neCounter      :: Int                         -- for deterministic freshening
+  , neCtorOwner    :: HashMap ScalaName ScalaName -- constructor name -> parent type
   } deriving (Eq, Show)
 
 emptyNameEnv :: NameEnv
@@ -35,6 +40,7 @@ emptyNameEnv = NameEnv
   { neQNameToScala = HM.empty
   , neTaken        = HS.empty
   , neCounter      = 0
+  , neCtorOwner    = HM.empty
   }
 
 sanitizeScalaIdent :: String -> String
@@ -72,3 +78,13 @@ allocQName ne qn suggestedBase =
 
 allocFreshLocal :: NameEnv -> String -> (NameEnv, ScalaName)
 allocFreshLocal ne suggested = freshen ne suggested
+
+registerCtors :: ScalaName -> [ScalaCtor] -> NameEnv -> NameEnv
+registerCtors parent ctors ne =
+  ne { neCtorOwner = foldl ins (neCtorOwner ne) ctors }
+  where
+    ins m (ScalaCtor cName _args) = HM.insert cName parent m
+
+lookupCtorOwner :: ScalaName -> NameEnv -> Maybe ScalaName
+lookupCtorOwner c ne = HM.lookup c (neCtorOwner ne)
+

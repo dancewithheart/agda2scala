@@ -122,7 +122,7 @@ chooseBinderName i dom =
 nameFromDom :: Dom Type -> ScalaName
 nameFromDom dt = case (domName dt) of
   Nothing -> ""
-  Just a -> namedNameToStr a
+  Just a  -> namedNameToStr a
 
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Common.html#t:NamedName
 namedNameToStr :: NamedName -> ScalaName
@@ -137,7 +137,7 @@ fromArgType arg = fromType (unArg arg)
 fromType :: Type -> ScalaType
 fromType t = case t of
   El _ ue -> fromTerm ue
-  other -> error ("unhandled fromType [" ++ show other ++ "]")
+  other   -> error ("unhandled fromType [" ++ show other ++ "]")
 
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
 fromTerm :: Term -> ScalaType
@@ -169,10 +169,7 @@ compileBodyTerm env t =
       case drop i env of
         (v:_) -> STeVar v
         []    -> STeError ("Var index out of range: " <> show i)
-
-    Def qn _elims ->
-      STeVar (fromQName qn)
-
+    Def qn _elims -> STeVar (fromQName qn)
     Con conHead _conInfo elims ->
       case args of
          [] -> f
@@ -180,15 +177,10 @@ compileBodyTerm env t =
       where
         f    = STeVar (fromQName (conName conHead))
         args = [ compileBodyTerm env (unArg a) | Apply a <- elims ]
-
-
-    -- expand these gradually:
     Lit (LitNat n)     -> STeLitInt (fromIntegral n)
     Lit (LitWord64 n)  -> STeLitInt (fromIntegral n)
     Lit (LitString s)  -> STeLitString (T.unpack s)
-
-    _ ->
-      STeError ("compileBodyTerm: unhandled term: " <> take 120 (show t))
+    _ -> STeError ("compileBodyTerm: unhandled term: " <> take 120 (show t))
 
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName

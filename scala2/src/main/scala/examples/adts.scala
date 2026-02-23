@@ -20,7 +20,7 @@ final case class RgbPair(fst: Rgb, snd: Bool)
 
 def idRgb(x0: Rgb): Rgb = x0
 
-def rgbConstTrue1(rgb: Rgb): Bool = True
+def rgbConstTrue1(rgb: Rgb): Bool = Bool.True
 
 def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 

@@ -26,7 +26,32 @@ import Paths_agda2scala ( version )
 import Agda.Utils.GetOpt ( OptDescr(Option), ArgDescr(ReqArg) )
 import Agda.Main ( runAgda )
 import Agda.Compiler.Backend
-import Agda.Compiler.Backend (Recompile(..))
+  ( Backend(..)
+  , Backend'(..)
+  , Recompile(..)
+  , IsMain
+  , Flag
+  , TCM
+  , Definition(..)
+  , CompilerPragma
+  , withCurrentModule
+  , getUniqueCompilerPragma
+  , backendName
+  , backendVersion
+  , backendInteractTop
+  , backendInteractHole
+  , options
+  , commandLineFlags
+  , isEnabled
+  , preCompile
+  , compileDef
+  , postCompile
+  , preModule
+  , postModule
+  , scopeCheckingSuffices
+  , mayEraseType
+  )
+import Agda.Compiler.Backend -- otherwise GHC complains about Backend and Backend'
 import Agda.Interaction.Options ( OptDescr )
 import Agda.Compiler.Common ( curIF, compileDir )
 import Agda.Syntax.Abstract.Name ( QName )
@@ -39,6 +64,10 @@ import Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn )
 import Agda.Compiler.Scala.PrintScala2 ( printScala2 )
 import Agda.Compiler.Scala.PrintScala3 ( printScala3 )
 import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv)
+
+import Data.IORef (atomicModifyIORef', readIORef)
+import Agda.Compiler.Scala.NameEnv (registerCtors, lookupCtorOwner)
+import Agda.Compiler.Scala.ScalaExpr (ScalaExpr(..), ScalaTerm(..), ScalaCtor(..))
 
 runScalaBackend :: IO ()
 runScalaBackend = runAgda [scalaBackend]
@@ -109,12 +138,42 @@ scalaCompileDef :: ScalaEnv
   -> IsMain
   -> Definition
   -> TCM ScalaDefinition
-scalaCompileDef _ _ _ def@Defn{theDef = theDef, defName = qn}
-  = withCurrentModule (qnameModule qn) $ do
-  modulePragma <- lookupScalaPragma qn
-  case modulePragma of
-    Nothing -> return $ noPragmaResult def
-    Just pragma -> compileDefn def pragma
+scalaCompileDef _env modEnv _isMain def@Defn{theDef = theDef, defName = qn} =
+  withCurrentModule (qnameModule qn) $ do
+    modulePragma <- lookupScalaPragma qn
+    case modulePragma of
+      Nothing     -> return $ noPragmaResult def
+      Just pragma -> do
+        expr <- compileDefn def pragma   -- if compileDefn is TCM, keep as-is
+        case expr of
+          SeSum parent ctors -> do
+            -- record ctor->parent mapping for later functions
+            liftIO $ atomicModifyIORef' modEnv $ \ne ->
+              let ne' = registerCtors parent ctors ne
+              in (ne', ())
+            pure expr
+
+          SeFun fName args scheme body -> do
+            ne <- liftIO $ readIORef modEnv
+            let body' = qualifyTermWithEnv ne body
+            pure (SeFun fName args scheme body')
+
+          _ ->
+            pure expr
+
+qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
+qualifyTermWithEnv ne = go
+  where
+    go (STeVar n) =
+      case lookupCtorOwner n ne of
+        Just parent -> STeVar (parent <> "." <> n)
+        Nothing     -> STeVar n
+    go (STeApp f xs)      = STeApp (go f) (map go xs)
+    go (STeLam ns body)   = STeLam ns (go body)
+    go (STeLitInt i)      = STeLitInt i
+    go (STeLitBool b)     = STeLitBool b
+    go (STeLitString s)   = STeLitString s
+    go (STeError e)       = STeError e
 
 lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
 lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
