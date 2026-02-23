@@ -29,8 +29,8 @@ printScala2 def = case def of
     <> nl
   SeSum adtName ctors ->
     printSealedTrait adtName <> nl <>
-    combineLines (map (printCtor adtName) ctors)
-    <> nl
+    printCompanionObject adtName (map (printCtor adtName) ctors) <>
+    nl
 
   SeFun fName args resScheme body ->
     "def" <> sp <> fName <>
@@ -152,3 +152,14 @@ combineLines xs = strip (unlines (filter (not . null) xs))
 
 strip :: String -> String
 strip = dropWhileEnd (== '\n')
+
+printCompanionObject :: ScalaName -> [String] -> String
+printCompanionObject name ctorLines =
+  "object" <> sp <> name <> sp <> "{\n"
+    <> indentBlock 2 (combineLines ctorLines) <> "\n"
+    <> "}"
+
+indentBlock :: Int -> String -> String
+indentBlock n =
+  unlines . map (replicate n ' ' <>) . lines
+

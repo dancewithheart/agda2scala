@@ -4,9 +4,10 @@ import zio.test.Assertion.equalTo
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.assert
 
-import examples.adts.{Red, Green, Blue, idRgb}
+import examples.adts.Rgb.{Red, Green, Blue}
+import examples.adts.idRgb
 import examples.adts.{RgbPair, constRgbPair, hello}
-import examples.adts.{True, False}
+import examples.adts.Bool.{True, False}
 
 object RgbSpec extends JUnitRunnableSpec {
 

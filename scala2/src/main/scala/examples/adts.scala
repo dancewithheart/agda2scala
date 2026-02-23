@@ -4,17 +4,26 @@ object adts
 {
 
 sealed trait Rgb
-case object Red extends Rgb
-case object Green extends Rgb
-case object Blue extends Rgb
+object Rgb {
+  case object Red extends Rgb
+  case object Green extends Rgb
+  case object Blue extends Rgb
+
+}
 
 sealed trait Bool
-case object True extends Bool
-case object False extends Bool
+object Bool {
+  case object True extends Bool
+  case object False extends Bool
+
+}
 
 sealed trait Color
-final case class Light(x0: Rgb) extends Color
-final case class Dark(x0: Rgb) extends Color
+object Color {
+  final case class Light(x0: Rgb) extends Color
+  final case class Dark(x0: Rgb) extends Color
+
+}
 
 final case class RgbPair(fst: Rgb, snd: Bool)
 
