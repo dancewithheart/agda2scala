@@ -70,3 +70,19 @@ test-suite agda2scala-test
                     Agda   >= 2.8.0 && < 2.9.0,
                     HUnit  >= 1.6.2.0,
                     agda2scala
+
+test-suite agda2scala-hedgehog
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          HedgehogMain.hs
+  other-modules:    NameEnvProps
+                    PrintProps
+  build-depends:    base                 >= 4.13  && < 4.22,
+                    containers           >  0.6   && < 0.9,
+                    text                 >= 2.0.2 && < 2.2,
+                    unordered-containers >= 0.2.20 && < 0.3,
+                    hedgehog             >= 1.4   && < 1.6,
+                    agda2scala
+  ghc-options:      -threaded -rtsopts
