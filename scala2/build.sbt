@@ -2,11 +2,11 @@ name := "exampleScala2"
 
 version := "0.0.1"
 
-scalaVersion := "2.13.16"
+scalaVersion := "2.13.18"
 
 resolvers ++= Resolver.sonatypeOssRepos("snapshots")
 
-lazy val zioVersion = "2.1.20"
+lazy val zioVersion = "2.1.24"
 
 libraryDependencies ++= Seq(
   "dev.zio" %% "zio" % zioVersion,
@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
 Compile / tpolecatScalacOptions ~= { opts =>
   // for simplicity in adts examples
   import org.typelevel.scalacoptions.ScalacOptions
-  opts.filterNot(_ == ScalacOptions.fatalWarnings)
+  opts.filterNot(o => o == ScalacOptions.fatalWarnings || o == ScalacOptions.warnError)
 }
 
 scalacOptions ++= Seq(

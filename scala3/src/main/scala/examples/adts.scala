@@ -10,8 +10,18 @@ object adts:
     case True
     case False
 
-  final case class RgbPair(snd: Bool, fst: Rgb)
+  enum Color:
+    case Light(x0: Rgb)
+    case Dark(x0: Rgb)
 
-  def idRgb(theArg: Rgb): Rgb = theArg
+  final case class RgbPair(fst: Rgb, snd: Bool)
 
-  def constRgbPair(rgbArg: Rgb, rgbPairArg: RgbPair): RgbPair = rgbPairArg
+  def idRgb(x0: Rgb): Rgb = x0
+
+  def rgbConstTrue1(rgb: Rgb): Bool = Bool.True
+
+  def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
+
+  def hello(): String = "Hello, world!"
+
+  def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"

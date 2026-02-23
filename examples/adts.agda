@@ -1,5 +1,8 @@
 module examples.adts where
 
+open import Agda.Builtin.String
+open import Agda.Builtin.Nat
+
 -- simple sum type no arguments - sealed trait + case objects
 data Rgb : Set where
   Red : Rgb
@@ -17,7 +20,7 @@ data Bool : Set where
 data Color : Set where
   Light : Rgb -> Color
   Dark : Rgb -> Color
--- TODO {-# COMPILE AGDA2SCALA Color #-}
+{-# COMPILE AGDA2SCALA Color #-}
 
 -- simple sum type - case class
 
@@ -34,14 +37,29 @@ idRgb : Rgb -> Rgb
 idRgb theArg = theArg
 {-# COMPILE AGDA2SCALA idRgb #-}
 
--- const function with one named argument
+-- const function with one named argument that returns custom Bool literal
 
 rgbConstTrue1 : (rgb : Rgb) → Bool
-rgbConstTrue1 rgb = True -- TODO produce function body
--- TODO {-# COMPILE AGDA2SCALA rgbConstTrue1 #-}
+rgbConstTrue1 rgb = True
+{-# COMPILE AGDA2SCALA rgbConstTrue1 #-}
 
 -- function with multiple named arguments
 
 constRgbPair : (rgbPairArg : RgbPair) -> (rgbArg : Rgb) -> RgbPair
 constRgbPair rgbPairArg rgbArg = rgbPairArg
 {-# COMPILE AGDA2SCALA constRgbPair #-}
+
+-- literals String
+hello : String
+hello = "Hello, world!"
+{-# COMPILE AGDA2SCALA hello #-}
+
+-- literals String with escape characters
+withEscapes : String
+withEscapes = "line1\nline2\t\"quote\"\\backslash"
+{-# COMPILE AGDA2SCALA withEscapes #-}
+
+-- literals Nat
+two : Nat
+two = 2
+-- TODO {-# COMPILE AGDA2SCALA two #-}

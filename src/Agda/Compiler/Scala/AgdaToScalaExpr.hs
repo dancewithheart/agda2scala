@@ -1,138 +1,261 @@
-module Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn ) where
-  
-import Agda.Compiler.Backend ( funCompiled, funClauses, Defn(..), RecordData(..))
-import Agda.Syntax.Abstract.Name ( QName )
-import Agda.Syntax.Common.Pretty ( prettyShow )
-import Agda.Syntax.Common ( Arg(..), ArgName, Named(..), NamedName, WithOrigin(..), Ranged(..) )
-import Agda.Syntax.Internal (
-  Clause(..), DeBruijnPattern, DBPatVar(..), Dom(..), Dom'(..), unDom, PatternInfo(..), Pattern'(..),
-  qnameName, qnameModule, Telescope, Tele(..), Term(..), Type, Type''(..) )
-import Agda.TypeChecking.Monad.Base ( Definition(..) )
-import Agda.TypeChecking.Monad
-import Agda.TypeChecking.CompiledClause ( CompiledClauses(..), CompiledClauses'(..) )
-import Agda.TypeChecking.Telescope ( teleNamedArgs, teleArgs, teleArgNames )
+{-# LANGUAGE LambdaCase #-}
 
-import Agda.Syntax.Common.Pretty ( prettyShow )
+module Agda.Compiler.Scala.AgdaToScalaExpr
+  ( compileDefn
+  , CompileError(..)
+  , compileTypeTerm
+  , compileBodyTerm
+  , lookupVar
+  , Env(..)
+  ) where
 
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName
-  , ScalaType(..)
-  , ScalaTerm(..)
+import qualified Data.Text as T
+
+import Agda.Compiler.Backend (CompilerPragma, Defn(..), RecordData(..), funCompiled, funClauses)
+import Agda.Compiler.Backend
+import Agda.Syntax.Abstract.Name (QName)
+import Agda.Syntax.Common (Hiding(..), getHiding, Arg(..), NamedName, WithOrigin(..), Ranged(..))
+import Agda.Syntax.Common.Pretty (prettyShow)
+import Agda.Syntax.Internal
+  ( Abs
+  , ConHead(..)
+  , Dom(..)
+  , Dom'(..)
+  , Elim'(..)
+  , Term(..)
+  , Type
+  , Type''(..)
+  , Tele(..)
+  , Telescope
+  , qnameName
+  , unDom
+  )
+import Agda.Syntax.Literal (Literal(..))
+import Agda.TypeChecking.Monad (TCM, getConstInfo)
+import Agda.TypeChecking.Monad.Base (Definition(..))
+import Agda.TypeChecking.CompiledClause (Case, CompiledClauses(..), CompiledClauses'(..))
+import Agda.TypeChecking.Substitute (absBody)
+
+import Agda.Compiler.Scala.NameEnv (sanitizeScalaIdent)
+import Agda.Compiler.Scala.ScalaExpr
+  ( ScalaCtor(..)
   , ScalaExpr(..)
-  , SeVar(..) )
+  , ScalaName
+  , ScalaTerm(..)
+  , ScalaType(..)
+  , SeVar(..)
+  , scalaTypeScheme
+  )
 
-compileDefn :: QName -> Defn -> ScalaExpr
-compileDefn defName theDef = case theDef of 
-  Datatype{dataCons = dataCons} ->
-    compileDataType defName dataCons
-  Function{funCompiled = funCompiled, funClauses = funClauses} ->
-    compileFunction defName funCompiled funClauses
-  RecordDefn(RecordData{_recFields = recFields, _recTel = recTel}) ->
-    compileRecord defName recFields recTel
-  other ->
-    Unhandled "compileDefn other" (show defName ++ "\n = \n" ++ show theDef)
+-- ===== Errors ================================================================
 
-compileRecord :: QName -> [Dom QName] -> Telescope -> ScalaExpr
-compileRecord defName recFields recTel = SeProd (fromQName defName) (foldl varsFromTelescope [] recTel)
+data CompileError
+  = UnsupportedDefinition QName
+  | UnsupportedType Type
+  | UnsupportedTerm Term
+  | UnsupportedCompiledClauses
+  | VarOutOfRange Int Int
+  deriving (Eq, Show)
 
-varsFromTelescope :: [SeVar] -> Dom Type -> [SeVar]
-varsFromTelescope xs dt = SeVar (nameFromDom dt) (STyName (fromDom dt)) : xs
+-- ===== Entry point ===========================================================
 
-compileDataType :: QName -> [QName] -> ScalaExpr
-compileDataType defName fields = SeSum (fromQName defName) (map fromQName fields)
+-- | Compile an Agda 'Definition' to Scala AST or return a structured error.
+-- Agda.TypeChecking.Monad.Base.Definition:
+-- https://hackage.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#t:Definition
+compileDefn :: Definition -> CompilerPragma -> TCM (Either CompileError ScalaExpr)
+compileDefn def _pragma = compileDefinition def
 
-compileFunction :: QName
-  -> Maybe CompiledClauses
-  -> [Clause]
-  -> ScalaExpr
-compileFunction defName funCompiled funClauses =
-  SeFun
-    (fromQName defName) -- ++ "\n FULL FUNCTION DEFINITION \n[\n" ++ (show theDef) ++ "\n]\n")
-    (funArgs funClauses)
-    (compileFunctionResultType funClauses)
-    -- you can get body of the function using:
-    -- - FunctionData _funCompiled
-    -- - FunctionData _funClauses Clause clauseBody
-    -- see:
-    -- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-TypeChecking-Monad-Base.html#t:FunctionData
-    -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Clause
-    -- at this point both contain the same info (at least in simple cases)
-    (compileFunctionBody funCompiled)
+-- Keep compileDefn small: just dispatch.
+compileDefinition :: Definition -> TCM (Either CompileError ScalaExpr)
+compileDefinition = \case
+  Defn{theDef = Datatype{dataCons = cons}, defName = qn} ->
+    compileDataType qn cons
 
-funArgs :: [Clause] -> [SeVar]
-funArgs [] = []
-funArgs (c : cs) = funArgsFromClause c
+  Defn{theDef = Function{funCompiled = cc}, defName = qn, defType = ty} ->
+    pure (compileFunction qn ty cc)
 
-funArgsFromClause :: Clause -> [SeVar]
-funArgsFromClause c@Clause{clauseTel = clauseTel} = case parsedArgs of
-    [(SeVar "" varType)] -> [SeVar (hackyFunArgNameFromClause c) varType]
-    args                 -> args
+  Defn{theDef = RecordDefn (RecordData{_recTel = tel}), defName = qn} ->
+    pure (compileRecord qn tel)
+
+  Defn{defName = qn} ->
+    pure (Left (UnsupportedDefinition qn))
+
+-- ===== Records ===============================================================
+
+-- | Compile a record telescope into a Scala case class.
+-- Agda.Syntax.Internal.Telescope (list-like):
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Telescope
+compileRecord :: QName -> Telescope -> Either CompileError ScalaExpr
+compileRecord qn tel = do
+  vars <- traverse compileField (zip [0 :: Int ..] (teleToList tel))
+  pure (SeProd (fromQName qn) vars)
   where
-    parsedArgs = foldl varsFromTelescope [] clauseTel
+    compileField (i, dom) = do
+      ty <- compileDomType dom
+      pure (SeVar (binderName i dom) ty)
 
--- this is extremely hacky way to get function argument name
--- for identity function
--- I apparently do not understand enough how this works
--- or perhaps this is bug in Agda compiler :)
-hackyFunArgNameFromClause :: Clause -> ScalaName
-hackyFunArgNameFromClause fc = hackyFunArgNameFromDeBruijnPattern (namedThing (unArg
-  (head         -- TODO perhaps iterate here
-    (namedClausePats fc))))
+-- Agda.Syntax.Internal.Tele / Telescope:
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Tele
+-- Telescope is a linked structure, not a list.
+teleToList :: Telescope -> [Dom Type]
+teleToList = \case
+  EmptyTel        -> []
+  ExtendTel dom t -> dom : teleToList (absBody t)
 
-hackyFunArgNameFromDeBruijnPattern :: DeBruijnPattern -> ScalaName
-hackyFunArgNameFromDeBruijnPattern d = case d of
-    VarP a b -> (dbPatVarName b)
-    a@(ConP x y z) -> "\n hackyFunArgNameFromDeBruijnPattern \n[\n" ++ show a ++ "\n]\n" 
-    other -> error ("hackyFunArgNameFromDeBruijnPattern " ++ show other)
+-- ===== Datatypes / constructors =============================================
 
-nameFromDom :: Dom Type -> ScalaName
-nameFromDom dt = case (domName dt) of
-  Nothing -> ""
-  Just a -> namedNameToStr a
+compileDataType :: QName -> [QName] -> TCM (Either CompileError ScalaExpr)
+compileDataType typeName cons = do
+  eCtors <- traverse compileCtor cons
+  pure $ do
+    ctors <- sequence eCtors
+    pure (SeSum (fromQName typeName) ctors)
 
--- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-Syntax-Common.html#t:NamedName
+compileCtor :: QName -> TCM (Either CompileError ScalaCtor)
+compileCtor conQName = do
+  conDef <- getConstInfo conQName
+  let conTy = defType conDef
+  pure $ do
+    argTys <- ctorArgTypesFromType conTy
+    pure ScalaCtor { scName = fromQName conQName, scArgs = argTys }
+
+-- | Split a type into Pi binders and a result type.
+-- Stops at the first non-Pi.
+unrollPi :: Type -> Either CompileError ([(Dom Type, Abs Type)], Type)
+unrollPi = go []
+  where
+    go acc = \case
+      El _ (Pi dom absTy) ->
+        go ((dom, absTy) : acc) (absBody absTy)
+      ty ->
+        pure (reverse acc, ty)
+
+-- | Extract explicit constructor argument types.
+ctorArgTypesFromType :: Type -> Either CompileError [ScalaType]
+ctorArgTypesFromType ty0 = do
+  (pis, _res) <- unrollPi ty0
+  traverse compileDomType
+    [ dom
+    | (dom, _) <- pis
+    , getHiding dom /= Hidden
+    ]
+
+-- ===== Functions =============================================================
+
+compileFunction
+  :: QName
+  -> Type
+  -> Maybe CompiledClauses
+  -> Either CompileError ScalaExpr
+compileFunction qn defTy mcc = do
+  (args, retTy) <- funArgsAndReturnFromType defTy
+  body          <- compileFunctionBody (argNames args) mcc
+  pure (SeFun (fromQName qn) args (scalaTypeScheme retTy) body)
+  where
+    argNames = map (\(SeVar n _) -> n)
+
+funArgsAndReturnFromType :: Type -> Either CompileError ([SeVar], ScalaType)
+funArgsAndReturnFromType ty0 = do
+  (pis, resTy) <- unrollPi ty0
+  args <- traverse mkArg (zip [0 :: Int ..] pis)
+  ret  <- compileType resTy
+  pure (concat args, ret)
+  where
+    mkArg (i, (dom, _absTy)) =
+      case getHiding dom of
+        Hidden -> pure []  -- drop implicit for now
+        _      -> do
+          ty <- compileDomType dom
+          pure [SeVar (binderName i dom) ty]
+
+compileFunctionBody :: [ScalaName] -> Maybe CompiledClauses -> Either CompileError ScalaTerm
+compileFunctionBody _ Nothing = Left UnsupportedCompiledClauses
+compileFunctionBody argNs (Just cc) =
+  case cc of
+    Case{}      -> Left UnsupportedCompiledClauses
+    Done _ term -> compileBodyTerm (envFromArgs argNs) term
+    _           -> Left UnsupportedCompiledClauses
+
+-- ===== Terms ================================================================
+
+newtype Env = Env { unEnv :: [ScalaName] }
+  deriving (Eq, Show) -- env[0] = last binder
+
+envFromArgs :: [ScalaName] -> Env
+envFromArgs = Env . reverse
+
+lookupVar :: Env -> Int -> Either CompileError ScalaName
+lookupVar (Env xs) i =
+  case drop i xs of
+    v:_ -> Right v
+    []  -> Left (VarOutOfRange i (length xs))
+
+compileBodyTerm :: Env -> Term -> Either CompileError ScalaTerm
+compileBodyTerm env = \case
+  Var i _      -> STeVar <$> lookupVar env i
+  Def qn _     -> pure (STeVar (fromQName qn))
+  Con ch _ es  -> compileConApp env ch es
+  Lit lit      -> compileLiteral lit
+  t            -> Left (UnsupportedTerm t)
+
+compileConApp :: Env -> ConHead -> [Elim' Term] -> Either CompileError ScalaTerm
+compileConApp env conHead elims = do
+  args <- traverse (compileElim env) elims
+  let f = STeVar (fromQName (conName conHead))
+  pure $ case args of
+    [] -> f
+    _  -> STeApp f args
+
+compileElim :: Env -> Elim' Term -> Either CompileError ScalaTerm
+compileElim env = \case
+  Apply a -> compileBodyTerm env (unArg a)
+  _       -> Left (UnsupportedTerm (Var 0 [])) -- refine later (Proj/IApply)
+
+compileLiteral :: Literal -> Either CompileError ScalaTerm
+compileLiteral = \case
+  LitNat n    -> pure (STeLitInt (fromIntegral n))
+  LitWord64 n -> pure (STeLitInt (fromIntegral n))
+  LitString s -> pure (STeLitString (T.unpack s))
+  t           -> Left (UnsupportedTerm (Lit t)) -- for now
+
+-- ===== Types ================================================================
+
+-- Agda.Syntax.Internal.Dom:
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Dom
+compileDomType :: Dom Type -> Either CompileError ScalaType
+compileDomType = compileType . unDom
+
+-- Agda.Syntax.Internal.Type:
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Type
+compileType :: Type -> Either CompileError ScalaType
+compileType = \case
+  El _ t -> compileTypeTerm t
+  t      -> Left (UnsupportedType t)
+
+-- Agda.Syntax.Internal.Term:
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
+compileTypeTerm :: Term -> Either CompileError ScalaType
+compileTypeTerm = \case
+  Def qn _  -> Right (STyName (fromQName qn))
+  Var n _   -> Right (STyVar ("t" <> show n))
+  Con c _ _ -> Right (STyName (fromQName (conName c)))
+  Sort _    -> Right (STyName "Type")
+  t         -> Left (UnsupportedTerm t)
+
+-- ===== Naming ===============================================================
+
+binderName :: Int -> Dom Type -> ScalaName
+binderName i dom =
+  case domName dom of
+    Just a  ->
+      let s = sanitizeScalaIdent (namedNameToStr a)
+      -- binder names should never be ""
+      in if null s then ("x" <> show i) else s
+    Nothing -> "x" <> show i
+
 namedNameToStr :: NamedName -> ScalaName
 namedNameToStr n = rangedThing (woThing n)
 
-fromDom :: Dom Type -> ScalaName
-fromDom x = fromType (unDom x)
-
-compileFunctionResultType :: [Clause] -> ScalaType
-compileFunctionResultType [Clause{clauseType = ct}] = STyName (fromMaybeType ct)
-compileFunctionResultType (Clause{clauseType = ct} : xs) = STyName (fromMaybeType ct)
-compileFunctionResultType other = error "Fatal error - function has not clause."
-
-fromMaybeType :: Maybe (Arg Type) -> ScalaName
-fromMaybeType (Just argType) = fromArgType argType
-fromMaybeType other = error ("\nunhandled fromMaybeType \n[" ++ show other ++ "]\n")
-
-fromArgType :: Arg Type -> ScalaName
-fromArgType arg = fromType (unArg arg)
-
-fromType :: Type -> ScalaName
-fromType t = case t of
-  El _ ue -> fromTerm ue
-  other -> error ("unhandled fromType [" ++ show other ++ "]")
-
--- https://hackage.haskell.org/package/Agda-2.6.4.3/docs/Agda-Syntax-Internal.html#t:Term
-fromTerm :: Term -> ScalaName
-fromTerm t = case t of
-  Def qName elims -> fromQName qName
-  Var n elims -> "\nunhandled fromTerm Var \n[" ++ show t ++ "]\n"
-  other -> error ("\nunhandled fromTerm [" ++ show other ++ "]\n")
-
-compileFunctionBody :: Maybe CompiledClauses -> ScalaTerm
-compileFunctionBody (Just funDef) = fromCompiledClauses funDef
-compileFunctionBody funDef = error "Fatal error - function body is not compiled."
-
--- https://hackage.haskell.org/package/Agda/docs/Agda-TypeChecking-CompiledClause.html#t:CompiledClauses
-fromCompiledClauses :: CompiledClauses -> ScalaTerm
-fromCompiledClauses cc = case cc of
-  (Case argInt caseCompiledClauseTerm) -> STError "WIP" --"\nCase fromCompiledClauses\n[\n" ++ (show cc) ++ "\n]\n"
-  (Done (x:xs) term) -> fromArgName x
-  other               -> STError ("\nunhandled fromCompiledClauses \n\n[" ++ show other ++ "]\n")
-
-fromArgName :: Arg ArgName -> ScalaTerm
-fromArgName an = STeVar (unArg an)
-
+-- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Abstract-Name.html#t:QName
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName

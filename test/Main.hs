@@ -10,12 +10,14 @@ import System.Exit ( exitFailure , exitSuccess )
 import PrintScala2Test ( printScala2Tests )
 import PrintScala3Test ( printScala3Tests )
 import ScalaBackendTest ( backendTests )
+import NameEnvTest ( nameEnvTests )
 
 allTests :: Test
 allTests = TestList [
   backendTests
   , printScala2Tests
   , printScala3Tests
+  , nameEnvTests
   ]
 
 main :: IO ()

@@ -1,4 +1,4 @@
-val zioVersion = "2.1.20"
+val zioVersion = "2.1.24"
 
 lazy val root = project
   .in(file("."))
@@ -8,7 +8,7 @@ lazy val root = project
         name := "scala3",
         organization := "examples",
         version := "0.0.1",
-        scalaVersion := "3.7.2"
+        scalaVersion := "3.7.3"
       )
     ),
     libraryDependencies ++= Seq(
@@ -21,7 +21,7 @@ lazy val root = project
     Compile / tpolecatScalacOptions ~= { opts =>
       // for simplicity in adts examples
       import org.typelevel.scalacoptions.ScalacOptions
-      opts.filterNot(o => o == ScalacOptions.fatalWarnings)
+      opts.filterNot(o => o == ScalacOptions.fatalWarnings || o == ScalacOptions.warnError)
     },
     testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )

@@ -30,16 +30,18 @@ library
   hs-source-dirs:      src
   exposed-modules:     Agda.Compiler.Scala.Backend
                        Agda.Compiler.Scala.ScalaExpr
+                       Agda.Compiler.Scala.NameEnv
                        Agda.Compiler.Scala.AgdaToScalaExpr
                        Agda.Compiler.Scala.PrintScala2
                        Agda.Compiler.Scala.PrintScala3
                        Paths_agda2scala
   autogen-modules:     Paths_agda2scala
-  build-depends:       base       >= 4.13  && < 4.22,
-                       containers >  0.6   && < 0.9,
-                       Agda       >= 2.8.0 && < 2.9.0,
-                       deepseq    >= 1.4.4 && < 1.6,
-                       text       >= 2.0.2 && < 2.2
+  build-depends:       base                 >= 4.13  && < 4.22,
+                       containers           >  0.6   && < 0.9,
+                       Agda                 >= 2.8.0 && < 2.9.0,
+                       deepseq              >= 1.4.4 && < 1.6,
+                       text                 >= 2.0.2 && < 2.2,
+                       unordered-containers >=0.2.20 && <0.3
   default-language:    Haskell2010
 
 executable agda2scala
@@ -59,7 +61,30 @@ test-suite agda2scala-test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
   main-is:          Main.hs
+  other-modules:    PrintScala2Test
+                    PrintScala3Test
+                    ScalaBackendTest
+                    NameEnvTest
   build-depends:    base   >= 4.13  && < 4.22,
+                    unordered-containers >=0.2.20 && <0.3,
                     Agda   >= 2.8.0 && < 2.9.0,
                     HUnit  >= 1.6.2.0,
                     agda2scala
+
+test-suite agda2scala-hedgehog
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          HedgehogMain.hs
+  other-modules:    NameEnvProps
+                    PrintProps
+                    AgdaToScalaExprProps
+  build-depends:    base                 >= 4.13  && < 4.22,
+                    containers           >  0.6   && < 0.9,
+                    text                 >= 2.0.2 && < 2.2,
+                    unordered-containers >= 0.2.20 && < 0.3,
+                    Agda                 >= 2.8.0 && < 2.9.0,
+                    hedgehog             >= 1.4   && < 1.6,
+                    agda2scala
+  ghc-options:      -threaded -rtsopts

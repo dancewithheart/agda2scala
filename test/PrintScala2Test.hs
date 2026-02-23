@@ -1,76 +1,108 @@
 module PrintScala2Test ( printScala2Tests ) where
 
 import Test.HUnit ( Test(..), assertEqual )
-import Agda.Compiler.Scala.PrintScala2 (
-  printScala2
+import Agda.Compiler.Scala.PrintScala2
+  ( printScala2
   , printSealedTrait
   , printCaseObject
   , printPackageAndObject
   , combineLines
   , printCaseClass
   )
-import Agda.Compiler.Scala.ScalaExpr ( ScalaExpr(..)
+import Agda.Compiler.Scala.ScalaExpr
+  ( ScalaExpr(..)
+  , ScalaCtor(..)
   , ScalaType(..)
-  , SeVar(..) )
+  , SeVar(..)
+  )
 
 testPrintCaseObject :: Test
-testPrintCaseObject = TestCase
-  (assertEqual "printCaseObject"
+testPrintCaseObject = TestCase $
+  assertEqual "printCaseObject"
     "case object Light extends Color"
-    (printCaseObject "Color" "Light"))
-  
+    (printCaseObject "Color" "Light")
+
 testPrintSealedTrait :: Test
-testPrintSealedTrait = TestCase
-  (assertEqual "printSealedTrait"
+testPrintSealedTrait = TestCase $
+  assertEqual "printSealedTrait"
     "sealed trait Color"
-    (printSealedTrait "Color"))
+    (printSealedTrait "Color")
 
 testObjectWhenNoPackage :: Test
-testObjectWhenNoPackage = TestCase
-  (assertEqual "printPackageAndObject"
+testObjectWhenNoPackage = TestCase $
+  assertEqual "printPackageAndObject"
     "object adts"
-    (printPackageAndObject ["adts"]))
+    (printPackageAndObject ["adts"])
 
 testPrintPackageAndObject :: Test
-testPrintPackageAndObject = TestCase
-  (assertEqual "printPackageAndObject"
+testPrintPackageAndObject = TestCase $
+  assertEqual "printPackageAndObject"
     "package example\n\nobject adts"
-    (printPackageAndObject ["example", "adts"]))
+    (printPackageAndObject ["example", "adts"])
 
 testPrintMultiplePartPackageAndObject :: Test
-testPrintMultiplePartPackageAndObject = TestCase
-  (assertEqual "printPackageAndObject"
+testPrintMultiplePartPackageAndObject = TestCase $
+  assertEqual "printPackageAndObject"
     "package org.example\n\nobject adts"
-    (printPackageAndObject ["org", "example", "adts"]))
+    (printPackageAndObject ["org", "example", "adts"])
 
 testCombineLines :: Test
-testCombineLines = TestCase
-  (assertEqual "combineLines"
+testCombineLines = TestCase $
+  assertEqual "combineLines"
     "a\nb"
-    (combineLines ["", "a", "", "", "b", "", "", ""]))
-
-testPrintScala2:: Test
-testPrintScala2 = TestCase
-  (assertEqual "printScala2"
-  "object adts {\n\nsealed trait Rgb\ncase object Red extends Rgb\ncase object Green extends Rgb\ncase object Blue extends Rgb\n\nsealed trait Color\ncase object Light extends Color\ncase object Dark extends Color\n}\n"
-  (printScala2 $ SePackage ["adts"] moduleContent)
-  )
-  where
-    moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
-    rgbAdt = SeSum "Rgb" ["Red","Green","Blue"]
-    colorAdt = SeSum "Color" ["Light","Dark"]
-    blank = Unhandled "" ""
+    (combineLines ["", "a", "", "", "b", "", "", ""])
 
 testPrintCaseClass :: Test
-testPrintCaseClass = TestCase
-  (assertEqual "printCaseClass"
+testPrintCaseClass = TestCase $
+  assertEqual "printCaseClass"
     "final case class RgbPair(snd: Bool, fst: Rgb)"
-    (printCaseClass "RgbPair" [SeVar "snd" (STyName "Bool"), SeVar "fst" (STyName "Rgb")]))
-    
+    (printCaseClass "RgbPair"
+      [ SeVar "snd" (STyName "Bool")
+      , SeVar "fst" (STyName "Rgb")
+      ])
+
+testPrintScala2 :: Test
+testPrintScala2 = TestCase $
+  assertEqual "printScala2"
+    expected
+    (printScala2 $ SePackage ["adts"] moduleContent)
+  where
+    rgbAdt =
+      SeSum "Rgb"
+        [ ScalaCtor "Red"   []
+        , ScalaCtor "Green" []
+        , ScalaCtor "Blue"  []
+        ]
+    colorAdt =
+      SeSum "Color"
+        [ ScalaCtor "Light" []
+        , ScalaCtor "Dark"  []
+        ]
+    blank = SeUnhandled "" ""
+    moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
+    expected =
+      "object adts\n" <>
+      "{\n" <>
+      "\n" <>
+      "sealed trait Rgb\n" <>
+      "object Rgb {\n" <>
+      "  case object Red extends Rgb\n" <>
+      "  case object Green extends Rgb\n" <>
+      "  case object Blue extends Rgb\n" <>
+      "\n" <>          -- this blank line is currently produced by your printer
+      "}\n" <>
+      "\n" <>
+      "sealed trait Color\n" <>
+      "object Color {\n" <>
+      "  case object Light extends Color\n" <>
+      "  case object Dark extends Color\n" <>
+      "\n" <>          -- likewise
+      "}\n" <>
+      "}\n"
 
 printScala2Tests :: Test
-printScala2Tests = TestList [
-  TestLabel "printCaseObject" testPrintCaseObject
+printScala2Tests = TestList
+  [ TestLabel "printCaseObject" testPrintCaseObject
   , TestLabel "printSealedTrait" testPrintSealedTrait
   , TestLabel "printObject" testObjectWhenNoPackage
   , TestLabel "printPackageAndObject" testPrintPackageAndObject
