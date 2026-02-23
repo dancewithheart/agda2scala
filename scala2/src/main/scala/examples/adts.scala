@@ -24,7 +24,7 @@ def rgbConstTrue1(rgb: Rgb): Bool = True
 
 def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 
-def hello(): String = "hi"
+def hello(): String = "Hello, world!"
 
 def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
 }

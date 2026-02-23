@@ -51,7 +51,7 @@ constRgbPair rgbPairArg rgbArg = rgbPairArg
 
 -- literals String
 hello : String
-hello = "hi"
+hello = "Hello, world!"
 {-# COMPILE AGDA2SCALA hello #-}
 
 -- literals String with escape characters
