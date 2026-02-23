@@ -60,7 +60,7 @@ import Agda.Syntax.Internal ( qnameModule )
 import Agda.Syntax.TopLevelModuleName ( TopLevelModuleName, moduleNameToFileName )
 
 import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaTypeScheme, ScalaExpr(..), unHandled )
-import Agda.Compiler.Scala.AgdaToScalaExpr ( compileDefn )
+import Agda.Compiler.Scala.AgdaToScalaExpr ( CompileError, compileDefn )
 import Agda.Compiler.Scala.PrintScala2 ( printScala2 )
 import Agda.Compiler.Scala.PrintScala3 ( printScala3 )
 import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv)
@@ -68,6 +68,9 @@ import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv)
 import Data.IORef (atomicModifyIORef', readIORef)
 import Agda.Compiler.Scala.NameEnv (registerCtors, lookupCtorOwner)
 import Agda.Compiler.Scala.ScalaExpr (ScalaExpr(..), ScalaTerm(..), ScalaCtor(..))
+
+lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
+lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
 
 runScalaBackend :: IO ()
 runScalaBackend = runAgda [scalaBackend]
@@ -138,13 +141,14 @@ scalaCompileDef :: ScalaEnv
   -> IsMain
   -> Definition
   -> TCM ScalaDefinition
-scalaCompileDef _env modEnv _isMain def@Defn{theDef = theDef, defName = qn} =
+scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
   withCurrentModule (qnameModule qn) $ do
     modulePragma <- lookupScalaPragma qn
     case modulePragma of
-      Nothing     -> return $ noPragmaResult def
+      Nothing     -> pure (noPragmaResult def)
       Just pragma -> do
-        expr <- compileDefn def pragma   -- if compileDefn is TCM, keep as-is
+        e   <- compileDefn def pragma   -- TCM (Either CompileError ScalaExpr)
+        let expr = lowerCompile qn e    -- ScalaExpr
         case expr of
           SeSum parent ctors -> do
             -- record ctor->parent mapping for later functions

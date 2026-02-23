@@ -79,10 +79,12 @@ test-suite agda2scala-hedgehog
   main-is:          HedgehogMain.hs
   other-modules:    NameEnvProps
                     PrintProps
+                    AgdaToScalaExprProps
   build-depends:    base                 >= 4.13  && < 4.22,
                     containers           >  0.6   && < 0.9,
                     text                 >= 2.0.2 && < 2.2,
                     unordered-containers >= 0.2.20 && < 0.3,
+                    Agda                 >= 2.8.0 && < 2.9.0,
                     hedgehog             >= 1.4   && < 1.6,
                     agda2scala
   ghc-options:      -threaded -rtsopts
