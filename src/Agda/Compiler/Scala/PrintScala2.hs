@@ -4,7 +4,9 @@ module Agda.Compiler.Scala.PrintScala2
   , printSealedTrait
   , printPackageAndObject
   , printCaseClass
+  , printType
   , combineLines
+  , escapeScalaString
   ) where
 
 import Data.List (intercalate, dropWhileEnd)
@@ -111,13 +113,12 @@ escapeScalaString = concatMap $ \c -> case c of
 -- ===== Types ================================================================
 
 printType :: ScalaType -> String
-printType x = case x of
-  STyName n -> n
-  STyVar v  -> v
-  STyApp n ts ->
-    n <> "[" <> intercalate ", " (map printType ts) <> "]"
-  STyFun a b ->
-    printType a <> sp <> "=>" <> sp <> printType b
+printType (STyName n) = n
+printType (STyVar v)  = v
+printType (STyApp n ts) =
+  n <> "[" <> intercalate ", " (map printType ts) <> "]"
+printType (STyFun a b) =
+  printType a <> " => " <> printType b
 
 -- ===== Vars / packages ======================================================
 

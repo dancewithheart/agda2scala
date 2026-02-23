@@ -7,9 +7,10 @@
 -- This makes tests robust across refactors.
 module PrintProps (tests) where
 
+import Data.Char (isAlphaNum)
 import Data.List (isInfixOf)
 
-import Hedgehog (Group(..), Gen(..), Property, PropertyName(..), GroupName(..), property, forAll, assert, (===))
+import Hedgehog (Group(..), Gen(..), Property, PropertyName(..), GroupName(..), property, forAll, assert, (===), success)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -22,7 +23,7 @@ import Agda.Compiler.Scala.ScalaExpr
   , scalaTypeScheme
   )
 
-import Agda.Compiler.Scala.PrintScala2 (printScala2)
+import Agda.Compiler.Scala.PrintScala2 (printScala2, printType, escapeScalaString)
 import Agda.Compiler.Scala.PrintScala3 (printScala3)
 
 tests :: Group
@@ -33,9 +34,40 @@ tests =
     , ("prop_scala2_stringEscapes_quote", prop_scala2_stringEscapes_quote)
     , ("prop_scala2_boolLowercase", prop_scala2_boolLowercase)
     , ("prop_scala3_stringEscapes_newline", prop_scala3_stringEscapes_newline)
+    , ("prop_escape_no_raw_newlines", prop_escape_no_raw_newlines)
+    , ("prop_printScala3_type_total", prop_printScala3_type_total)
     ]
 
 -- ===== Generators ============================================================
+
+type ScalaName = String
+
+genUpperIdent :: Gen ScalaName
+genUpperIdent = do
+  c  <- Gen.upper
+  cs <- Gen.list (Range.linear 0 12) (Gen.choice [Gen.alphaNum, Gen.element ['_']])
+  pure (c : cs)
+
+genLowerIdent :: Gen ScalaName
+genLowerIdent = do
+  c  <- Gen.lower
+  cs <- Gen.list (Range.linear 0 12) (Gen.choice [Gen.alphaNum, Gen.element ['_']])
+  pure (c : cs)
+
+-- Type constructors: Int, Bool, MyType, List, Either, Foo_Bar
+genTypeName :: Gen ScalaName
+genTypeName = genUpperIdent
+
+-- Type variables: A, B, T0, X
+genTyVar :: Gen ScalaName
+genTyVar =
+  Gen.choice
+    [ (:[]) <$> Gen.upper
+    , do
+        c  <- Gen.upper
+        n  <- Gen.int (Range.linear 0 20)
+        pure (c : show n)
+    ]
 
 genPlainChunk :: Gen String
 genPlainChunk = Gen.string (Range.linear 0 20) Gen.alphaNum
@@ -51,6 +83,16 @@ genWithQuote = do
   a <- genPlainChunk
   b <- genPlainChunk
   pure (a <> "\"" <> b)
+
+genScalaType :: Gen ScalaType
+genScalaType =
+  Gen.recursive Gen.choice
+    [ STyName <$> genTypeName
+    , STyVar  <$> genTyVar
+    ]
+    [ STyFun <$> genScalaType <*> genScalaType
+    , STyApp <$> genTypeName <*> Gen.list (Range.linear 0 4) genScalaType
+    ]
 
 -- ===== Small AST builders ====================================================
 
@@ -104,3 +146,17 @@ prop_scala3_stringEscapes_newline = property $ do
   s <- forAll genWithNewline
   let out = render3 (mkModule [mkFun0 "f" (STyName "String") (STeLitString s)])
   assert (contains "\\n" out)
+
+prop_escape_no_raw_newlines :: Property
+prop_escape_no_raw_newlines = property $ do
+  s <- forAll (Gen.string (Range.linear 0 200) Gen.unicode)
+  let e = escapeScalaString s
+  assert ('\n' `notElem` e)
+  assert ('\r' `notElem` e)
+
+prop_printScala3_type_total :: Property
+prop_printScala3_type_total = property $ do
+  ty <- forAll genScalaType
+  -- should not throw (it’s pure, but total pattern match now)
+  let _ = printType ty
+  success

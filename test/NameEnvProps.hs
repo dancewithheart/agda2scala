@@ -10,7 +10,7 @@
 module NameEnvProps (tests) where
 
 import Data.Char (isAlphaNum, isLetter)
-import Data.List (nub)
+import Data.List (mapAccumL, nub)
 import qualified Data.Set as Set
 
 import Hedgehog (Group(..), Gen(..), Property, PropertyName(..), GroupName(..), property, forAll, assert, (===))
@@ -32,9 +32,19 @@ tests =
     , ("prop_sanitize_notKeyword", prop_sanitize_notKeyword)
     , ("prop_allocFreshLocal_unique", prop_allocFreshLocal_unique)
     , ("prop_allocFreshLocal_deterministic", prop_allocFreshLocal_deterministic)
+    , ("prop_sanitize_idempotent", prop_sanitize_idempotent)
+    , ("prop_allocFreshLocal_unique_nonKeyword", prop_allocFreshLocal_unique_nonKeyword)
     ]
 
 -- ===== Generators ============================================================
+
+genAnyString :: Gen String
+genAnyString =
+  Gen.frequency
+    [ (6, Gen.string (Range.linear 0 30) Gen.alphaNum)
+    , (2, Gen.string (Range.linear 0 30) Gen.unicode)
+    , (2, Gen.string (Range.linear 0 30) (Gen.element ("_-.$#@! \n\t\"\\\\" :: String)))
+    ]
 
 genRawName :: Gen String
 genRawName =
@@ -76,6 +86,9 @@ isValidScalaIdent s =
     startsOk []      = False
 
     okChar c = isAlphaNum c || c == '_'
+
+isScalaKeyword :: String -> Bool
+isScalaKeyword s = Set.member s scalaKeywords
 
 -- ===== Properties ============================================================
 
@@ -126,3 +139,22 @@ prop_allocFreshLocal_deterministic = property $ do
         go ne acc (r : rs) =
           let (ne', n) = allocFreshLocal ne r
           in go ne' (n : acc) rs
+
+prop_sanitize_idempotent :: Property
+prop_sanitize_idempotent = property $ do
+  s <- forAll genAnyString
+  sanitizeScalaIdent (sanitizeScalaIdent s) === sanitizeScalaIdent s
+
+-- allocFreshLocal never returns a keyword, never duplicates
+prop_allocFreshLocal_unique_nonKeyword :: Property
+prop_allocFreshLocal_unique_nonKeyword = property $ do
+  bases <- forAll (Gen.list (Range.linear 0 200) genAnyString)
+
+  let (_, outs) =
+        mapAccumL
+          (\ne b -> let (ne', n) = allocFreshLocal ne b in (ne', n))
+          emptyNameEnv
+          bases
+
+  assert (length outs == length (nub outs))
+  assert (all (not . isScalaKeyword) outs)

@@ -51,8 +51,10 @@ printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"
 
 printType :: ScalaType -> String
-printType (STyName scalaName) = scalaName
-printType (STyFun a b) = (printType a) <> " => " <>  (printType b)
+printType (STyName name) = name
+printType (STyVar v)     = v
+printType (STyApp n ts)  = n <> "[" <> intercalate ", " (map printType ts) <> "]"
+printType (STyFun a b)   = printType a <> " => " <> printType b
 
 printTerm :: ScalaTerm -> String
 printTerm (STeVar scalaName) = scalaName

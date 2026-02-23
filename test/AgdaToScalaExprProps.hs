@@ -12,6 +12,7 @@ import Hedgehog
   , (===)
   , Range(..)
   , Gen(..)
+  , success
   )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -37,6 +38,10 @@ tests =
     , ("prop_compileTypeTerm_var_isTyVar", prop_compileTypeTerm_var_isTyVar)
     , ("prop_compileBodyTerm_lits", prop_compileBodyTerm_lits)
     , ("prop_compileBodyTerm_varResolves", prop_compileBodyTerm_varResolves)
+    , ("prop_compileTypeTerm_total_onSubset", prop_compileTypeTerm_total_onSubset)
+    , ("prop_typeVar_roundtrip", prop_typeVar_roundtrip)
+    , ("prop_compileBodyTerm_varLaw", prop_compileBodyTerm_varLaw)
+    , ("prop_compileBodyTerm_literals", prop_compileBodyTerm_literals)
     ]
 
 -- ===== generators ============================================================
@@ -62,6 +67,14 @@ genIndexOutOfRange (Env xs) = do
   -- produce an index >= length
   let k = length xs
   Gen.int (Range.linear k (k + 20))
+
+genTypeTerm :: Gen Term
+genTypeTerm =
+    Gen.choice
+      [ Var <$> Gen.int (Range.linear 0 20) <*> pure []
+      , pure (Sort (error "Sort payload not inspected in compileTypeTerm"))  -- if compileTypeTerm ignores payload
+      -- You can add Def/Con later once you have QName/ConHead generators
+      ]
 
 -- ===== properties ============================================================
 
@@ -103,3 +116,30 @@ prop_compileBodyTerm_varResolves = property $ do
 
   -- Term-level Var i should resolve to env[i]
   compileBodyTerm env (Var i []) === Right (STeVar (xs !! i))
+
+-- smoke property for compileTypeTerm on a generated subset
+prop_compileTypeTerm_total_onSubset :: Property
+prop_compileTypeTerm_total_onSubset = property $ do
+  t <- forAll genTypeTerm
+  -- should never crash; always returns Either
+  case compileTypeTerm t of
+    Left _  -> success
+    Right _ -> success
+
+-- Var n in types maps to STyVar
+prop_typeVar_roundtrip :: Property
+prop_typeVar_roundtrip = property $ do
+  n <- forAll (Gen.int (Range.linear 0 100))
+  compileTypeTerm (Var n []) === Right (STyVar ("t" <> show n))
+
+prop_compileBodyTerm_varLaw :: Property
+prop_compileBodyTerm_varLaw = property $ do
+  xs <- forAll (Gen.list (Range.linear 1 50) genName)
+  i  <- forAll (Gen.int (Range.linear 0 (length xs - 1)))
+  compileBodyTerm (Env xs) (Var i []) === Right (STeVar (xs !! i))
+
+prop_compileBodyTerm_literals :: Property
+prop_compileBodyTerm_literals = property $ do
+  env <- forAll genEnv
+  n <- forAll (Gen.integral (Range.linear 0 100000 :: Range Integer))
+  compileBodyTerm env (Lit (LitNat n)) === Right (STeLitInt (fromIntegral n))
