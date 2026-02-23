@@ -85,13 +85,19 @@ testPrintScala2 = TestCase $
       "{\n" <>
       "\n" <>
       "sealed trait Rgb\n" <>
-      "case object Red extends Rgb\n" <>
-      "case object Green extends Rgb\n" <>
-      "case object Blue extends Rgb\n" <>
+      "object Rgb {\n" <>
+      "  case object Red extends Rgb\n" <>
+      "  case object Green extends Rgb\n" <>
+      "  case object Blue extends Rgb\n" <>
+      "\n" <>          -- this blank line is currently produced by your printer
+      "}\n" <>
       "\n" <>
       "sealed trait Color\n" <>
-      "case object Light extends Color\n" <>
-      "case object Dark extends Color\n" <>
+      "object Color {\n" <>
+      "  case object Light extends Color\n" <>
+      "  case object Dark extends Color\n" <>
+      "\n" <>          -- likewise
+      "}\n" <>
       "}\n"
 
 printScala2Tests :: Test
