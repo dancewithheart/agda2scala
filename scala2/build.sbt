@@ -2,7 +2,7 @@ name := "exampleScala2"
 
 version := "0.0.1"
 
-scalaVersion := "2.13.16"
+scalaVersion := "2.13.18"
 
 resolvers ++= Resolver.sonatypeOssRepos("snapshots")
 
