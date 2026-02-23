@@ -12,19 +12,19 @@ object RgbSpec extends JUnitRunnableSpec {
 
   def spec = suite("Test Rgb")(
     test("identity on Rgb") {
-      assert(idRgb(Red))(equalTo(Red))
-      assert(idRgb(Green))(equalTo(Green))
+      assert(idRgb(Red))(equalTo(Red)) &&
+      assert(idRgb(Green))(equalTo(Green)) &&
       assert(idRgb(Blue))(equalTo(Blue))
     },
     test("const on RgbPair") {
-      assert(constRgbPair(Red, RgbPair(True, Blue)))(
-        equalTo(RgbPair(True, Blue))
-      )
-      assert(constRgbPair(Green, RgbPair(False, Red)))(
-        equalTo(RgbPair(False, Red))
-      )
-      assert(constRgbPair(Blue, RgbPair(True, Blue)))(
-        equalTo(RgbPair(True, Blue))
+      assert(constRgbPair(RgbPair(Blue, True), Red))(
+        equalTo(RgbPair(Blue, True))
+      ) &&
+      assert(constRgbPair(RgbPair(Red, False), Green))(
+        equalTo(RgbPair(Red, False))
+      ) &&
+      assert(constRgbPair(RgbPair(Blue, True), Blue))(
+        equalTo(RgbPair(Blue, True))
       )
     }
   )
