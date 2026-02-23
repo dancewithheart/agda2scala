@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
 Compile / tpolecatScalacOptions ~= { opts =>
   // for simplicity in adts examples
   import org.typelevel.scalacoptions.ScalacOptions
-  opts.filterNot(_ == ScalacOptions.fatalWarnings)
+  opts.filterNot(o => o == ScalacOptions.fatalWarnings || o == ScalacOptions.warnError)
 }
 
 scalacOptions ++= Seq(
