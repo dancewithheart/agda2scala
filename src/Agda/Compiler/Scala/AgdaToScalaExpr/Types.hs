@@ -4,7 +4,6 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
   ( CompileError(..)
   , TyEnv(..)
   , emptyTyEnv
-  , extendTyEnv
   , lookupTyVar
   , unrollPi
   , isTypeParamBinder
@@ -17,9 +16,11 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , compileTypeTerm
   , binderName
   , fromQName
+  , pushTermBinder
+  , pushTyParam
   ) where
 
-import qualified Data.Text as T
+import Control.Monad (foldM)
 
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Common (Hiding(..), getHiding, NamedName, WithOrigin(..), Ranged(..))
@@ -58,20 +59,28 @@ data CompileError
 
 -- | Type-variable environment for resolving de Bruijn Vars in *types*.
 -- Convention: index 0 is the most recently-bound type variable.
-newtype TyEnv = TyEnv { unTyEnv :: [ScalaName] }
+-- | Type-variable environment aligned with the full Pi telescope.
+-- Index 0 is the most recent binder. We store:
+--   Just "A"  for type parameters we want to name in Scala
+--   Nothing   for term binders (so indices line up)
+newtype TyEnv = TyEnv { unTyEnv :: [Maybe ScalaName] }
   deriving (Eq, Show)
 
 emptyTyEnv :: TyEnv
 emptyTyEnv = TyEnv []
 
-extendTyEnv :: ScalaName -> TyEnv -> TyEnv
-extendTyEnv a (TyEnv xs) = TyEnv (a : xs)
+pushTyParam :: ScalaName -> TyEnv -> TyEnv
+pushTyParam a (TyEnv xs) = TyEnv (Just a : xs)
+
+pushTermBinder :: TyEnv -> TyEnv
+pushTermBinder (TyEnv xs) = TyEnv (Nothing : xs)
 
 lookupTyVar :: TyEnv -> Int -> ScalaName
 lookupTyVar (TyEnv xs) i =
   case drop i xs of
-    v:_ -> v
-    []  -> "t" <> show i
+    (Just v : _) -> v
+    (Nothing : _) -> "t" <> show i    -- TODO dependent term binder; fallback for now
+    []            -> "t" <> show i
 
 -- ===== Pi traversal ==========================================================
 
@@ -129,7 +138,7 @@ collectTypeParams pis =
       if isTypeParamBinder dom
         then
           let nm = binderName i dom
-          in (ps <> [nm], extendTyEnv nm env)
+          in (ps <> [nm], pushTyParam nm env)
         else (ps, env)
 
 -- | Compute value arguments and polymorphic scheme from a function type.
@@ -137,19 +146,19 @@ collectTypeParams pis =
 funSchemeFromType :: Type -> Either CompileError ([SeVar], ScalaTypeScheme)
 funSchemeFromType ty0 = do
   (pis, resTy) <- unrollPi ty0
-  let (tyParams, tyEnv) = collectTypeParams pis
-
-  args <- fmap concat $ traverse (mkArg tyEnv) (zip [0 :: Int ..] pis)
-  ret  <- compileTypeWith tyEnv resTy
-
-  pure (args, ScalaTypeScheme { ssTyParams = tyParams, ssType = ret })
+  (args, tyParams, tyEnvFinal) <- foldM step ([], [], emptyTyEnv) (zip [0 :: Int ..] pis)
+  ret <- compileTypeWith tyEnvFinal resTy
+  pure (reverse args, ScalaTypeScheme { ssTyParams = reverse tyParams, ssType = ret })
   where
-    mkArg tyEnv (i, (dom, _absTy)) =
+    step (argsAcc, tpsAcc, env) (i, (dom, _absTy)) =
       case getHiding dom of
-        Hidden -> pure []  -- treated as type params
-        _      -> do
-          ty <- compileDomTypeWith tyEnv dom
-          pure [SeVar (binderName i dom) ty]
+        Hidden -> do
+          let a = binderName i dom
+          pure (argsAcc, a : tpsAcc, pushTyParam a env)
+        _ -> do
+          ty <- compileDomTypeWith env dom
+          let x = binderName i dom
+          pure (SeVar x ty : argsAcc, tpsAcc, pushTermBinder env)
 
 -- ===== Naming ================================================================
 

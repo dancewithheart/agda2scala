@@ -9,6 +9,8 @@ module Agda.Compiler.Scala.AgdaToScalaExpr
   , Env(..)
   ) where
 
+import Control.Monad (foldM)
+
 import Agda.Compiler.Backend (CompilerPragma, Defn(..), RecordData(..), funCompiled)
 import Agda.Compiler.Backend --TODO explicitly list dependencies
 import Agda.Syntax.Abstract.Name (QName)
@@ -39,6 +41,8 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , compileTypeTerm
   , binderName
   , fromQName
+  , pushTermBinder
+  , pushTyParam
   )
 
 import Agda.Compiler.Scala.AgdaToScalaExpr.Terms
@@ -112,11 +116,17 @@ compileCtor conQName = do
 ctorArgTypesFromType :: Type -> Either CompileError [ScalaType]
 ctorArgTypesFromType ty0 = do
   (pis, _res) <- unrollPi ty0
-  traverse (compileDomTypeWith emptyTyEnv)
-    [ dom
-    | (dom, _) <- pis
-    , getHiding dom /= Hidden
-    ]
+  (argTysRev, _env) <- foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
+  pure (reverse argTysRev)
+  where
+    step (acc, env) (i, (dom, _)) =
+      case getHiding dom of
+        Hidden -> do
+          let a = binderName i dom
+          pure (acc, pushTyParam a env)
+        _ -> do
+          ty <- compileDomTypeWith env dom
+          pure (ty : acc, pushTermBinder env)
 
 -- ===== Functions =============================================================
 

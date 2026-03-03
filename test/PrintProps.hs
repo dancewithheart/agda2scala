@@ -7,7 +7,6 @@
 -- This makes tests robust across refactors.
 module PrintProps (tests) where
 
-import Data.Char (isAlphaNum)
 import Data.List (isInfixOf)
 
 import Hedgehog (Group(..), Gen(..), Property, PropertyName(..), GroupName(..), property, forAll, assert, (===), success)
@@ -36,6 +35,7 @@ tests =
     , ("prop_scala3_stringEscapes_newline", prop_scala3_stringEscapes_newline)
     , ("prop_escape_no_raw_newlines", prop_escape_no_raw_newlines)
     , ("prop_printScala3_type_total", prop_printScala3_type_total)
+    , ("prop_scala2_prints_type_params_iff_present", prop_scala2_prints_type_params_iff_present)
     ]
 
 -- ===== Generators ============================================================
@@ -93,6 +93,12 @@ genScalaType =
     [ STyFun <$> genScalaType <*> genScalaType
     , STyApp <$> genTypeName <*> Gen.list (Range.linear 0 4) genScalaType
     ]
+
+genTyParam :: Gen String
+genTyParam = do
+  c <- Gen.upper
+  n <- Gen.int (Range.linear 0 10)
+  pure (c : show n)
 
 -- ===== Small AST builders ====================================================
 
@@ -160,3 +166,17 @@ prop_printScala3_type_total = property $ do
   -- should not throw (it’s pure, but total pattern match now)
   let _ = printType ty
   success
+
+prop_scala2_prints_type_params_iff_present :: Property
+prop_scala2_prints_type_params_iff_present = property $ do
+  ps <- forAll (Gen.list (Range.linear 0 4) genTyParam)
+
+  let scheme = ScalaTypeScheme ps (STyVar "A")
+      expr   = SeFun "f" [SeVar "x" (STyVar "A")] scheme (STeVar "x")
+      out    = printScala2 expr
+
+      hasBrackets = "[" `isInfixOf` out && "]" `isInfixOf` out
+
+  if null ps
+     then assert (not hasBrackets)
+     else assert hasBrackets
