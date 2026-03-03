@@ -26,10 +26,10 @@ printScala3 def = case def of
     <> bracketWithIndent (map printEnumCtor ctors) 2
     <> defsSeparator
   (SeFun fName args resType funBody) ->
-    "def" <> exprSeparator <> fName
+    "def" <> exprSeparator <> fName <> printTyParams (ssTyParams resType)
     <> "(" <> combineThem (map printVar args) <> ")"
-    <> ":" <> exprSeparator <> (printType (ssType resType)) <> exprSeparator
-    <> "=" <> exprSeparator <> (printTerm funBody)
+    <> ":" <> exprSeparator <> printType (ssType resType) <> exprSeparator
+    <> "=" <> exprSeparator <> printTerm funBody
     <> defsSeparator
   (SeProd name args) -> printCaseClass name args <> defsSeparator
   (SeUnhandled "" payload) -> ""
@@ -56,14 +56,38 @@ printType (STyVar v)     = v
 printType (STyApp n ts)  = n <> "[" <> intercalate ", " (map printType ts) <> "]"
 printType (STyFun a b)   = printType a <> " => " <> printType b
 
+printTyParams :: [ScalaName] -> String
+printTyParams [] = ""
+printTyParams ps = "[" <> intercalate ", " ps <> "]"
+
 printTerm :: ScalaTerm -> String
 printTerm (STeVar scalaName) = scalaName
-printTerm (STeApp st sts) = (printTerm st) <> "(" <> (show sts)  <> ")"
-printTerm (STeLam sns st) = (combineLines sns) <> " => " <> (printTerm st)
+printTerm (STeApp st sts) =
+  printTerm st <> "(" <> intercalate ", " (map printTerm sts) <> ")"
+printTerm (STeLam sns st) = "(" <> intercalate ", " sns <> ")" <> exprSeparator <> "=>" <> exprSeparator <> printTerm st
 printTerm (STeLitInt n) = show n
-printTerm (STeLitBool b) = show b
-printTerm (STeLitString s) = show s
-printTerm (STeError err) = "error " <> err
+printTerm (STeLitBool b) = if b then "true" else "false"
+printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
+printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+
+-- Escaping for Scala string literal content (no surrounding quotes).
+escapeScalaString :: String -> String
+escapeScalaString = concatMap $ \c -> case c of
+  '\\' -> "\\\\"
+  '\"' -> "\\\""
+  '\n' -> "\\n"
+  '\r' -> "\\r"
+  '\t' -> "\\t"
+  '\b' -> "\\b"
+  '\f' -> "\\f"
+  _ | c < ' '  -> unicodeEscape c
+    | otherwise -> [c]
+  where
+    unicodeEscape ch =
+      let n = fromEnum ch
+          hex = "0123456789abcdef"
+          h k = hex !! ((n `div` (16^k)) `mod` 16)
+      in ['\\','u', h 3, h 2, h 1, h 0]
 
 printVar :: SeVar -> String
 printVar (SeVar sName sType) = sName <> colonSeparator <> exprSeparator <> (printType sType)
