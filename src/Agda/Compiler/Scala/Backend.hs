@@ -19,15 +19,15 @@ import Data.Maybe ( fromMaybe )
 import Data.Map ( Map )
 import qualified Data.Text as T
 import Data.Version ( showVersion )
-import Data.IORef (IORef, newIORef, readIORef)
+import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 
 import Paths_agda2scala ( version )
 
 import Agda.Utils.GetOpt ( OptDescr(Option), ArgDescr(ReqArg) )
 import Agda.Main ( runAgda )
 import Agda.Compiler.Backend
-  ( Backend(..)
-  , Backend'(..)
+  ( Backend
+  , Backend'
   , Recompile(..)
   , IsMain
   , Flag
@@ -52,22 +52,16 @@ import Agda.Compiler.Backend
   , mayEraseType
   )
 import Agda.Compiler.Backend -- otherwise GHC complains about Backend and Backend'
-import Agda.Interaction.Options ( OptDescr )
-import Agda.Compiler.Common ( curIF, compileDir )
-import Agda.Syntax.Abstract.Name ( QName )
+import Agda.Compiler.Common ( compileDir )
 import Agda.Syntax.Common ( moduleNameParts )
-import Agda.Syntax.Internal ( qnameModule )
-import Agda.Syntax.TopLevelModuleName ( TopLevelModuleName, moduleNameToFileName )
+import Agda.Syntax.TopLevelModuleName ( moduleNameToFileName )
 
-import Agda.Compiler.Scala.ScalaExpr ( ScalaName, ScalaTypeScheme, ScalaExpr(..), unHandled )
+import Agda.Compiler.Scala.ScalaExpr (ScalaExpr(..), ScalaTerm(..), unHandled )
 import Agda.Compiler.Scala.AgdaToScalaExpr ( CompileError, compileDefn )
 import Agda.Compiler.Scala.PrintScala2 ( printScala2 )
 import Agda.Compiler.Scala.PrintScala3 ( printScala3 )
-import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv)
+import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv, registerCtors, lookupCtorOwner)
 
-import Data.IORef (atomicModifyIORef', readIORef)
-import Agda.Compiler.Scala.NameEnv (registerCtors, lookupCtorOwner)
-import Agda.Compiler.Scala.ScalaExpr (ScalaExpr(..), ScalaTerm(..), ScalaCtor(..))
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
@@ -144,6 +138,21 @@ scalaCompileDef :: ScalaEnv
 scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
   withCurrentModule (qnameModule qn) $ do
     modulePragma <- lookupScalaPragma qn
+    moduleDebugPragma <- lookupScalaDebugPragma qn
+    case moduleDebugPragma of
+      Nothing -> pure ()
+      Just _  -> liftIO $ do
+        --putStrLn "===== AGDA2SCALA DEBUG: Definition ====="
+        --putStrLn (show def)
+        --putStrLn "===== END DEBUG ====="
+
+        putStrLn "===== AGDA2SCALA DEBUG ====="
+        putStrLn ("QName: " <> show qn)
+        putStrLn "defType:"
+        putStrLn (show (defType def))
+        putStrLn "theDef:"
+        putStrLn (show (theDef def))
+        putStrLn "===== END DEBUG ====="
     case modulePragma of
       Nothing     -> pure (noPragmaResult def)
       Just pragma -> do
@@ -184,6 +193,12 @@ lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
 
 pragmaTag :: T.Text
 pragmaTag = T.pack "AGDA2SCALA"
+
+pragmaDebug :: T.Text
+pragmaDebug = T.pack "AGDA2SCALA_DEBUG"
+
+lookupScalaDebugPragma :: QName -> TCM (Maybe CompilerPragma)
+lookupScalaDebugPragma qn = getUniqueCompilerPragma pragmaDebug qn
 
 noPragmaResult :: Definition -> ScalaDefinition
 --noPragmaResult Defn{defName = defName} = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
