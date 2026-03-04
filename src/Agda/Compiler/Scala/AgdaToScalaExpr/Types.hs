@@ -7,7 +7,6 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , lookupTyVar
   , unrollPi
   , isTypeParamBinder
-  , collectTypeParams
   , ctorArgTypesFromTypeWith
   , ctorArgTypesFromType
   , dataTyParamsFromType
@@ -233,17 +232,6 @@ isTypeLike = \case
       Sort _     -> True
       Pi _ absTy -> isTypeLike (absBody absTy)
       _          -> False
-
-collectTypeParams :: [(Dom Type, Abs Type)] -> ([ScalaName], TyEnv)
-collectTypeParams pis =
-  foldl step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
-  where
-    step (ps, env) (i, (dom, _abs)) =
-      if isTypeParamBinder dom
-        then
-          let nm = binderName i dom
-          in (ps <> [nm], pushTyParam nm env)
-        else (ps, env)
 
 -- | Compute value arguments and polymorphic scheme from a function type.
 -- Hidden Pis become `ssTyParams`; explicit Pis become `[SeVar]`.
