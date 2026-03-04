@@ -8,6 +8,8 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , unrollPi
   , isTypeParamBinder
   , collectTypeParams
+  , ctorArgTypesFromTypeWith
+  , dataTyParamsFromType
   , funSchemeFromType
   , compileDomTypeWith
   , compileTypeWith
@@ -130,6 +132,24 @@ compileTypeTermWith tyEnv = \case
   Sort _    -> Right (STyName "Type")
   t         -> Left (UnsupportedTerm t)
 
+-- | Extract type parameters from a data/record type signature.
+-- We treat only binders whose dom type is type-like (Sort/Pi..Sort) as type params.
+-- Example: Maybe (A : Type u) : Type u   -- A is NotHidden but type-like
+dataTyParamsFromType :: Type -> Either CompileError ([ScalaName], TyEnv)
+dataTyParamsFromType ty0 = do
+  (pis, _res) <- unrollPi ty0
+  -- fold like funSchemeFromType but without term args; for datatypes
+  foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
+  where
+    step (ps, env) (i, (dom, _absTy)) =
+      if isDataTypeParamBinder dom
+        then
+          let a = binderName i dom
+          in pure (ps <> [a], pushTyParam a env)
+        else
+          -- datatype indices/term params are possible; keep env aligned
+          pure (ps, pushTermBinder env)
+
 compileTypeArgs :: TyEnv -> [Elim' Term] -> Either CompileError [ScalaType]
 compileTypeArgs tyEnv elims =
   traverse fromApply [ a | Apply a <- elims ]
@@ -143,10 +163,50 @@ compileTypeArgs tyEnv elims =
 compileTypeTerm :: Term -> Either CompileError ScalaType
 compileTypeTerm = compileTypeTermWith emptyTyEnv
 
+ctorArgTypesFromTypeWith :: TyEnv -> Type -> Either CompileError [ScalaType]
+ctorArgTypesFromTypeWith env ty0 = do
+  (pis, _res) <- unrollPi ty0
+  foldM step [] (zip [0 :: Int ..] pis)
+  where
+    step acc (i, (dom, _absTy)) =
+      case getHiding dom of
+        Hidden ->
+          if isTypeParamBinder dom
+            then pure acc -- ctor-level implicit type param; ignore for now
+            else pure acc -- implicit term; ignore for now
+        _ -> do
+          ty <- compileDomTypeWith env dom
+          pure (acc <> [ty])
+
 -- ===== Type scheme extraction ===============================================
 
+-- | Classification of Π-binders into Scala type parameters vs term parameters.
+--
+-- Agda represents both implicit and explicit binders as Π (Pi) in 'defType'.
+-- A binder's *hiding* (Hidden/NotHidden) is not enough to decide whether it is a
+-- type parameter:
+--
+--   • Datatypes/records commonly have *explicit* type parameters:
+--       data Maybe (A : Type u) : Type u
+--     so we should treat type-like binders as type params regardless of hiding.
+--
+--   • Functions often have implicit type parameters and explicit term parameters:
+--       id : {A : Type u} -> A -> A
+--     Here we usually want only *Hidden + type-like* binders as Scala type params,
+--     to avoid turning explicit term arguments into type params.
+--
+-- The helpers below encode this policy in one place.
 isTypeParamBinder :: Dom Type -> Bool
 isTypeParamBinder dom = getHiding dom == Hidden && isTypeLike (unDom dom)
+
+-- | Datatypes/records: treat any type-like binder as a Scala type parameter.
+isDataTypeParamBinder :: Dom Type -> Bool
+isDataTypeParamBinder dom = isTypeLike (unDom dom)
+
+-- | Functions: default policy is "Hidden + type-like" is a Scala type parameter.
+-- (We still track other binders in TyEnv to keep de Bruijn indices aligned.)
+isFunTypeParamBinder :: Dom Type -> Bool
+isFunTypeParamBinder dom = getHiding dom == Hidden && isTypeLike (unDom dom)
 
 -- | True if the binder's type is a universe (Type/Set) or a type constructor ending in a universe.
 -- This lets us distinguish implicit *type parameters* from implicit *term arguments*.
@@ -179,23 +239,17 @@ collectTypeParams pis =
 funSchemeFromType :: Type -> Either CompileError ([SeVar], ScalaTypeScheme)
 funSchemeFromType ty0 = do
   (pis, resTy) <- unrollPi ty0
-  (args, tyParams, tyEnvFinal) <- foldM step ([], [], emptyTyEnv) (zip [0 :: Int ..] pis)
-  ret <- compileTypeWith tyEnvFinal resTy
-  pure (reverse args, ScalaTypeScheme { ssTyParams = reverse tyParams, ssType = ret })
+  (args, tps, env) <- foldM step ([], [], emptyTyEnv) (zip [0 :: Int ..] pis)
+  ret <- compileTypeWith env resTy
+  pure (reverse args, ScalaTypeScheme (reverse tps) ret)
   where
-    step (argsAcc, tpsAcc, env) (i, (dom, _absTy)) =
+    step (argsAcc, tpsAcc, env) (i, (dom, _)) =
       case getHiding dom of
-        Hidden
-          | isTypeParamBinder dom ->
-              let a = binderName i dom
-              in pure (argsAcc, a : tpsAcc, pushTyParam a env)
+        Hidden | isFunTypeParamBinder dom ->
+          let a = binderName i dom
+          in pure (argsAcc, a : tpsAcc, pushTyParam a env)
 
-          | otherwise -> do
-              -- implicit term binder: still shifts indices!
-              ty <- compileDomTypeWith env dom
-              let x = binderName i dom
-              pure (SeVar x ty : argsAcc, tpsAcc, pushTermBinder env)
-
+        -- Any other binder is a term binder (explicit or implicit):
         _ -> do
           ty <- compileDomTypeWith env dom
           let x = binderName i dom
