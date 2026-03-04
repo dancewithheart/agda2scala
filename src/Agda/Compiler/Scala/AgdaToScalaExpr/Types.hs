@@ -185,9 +185,17 @@ funSchemeFromType ty0 = do
   where
     step (argsAcc, tpsAcc, env) (i, (dom, _absTy)) =
       case getHiding dom of
-        Hidden -> do
-          let a = binderName i dom
-          pure (argsAcc, a : tpsAcc, pushTyParam a env)
+        Hidden
+          | isTypeParamBinder dom ->
+              let a = binderName i dom
+              in pure (argsAcc, a : tpsAcc, pushTyParam a env)
+
+          | otherwise -> do
+              -- implicit term binder: still shifts indices!
+              ty <- compileDomTypeWith env dom
+              let x = binderName i dom
+              pure (SeVar x ty : argsAcc, tpsAcc, pushTermBinder env)
+
         _ -> do
           ty <- compileDomTypeWith env dom
           let x = binderName i dom
