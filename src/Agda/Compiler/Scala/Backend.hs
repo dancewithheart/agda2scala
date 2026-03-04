@@ -159,7 +159,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
         e   <- compileDefn def pragma   -- TCM (Either CompileError ScalaExpr)
         let expr = lowerCompile qn e    -- ScalaExpr
         case expr of
-          SeSum parent ctors -> do
+          SeSum parent _tyParams ctors -> do
             -- record ctor->parent mapping for later functions
             liftIO $ atomicModifyIORef' modEnv $ \ne ->
               let ne' = registerCtors parent ctors ne
