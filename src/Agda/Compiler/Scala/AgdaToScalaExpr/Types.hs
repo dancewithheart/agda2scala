@@ -163,8 +163,9 @@ compileTypeArgs tyEnv elims =
 compileTypeTerm :: Term -> Either CompileError ScalaType
 compileTypeTerm = compileTypeTermWith emptyTyEnv
 
--- compile each dom - fold binders and update TyEnv
--- fter each explicit argument, do pushTermBinder env so later references to A resolve correctly
+-- We fold Π binders left-to-right.
+-- After each explicit binder we pushTermBinder to keep de Bruijn indices aligned.
+-- Otherwise later args that reference earlier type params (e.g. xs : List A) will become tN.
 ctorArgTypesFromTypeWith :: TyEnv -> Type -> Either CompileError [ScalaType]
 ctorArgTypesFromTypeWith env0 ty0 = do
   (pis, _res) <- unrollPi ty0
