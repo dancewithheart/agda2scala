@@ -4,6 +4,7 @@ module Agda.Compiler.Scala.PrintScala2
   , printSealedTrait
   , printPackageAndObject
   , printCaseClass
+  , printSum
   , printType
   , combineLines
   , escapeScalaString
@@ -29,9 +30,8 @@ printScala2 def = case def of
       nl <> combineLines (map printScala2 defs)
     )
     <> nl
-  SeSum adtName ctors ->
-    printSealedTrait adtName <> nl <>
-    printCompanionObject adtName (map (printCtor adtName) ctors) <>
+  SeSum name tyParams ctors ->
+    printSum name tyParams ctors <>
     nl
   SeFun fName args resScheme body ->
     "def" <> sp <> fName <> printTyParams (ssTyParams resScheme) <>
@@ -39,25 +39,30 @@ printScala2 def = case def of
     ":" <> sp <> printType (ssType resScheme) <> sp <>
     "=" <> sp <> printTerm body <>
     nl
-  SeProd name args ->
-    printCaseClass name args <> nl
+  SeProd name tyParams args ->
+    printCaseClass name tyParams args <> nl
   SeUnhandled "" _payload ->
     ""  -- filtered out
   SeUnhandled name payload ->
     "/* TODO " <> show name <> " " <> show payload <> " */" <> nl
-  other ->
-    "/* unsupported printScala2: " <> show other <> " */" <> nl
 
 -- ===== Sum types ============================================================
 
-printCtor :: ScalaName -> ScalaCtor -> String
-printCtor superName (ScalaCtor cName []) =
-  printCaseObject superName cName
+printSum :: ScalaName -> [ScalaName] -> [ScalaCtor] -> String
+printSum name tyParams ctors =
+  printSealedTrait name <> printTyParams tyParams <> nl <>
+  printCompanionObject name (map (printCtor name tyParams) ctors)
 
-printCtor superName (ScalaCtor cName argTys) =
-  "final case class" <> sp <> cName <>
+printCtor :: ScalaName -> [ScalaName] -> ScalaCtor -> String
+printCtor superName tyParams (ScalaCtor cName []) =
+  printCaseObject (superName <> printTyParams (asBottom tyParams)) cName
+printCtor superName tyParams (ScalaCtor name argTys) =
+  "final case class" <> sp <> name <> printTyParams tyParams <>
   "(" <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys) <> ")" <>
-  sp <> "extends" <> sp <> superName
+  sp <> "extends" <> sp <> superName <> printTyParams tyParams
+
+asBottom :: [ScalaName] -> [ScalaName]
+asBottom ps = replicate (length ps) "Nothing"
 
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> ":" <> sp <> printType ty
@@ -71,9 +76,9 @@ printCaseObject superName caseName =
 
 -- ===== Product types ========================================================
 
-printCaseClass :: ScalaName -> [SeVar] -> String
-printCaseClass name args =
-  "final case class" <> sp <> name <>
+printCaseClass :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printCaseClass name tyParams args =
+  "final case class" <> sp <> name <> printTyParams tyParams <>
   "(" <> intercalate ", " (map printVar args) <> ")"
 
 -- ===== Terms ================================================================
