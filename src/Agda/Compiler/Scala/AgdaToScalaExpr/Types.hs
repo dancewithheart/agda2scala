@@ -119,6 +119,9 @@ compileTypeWith tyEnv = \case
 compileType :: Type -> Either CompileError ScalaType
 compileType = compileTypeWith emptyTyEnv
 
+-- Agda represents type application via eliminations (elims) on Def/Var.
+-- Example: List A appears as Def List [Apply A].
+-- We translate Apply args into STyApp/List[A].
 compileTypeTermWith :: TyEnv -> Term -> Either CompileError ScalaType
 compileTypeTermWith tyEnv = \case
   Def qn elims -> do
