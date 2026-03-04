@@ -163,20 +163,27 @@ compileTypeArgs tyEnv elims =
 compileTypeTerm :: Term -> Either CompileError ScalaType
 compileTypeTerm = compileTypeTermWith emptyTyEnv
 
+-- compile each dom - fold binders and update TyEnv
+-- fter each explicit argument, do pushTermBinder env so later references to A resolve correctly
 ctorArgTypesFromTypeWith :: TyEnv -> Type -> Either CompileError [ScalaType]
-ctorArgTypesFromTypeWith env ty0 = do
+ctorArgTypesFromTypeWith env0 ty0 = do
   (pis, _res) <- unrollPi ty0
-  foldM step [] (zip [0 :: Int ..] pis)
+  (argTysRev, _envFinal) <- foldM step ([], env0) (zip [0 :: Int ..] pis)
+  pure (reverse argTysRev)
   where
-    step acc (i, (dom, _absTy)) =
+    step (acc, env) (i, (dom, _absTy)) =
       case getHiding dom of
         Hidden ->
-          if isTypeParamBinder dom
-            then pure acc -- ctor-level implicit type param; ignore for now
-            else pure acc -- implicit term; ignore for now
+          -- ctor-level implicit binders: keep TyEnv aligned, but don't emit args
+          if isDataTypeParamBinder dom
+            then
+              let a = binderName i dom
+              in pure (acc, pushTyParam a env)
+            else
+              pure (acc, pushTermBinder env)
         _ -> do
           ty <- compileDomTypeWith env dom
-          pure (acc <> [ty])
+          pure (ty : acc, pushTermBinder env)
 
 -- ===== Type scheme extraction ===============================================
 
