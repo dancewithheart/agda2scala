@@ -1,6 +1,6 @@
 module Main where
 
-import Hedgehog (Group(..), checkParallel)
+import Hedgehog (checkParallel)
 import qualified NameEnvProps
 import qualified PrintProps
 import qualified AgdaToScalaExprProps

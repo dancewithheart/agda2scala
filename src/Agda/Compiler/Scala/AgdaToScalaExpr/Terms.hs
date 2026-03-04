@@ -9,12 +9,10 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms
   ) where
 
 import qualified Data.Text as T
-
-import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Internal (ConHead(..), Elim'(..), Term(..))
 import Agda.Syntax.Common (Arg(..))
 import Agda.Syntax.Literal (Literal(..))
-import Agda.TypeChecking.CompiledClause (Case, CompiledClauses(..), CompiledClauses'(..))
+import Agda.TypeChecking.CompiledClause (CompiledClauses, CompiledClauses'(..))
 
 import Agda.Compiler.Scala.ScalaExpr (ScalaName, ScalaTerm(..))
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError(..), fromQName)
