@@ -33,6 +33,7 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Types
   ( CompileError(..)
   , TyEnv(..)
   , ctorArgTypesFromTypeWith
+  , ctorArgTypesFromType
   , dataTyParamsFromType
   , emptyTyEnv
   , unrollPi
@@ -129,21 +130,6 @@ compileCtor conQName = do
   pure $ do
     argTys <- ctorArgTypesFromType conTy
     pure ScalaCtor { scName = fromQName conQName, scArgs = argTys }
-
-ctorArgTypesFromType :: Type -> Either CompileError [ScalaType]
-ctorArgTypesFromType ty0 = do
-  (pis, _res) <- unrollPi ty0
-  (argTysRev, _env) <- foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
-  pure (reverse argTysRev)
-  where
-    step (acc, env) (i, (dom, _)) =
-      case getHiding dom of
-        Hidden -> do
-          let a = binderName i dom
-          pure (acc, pushTyParam a env)
-        _ -> do
-          ty <- compileDomTypeWith env dom
-          pure (ty : acc, pushTermBinder env)
 
 -- ===== Functions =============================================================
 

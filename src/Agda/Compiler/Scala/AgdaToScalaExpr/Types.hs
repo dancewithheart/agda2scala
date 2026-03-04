@@ -9,6 +9,7 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , isTypeParamBinder
   , collectTypeParams
   , ctorArgTypesFromTypeWith
+  , ctorArgTypesFromType
   , dataTyParamsFromType
   , funSchemeFromType
   , compileDomTypeWith
@@ -184,6 +185,9 @@ ctorArgTypesFromTypeWith env0 ty0 = do
         _ -> do
           ty <- compileDomTypeWith env dom
           pure (ty : acc, pushTermBinder env)
+
+ctorArgTypesFromType :: Type -> Either CompileError [ScalaType]
+ctorArgTypesFromType = ctorArgTypesFromTypeWith emptyTyEnv
 
 -- ===== Type scheme extraction ===============================================
 
