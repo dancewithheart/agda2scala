@@ -28,7 +28,7 @@ import Agda.Syntax.Common.Pretty (prettyShow)
 import Agda.Syntax.Internal
   ( Abs
   , ConHead(..)
-  , Dom(..)
+  , Dom
   , Dom'(..)
   , Term(..)
   , Type
@@ -125,10 +125,23 @@ compileTypeTerm = compileTypeTermWith emptyTyEnv
 
 -- ===== Type scheme extraction ===============================================
 
--- | Heuristic: treat all Hidden Pi binders as type parameters for now.
--- Later refine (e.g. inspect dom type to distinguish implicit term args).
 isTypeParamBinder :: Dom Type -> Bool
-isTypeParamBinder dom = getHiding dom == Hidden
+isTypeParamBinder dom = getHiding dom == Hidden && isTypeLike (unDom dom)
+
+-- | True if the binder's type is a universe (Type/Set) or a type constructor ending in a universe.
+-- This lets us distinguish implicit *type parameters* from implicit *term arguments*.
+--
+-- In Agda internal syntax, "A : Type u" appears as El _ (Sort _).
+-- A higher-kinded parameter like "F : Type u -> Type u" appears as El _ (Pi _ -> Sort _).
+isTypeLike :: Type -> Bool
+isTypeLike = \case
+  El _ t -> goTerm t
+  _      -> False
+  where
+    goTerm = \case
+      Sort _     -> True
+      Pi _ absTy -> isTypeLike (absBody absTy)
+      _          -> False
 
 collectTypeParams :: [(Dom Type, Abs Type)] -> ([ScalaName], TyEnv)
 collectTypeParams pis =
