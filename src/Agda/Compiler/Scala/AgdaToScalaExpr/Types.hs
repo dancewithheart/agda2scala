@@ -23,13 +23,14 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Types
 import Control.Monad (foldM)
 
 import Agda.Syntax.Abstract.Name (QName)
-import Agda.Syntax.Common (Hiding(..), getHiding, NamedName, WithOrigin(..), Ranged(..))
+import Agda.Syntax.Common (Arg(..), Hiding(..), getHiding, NamedName, WithOrigin(..), Ranged(..))
 import Agda.Syntax.Common.Pretty (prettyShow)
 import Agda.Syntax.Internal
   ( Abs
   , ConHead(..)
   , Dom
   , Dom'(..)
+  , Elim'(..)
   , Term(..)
   , Type
   , Type''(..)
@@ -111,11 +112,30 @@ compileType = compileTypeWith emptyTyEnv
 
 compileTypeTermWith :: TyEnv -> Term -> Either CompileError ScalaType
 compileTypeTermWith tyEnv = \case
-  Def qn _  -> Right (STyName (fromQName qn))
-  Var n _   -> Right (STyVar (lookupTyVar tyEnv n))
+  Def qn elims -> do
+    args <- compileTypeArgs tyEnv elims
+    let f = fromQName qn
+    pure $ case args of
+      [] -> STyName f
+      _  -> STyApp f args
+
+  Var n elims -> do
+    args <- compileTypeArgs tyEnv elims
+    let f = lookupTyVar tyEnv n
+    pure $ case args of
+      [] -> STyVar f
+      _  -> STyApp f args
+
   Con c _ _ -> Right (STyName (fromQName (conName c)))
   Sort _    -> Right (STyName "Type")
   t         -> Left (UnsupportedTerm t)
+
+compileTypeArgs :: TyEnv -> [Elim' Term] -> Either CompileError [ScalaType]
+compileTypeArgs tyEnv elims =
+  traverse fromApply [ a | Apply a <- elims ]
+  where
+    fromApply :: Arg Term -> Either CompileError ScalaType
+    fromApply a = compileTypeTermWith tyEnv (unArg a)
 
 -- Agda.Syntax.Internal.Term:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
