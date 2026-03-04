@@ -32,6 +32,8 @@ library
                        Agda.Compiler.Scala.ScalaExpr
                        Agda.Compiler.Scala.NameEnv
                        Agda.Compiler.Scala.AgdaToScalaExpr
+                       Agda.Compiler.Scala.AgdaToScalaExpr.Types
+                       Agda.Compiler.Scala.AgdaToScalaExpr.Terms
                        Agda.Compiler.Scala.PrintScala2
                        Agda.Compiler.Scala.PrintScala3
                        Paths_agda2scala

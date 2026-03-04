@@ -36,4 +36,6 @@ def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 def hello(): String = "Hello, world!"
 
 def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
+
+def id[A](x1: A): A = x1
 }

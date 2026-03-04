@@ -11,6 +11,9 @@ import Agda.Compiler.Scala.PrintScala2
   )
 import Agda.Compiler.Scala.ScalaExpr
   ( ScalaExpr(..)
+  , ScalaType(..)
+  , ScalaTypeScheme(..)
+  , ScalaTerm(..)
   , ScalaCtor(..)
   , ScalaType(..)
   , SeVar(..)
@@ -100,6 +103,22 @@ testPrintScala2 = TestCase $
       "}\n" <>
       "}\n"
 
+testPolyDef :: Test
+testPolyDef = TestCase $
+  assertEqual "prints def with [A] and return A"
+    expected
+    (printScala2 expr)
+  where
+    expr =
+      SeFun
+        "id"
+        [SeVar "x1" (STyVar "A")]
+        (ScalaTypeScheme ["A"] (STyVar "A"))
+        (STeVar "x1")
+
+    expected =
+      "def id[A](x1: A): A = x1\n"
+
 printScala2Tests :: Test
 printScala2Tests = TestList
   [ TestLabel "printCaseObject" testPrintCaseObject
@@ -110,4 +129,5 @@ printScala2Tests = TestList
   , TestLabel "combineLines" testCombineLines
   , TestLabel "printCaseClass" testPrintCaseClass
   , TestLabel "printScala2" testPrintScala2
+  , TestLabel "printScala2 polymorphic def" testPolyDef
   ]

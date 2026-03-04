@@ -33,9 +33,8 @@ printScala2 def = case def of
     printSealedTrait adtName <> nl <>
     printCompanionObject adtName (map (printCtor adtName) ctors) <>
     nl
-
   SeFun fName args resScheme body ->
-    "def" <> sp <> fName <>
+    "def" <> sp <> fName <> printTyParams (ssTyParams resScheme) <>
     "(" <> intercalate ", " (map printVar args) <> ")" <>
     ":" <> sp <> printType (ssType resScheme) <> sp <>
     "=" <> sp <> printTerm body <>
@@ -119,6 +118,10 @@ printType (STyApp n ts) =
   n <> "[" <> intercalate ", " (map printType ts) <> "]"
 printType (STyFun a b) =
   printType a <> " => " <> printType b
+
+printTyParams :: [ScalaName] -> String
+printTyParams [] = ""
+printTyParams ps = "[" <> intercalate ", " ps <> "]"
 
 -- ===== Vars / packages ======================================================
 

@@ -63,3 +63,9 @@ withEscapes = "line1\nline2\t\"quote\"\\backslash"
 two : Nat
 two = 2
 -- TODO {-# COMPILE AGDA2SCALA two #-}
+
+-- polymorphic functions
+
+id : {A : Set} -> A -> A
+id x = x
+{-# COMPILE AGDA2SCALA id #-}
