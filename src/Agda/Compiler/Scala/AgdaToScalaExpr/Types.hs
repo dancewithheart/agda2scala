@@ -60,12 +60,19 @@ data CompileError
 
 -- ===== Type variable environment ============================================
 
--- | Type-variable environment for resolving de Bruijn Vars in *types*.
--- Convention: index 0 is the most recently-bound type variable.
--- | Type-variable environment aligned with the full Pi telescope.
--- Index 0 is the most recent binder. We store:
---   Just "A"  for type parameters we want to name in Scala
---   Nothing   for term binders (so indices line up)
+-- | TyEnv is aligned with the full Π telescope of a 'Type'.
+--
+-- Agda uses de Bruijn indices across *all* binders (type params and term params).
+-- For example:
+--
+--   id : {A : Type u} -> A -> A
+--
+-- The result 'A' is often Var 1 (because the term binder sits at index 0).
+-- To resolve Vars correctly, TyEnv stores:
+--   Just "A"  for type parameters we want to surface in Scala
+--   Nothing   for term binders (to keep indices aligned)
+--
+-- Index 0 is the most recent binder.
 newtype TyEnv = TyEnv { unTyEnv :: [Maybe ScalaName] }
   deriving (Eq, Show)
 
