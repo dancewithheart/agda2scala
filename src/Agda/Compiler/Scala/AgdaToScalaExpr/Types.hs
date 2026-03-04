@@ -173,9 +173,12 @@ compileTypeArgs tyEnv elims =
 compileTypeTerm :: Term -> Either CompileError ScalaType
 compileTypeTerm = compileTypeTermWith emptyTyEnv
 
--- We fold Π binders left-to-right.
--- After each explicit binder we pushTermBinder to keep de Bruijn indices aligned.
--- Otherwise later args that reference earlier type params (e.g. xs : List A) will become tN.
+-- Constructor types are Π-chains. We fold Π binders left-to-right.
+-- Later argument types may reference earlier binders.
+-- We must pushTermBinder after each explicit argument to keep the TyEnv aligned.
+-- This fixes cases like:
+--   Cons : A -> List A -> List A
+-- where the second arg 'List A' refers to A with a shifted de Bruijn index.
 ctorArgTypesFromTypeWith :: TyEnv -> Type -> Either CompileError [ScalaType]
 ctorArgTypesFromTypeWith env0 ty0 = do
   (pis, _res) <- unrollPi ty0
