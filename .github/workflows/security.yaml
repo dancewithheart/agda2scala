@@ -1,0 +1,50 @@
+name: security
+
+on: [push] # TODO temporary for testing
+#on:
+#  push:
+#    branches: [main]
+
+jobs:
+  cabal-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up GHC
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.10.1'
+          cabal-version: '3.12.1.0'
+          cabal-update: true
+
+      - name: Build plan
+        run: |
+          cabal configure --enable-tests --enable-benchmarks --disable-documentation
+          cabal build --dry-run
+
+      - name: Check out MangoIV/cabal-audit
+        uses: actions/checkout@v6
+        with:
+          repository: MangoIV/cabal-audit
+          path: cabal-audit-src
+
+      - name: Install cabal-audit from source
+        run: |
+          cd cabal-audit-src
+          cabal install exe:cabal-audit --installdir="$HOME/.local/bin" --overwrite-policy=always
+
+      - name: Run cabal-audit
+        run: |
+          "$HOME/.local/bin/cabal-audit" --sarif -o cabal-audit.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: cabal-audit.sarif
+          category: cabal-audit
