@@ -32,7 +32,6 @@ jobs:
           cabal-update: true
 
       - name: Run Haskell Security Action
-        uses: blackheaven/haskell-security-action@master
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        # uses: blackheaven/haskell-security-action@master
+        uses: dancewithheart/haskell-security-action@fix-warnings
   
