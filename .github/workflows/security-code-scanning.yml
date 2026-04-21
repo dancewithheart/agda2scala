@@ -36,13 +36,13 @@ jobs:
           cabal configure --enable-tests --enable-benchmarks --disable-documentation
           cabal build --dry-run
 
+
       - name: Check out MangoIV/cabal-audit
         uses: actions/checkout@v6
         with:
           repository: dancewithheart/cabal-audit
           path: cabal-audit-src
           ref: sarif-github-code-scanning
-          path: cabal-audit-src
 
       - name: Install cabal-audit from source
         run: |
