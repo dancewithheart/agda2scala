@@ -3,17 +3,17 @@ name: Security code scanning
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: '0 0 * * *'
+  # manual re-run
   workflow_dispatch:
 
+# cancel duplicated runs
 concurrency:
   group: security-code-scanning-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  haskell-security:
-    name: Haskell security scan
+  cabal-audit:
+    name: cabal-audit SARIF
     runs-on: ubuntu-latest
     timeout-minutes: 42
     permissions:
@@ -31,7 +31,30 @@ jobs:
           cabal-version: '3.12.1.0'
           cabal-update: true
 
-      - name: Run Haskell Security Action
-        # uses: blackheaven/haskell-security-action@master
-        uses: dancewithheart/haskell-security-action@fix-warnings
-  
+      - name: Build plan
+        run: |
+          cabal configure --enable-tests --enable-benchmarks --disable-documentation
+          cabal build --dry-run
+
+      - name: Check out MangoIV/cabal-audit
+        uses: actions/checkout@v6
+        with:
+          repository: dancewithheart/cabal-audit
+          path: cabal-audit-src
+          ref: sarif-github-code-scanning
+          path: cabal-audit-src
+
+      - name: Install cabal-audit from source
+        run: |
+          cd cabal-audit-src
+          cabal install exe:cabal-audit --installdir="$HOME/.local/bin" --overwrite-policy=always
+
+      - name: Run cabal-audit
+        run: |
+          "$HOME/.local/bin/cabal-audit" --sarif -o cabal-audit.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: cabal-audit.sarif
+          category: cabal-audit
