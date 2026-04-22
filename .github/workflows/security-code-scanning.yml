@@ -3,7 +3,6 @@ name: Security code scanning
 on:
   push:
     branches: [main]
-  # manual re-run
   workflow_dispatch:
 
 # cancel duplicated runs
