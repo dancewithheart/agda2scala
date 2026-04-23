@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Property tests for NameEnv.
@@ -13,7 +12,7 @@ import Data.Char (isAlphaNum, isLetter)
 import Data.List (mapAccumL, nub)
 import qualified Data.Set as Set
 
-import Hedgehog (Group(..), Gen(..), Property, PropertyName(..), GroupName(..), property, forAll, assert, (===))
+import Hedgehog (Group(..), Gen, Property, property, forAll, assert, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 

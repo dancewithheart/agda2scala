@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
 
 module AgdaToScalaExprProps (tests) where
 
@@ -10,9 +9,10 @@ import Hedgehog
   , property
   , forAll
   , (===)
-  , Range(..)
-  , Gen(..)
+  , Range
+  , Gen
   , success
+  , failure
   )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -24,10 +24,12 @@ import Agda.Compiler.Scala.AgdaToScalaExpr
   , compileTypeTerm
   , compileBodyTerm
   )
+import Agda.Compiler.Scala.AgdaToScalaExpr.Types (TyEnv(..), compileTypeTermWith)
 
 import Agda.Compiler.Scala.ScalaExpr (ScalaTerm(..), ScalaType(..))
 
-import Agda.Syntax.Internal (Term(..))
+import Agda.Syntax.Common (Arg(..))
+import Agda.Syntax.Internal (Term(..), Elim'(..))
 import Agda.Syntax.Literal (Literal(..))
 
 tests :: Group
@@ -143,3 +145,22 @@ prop_compileBodyTerm_literals = property $ do
   env <- forAll genEnv
   n <- forAll (Gen.integral (Range.linear 0 100000 :: Range Integer))
   compileBodyTerm env (Lit (LitNat n)) === Right (STeLitInt (fromIntegral n))
+
+-- type application preserves arity for Var - don’t “lose” type arguments
+prop_compileTypeTermWith_var_app_arity :: Property
+prop_compileTypeTermWith_var_app_arity = property $ do
+  -- TyEnv with one named type var at index 0
+  let tyEnv = TyEnv [Just "A"]  -- adjust constructor/import for your Types module
+
+  k <- forAll (Gen.int (Range.linear 0 5))
+  let elims = replicate k (Apply (Arg (error "arginfo") (Var 0 [])))
+      t     = Var 0 elims
+
+  case compileTypeTermWith tyEnv t of
+    Left _ -> failure
+    Right ty ->
+      case ty of
+        STyVar _ -> k === 0
+        STyApp _ args -> length args === k
+        _ -> failure
+

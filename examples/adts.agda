@@ -63,9 +63,20 @@ withEscapes = "line1\nline2\t\"quote\"\\backslash"
 two : Nat
 two = 2
 -- TODO {-# COMPILE AGDA2SCALA two #-}
+-- {-# COMPILE AGDA2SCALA_DEBUG Maybe #-}
 
 -- polymorphic functions
 
 id : {A : Set} -> A -> A
 id x = x
 {-# COMPILE AGDA2SCALA id #-}
+
+data Maybe (A : Set) : Set where
+  Just : (x : A) -> Maybe A
+  None :            Maybe A
+{-# COMPILE AGDA2SCALA Maybe #-}
+
+data List (X : Set) : Set where
+  Nil     : List X
+  Cons : X -> List X -> List X
+{-# COMPILE AGDA2SCALA List #-}

@@ -13,7 +13,7 @@ import Control.Monad (foldM)
 
 import Agda.Compiler.Backend (CompilerPragma, Defn(..), RecordData(..), funCompiled)
 import Agda.Compiler.Backend --TODO explicitly list dependencies
-import Agda.Syntax.Abstract.Name (QName)
+import Agda.Syntax.Abstract.Name ()
 import Agda.Syntax.Common (Hiding(..), getHiding)
 import Agda.Syntax.Internal (Abs, Dom(..), Tele(..), Telescope, Type, Type''(..))
 import Agda.TypeChecking.Monad (TCM, getConstInfo)
@@ -26,14 +26,15 @@ import Agda.Compiler.Scala.ScalaExpr
   , ScalaExpr(..)
   , ScalaName
   , ScalaType(..)
-  , ScalaTypeScheme(..)
-  , ScalaTerm(..)
   , SeVar(..)
   )
 
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types
   ( CompileError(..)
   , TyEnv(..)
+  , ctorArgTypesFromTypeWith
+  , ctorArgTypesFromType
+  , dataTyParamsFromType
   , emptyTyEnv
   , unrollPi
   , funSchemeFromType
@@ -62,14 +63,14 @@ compileDefn def _pragma = compileDefinition def
 
 compileDefinition :: Definition -> TCM (Either CompileError ScalaExpr)
 compileDefinition = \case
-  Defn{theDef = Datatype{dataCons = cons}, defName = qn} ->
-    compileDataType qn cons
+  Defn{theDef = Datatype{dataCons = cons}, defName = qn, defType = ty} ->
+    compileDataType qn ty cons
 
   Defn{theDef = Function{funCompiled = cc}, defName = qn, defType = ty} ->
     pure (compileFunction qn ty cc)
 
-  Defn{theDef = RecordDefn (RecordData{_recTel = tel}), defName = qn} ->
-    pure (compileRecord qn tel)
+  Defn{theDef = RecordDefn (RecordData{_recTel = tel}), defName = qn, defType = ty} ->
+    pure (compileRecord qn ty tel)
 
   Defn{defName = qn} ->
     pure (Left (UnsupportedDefinition qn))
@@ -79,13 +80,15 @@ compileDefinition = \case
 -- | Compile a record telescope into a Scala case class.
 -- Agda.Syntax.Internal.Telescope (list-like):
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Telescope
-compileRecord :: QName -> Telescope -> Either CompileError ScalaExpr
-compileRecord qn tel = do
-  vars <- traverse compileField (zip [0 :: Int ..] (teleToList tel))
-  pure (SeProd (fromQName qn) vars)
+compileRecord :: QName -> Type -> Telescope -> Either CompileError ScalaExpr
+compileRecord qn recTy tel = do
+  (tps, tyEnv) <- dataTyParamsFromType recTy
+  vars <- traverse (compileField tyEnv) (zip [0 :: Int ..] (teleToList tel))
+  pure (SeProd (fromQName qn) tps vars)
   where
-    compileField (i, dom) = do
-      ty <- compileDomTypeWith emptyTyEnv dom
+    compileField :: TyEnv -> (Int, Dom Type) -> Either CompileError SeVar
+    compileField tyEnv (i, dom) = do
+      ty <- compileDomTypeWith tyEnv dom
       pure (SeVar (binderName i dom) ty)
 
 -- Agda.Syntax.Internal.Tele / Telescope:
@@ -98,12 +101,27 @@ teleToList = \case
 
 -- ===== Datatypes / constructors =============================================
 
-compileDataType :: QName -> [QName] -> TCM (Either CompileError ScalaExpr)
-compileDataType typeName cons = do
-  eCtors <- traverse compileCtor cons
+compileDataType :: QName -> Type -> [QName] -> TCM (Either CompileError ScalaExpr)
+compileDataType typeName typeTy cons = do
+  let eParams = dataTyParamsFromType typeTy
+  eCtors <- traverse (compileCtorWith eParams) cons
   pure $ do
+    (tps, _tyEnv) <- eParams
     ctors <- sequence eCtors
-    pure (SeSum (fromQName typeName) ctors)
+    pure (SeSum (fromQName typeName) tps ctors)
+
+-- Compile constructors using the datatype TyEnv
+compileCtorWith
+  :: Either CompileError ([ScalaName], TyEnv)
+  -> QName
+  -> TCM (Either CompileError ScalaCtor)
+compileCtorWith eParams conQName = do
+  conDef <- getConstInfo conQName
+  let conTy = defType conDef
+  pure $ do
+    (_tps, tyEnv) <- eParams
+    argTys <- ctorArgTypesFromTypeWith tyEnv conTy
+    pure ScalaCtor { scName = fromQName conQName, scArgs = argTys }
 
 compileCtor :: QName -> TCM (Either CompileError ScalaCtor)
 compileCtor conQName = do
@@ -112,21 +130,6 @@ compileCtor conQName = do
   pure $ do
     argTys <- ctorArgTypesFromType conTy
     pure ScalaCtor { scName = fromQName conQName, scArgs = argTys }
-
-ctorArgTypesFromType :: Type -> Either CompileError [ScalaType]
-ctorArgTypesFromType ty0 = do
-  (pis, _res) <- unrollPi ty0
-  (argTysRev, _env) <- foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
-  pure (reverse argTysRev)
-  where
-    step (acc, env) (i, (dom, _)) =
-      case getHiding dom of
-        Hidden -> do
-          let a = binderName i dom
-          pure (acc, pushTyParam a env)
-        _ -> do
-          ty <- compileDomTypeWith env dom
-          pure (ty : acc, pushTermBinder env)
 
 -- ===== Functions =============================================================
 

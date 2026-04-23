@@ -56,13 +56,13 @@ testPrintScala3 = TestCase $
     (printScala3 $ SePackage ["adts"] moduleContent)
   where
     rgbAdt =
-      SeSum "Rgb"
+      SeSum "Rgb" []
         [ ScalaCtor "Red"   []
         , ScalaCtor "Green" []
         , ScalaCtor "Blue"  []
         ]
     colorAdt =
-      SeSum "Color"
+      SeSum "Color" []
         [ ScalaCtor "Light" []
         , ScalaCtor "Dark"  []
         ]

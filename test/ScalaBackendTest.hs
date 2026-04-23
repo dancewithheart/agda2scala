@@ -61,7 +61,7 @@ testShouldWriteModule = TestCase $ do
   assertEqual "all unhandled => don't write"
     False (shouldWriteModule [SeUnhandled "" ""])
   assertEqual "some handled => write"
-    True (shouldWriteModule [SeUnhandled "" "", SeSum "Rgb" [ScalaCtor{scName = "Red", scArgs = [] } ]] )
+    True (shouldWriteModule [SeUnhandled "" "", SeSum "Rgb" [] [ScalaCtor{scName = "Red", scArgs = [] } ]] )
 
 backendTests :: Test
 backendTests = TestList [

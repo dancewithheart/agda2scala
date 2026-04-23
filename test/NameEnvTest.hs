@@ -1,6 +1,6 @@
 module NameEnvTest (nameEnvTests) where
 
-import Test.HUnit
+import Test.HUnit (Test(..), assertEqual, assertBool)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 

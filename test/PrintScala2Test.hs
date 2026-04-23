@@ -6,6 +6,7 @@ import Agda.Compiler.Scala.PrintScala2
   , printSealedTrait
   , printCaseObject
   , printPackageAndObject
+  , printSum
   , combineLines
   , printCaseClass
   )
@@ -59,10 +60,18 @@ testPrintCaseClass :: Test
 testPrintCaseClass = TestCase $
   assertEqual "printCaseClass"
     "final case class RgbPair(snd: Bool, fst: Rgb)"
-    (printCaseClass "RgbPair"
+    (printCaseClass "RgbPair" []
       [ SeVar "snd" (STyName "Bool")
       , SeVar "fst" (STyName "Rgb")
       ])
+
+testPrintCaseClassPoly :: Test
+testPrintCaseClassPoly = TestCase $
+  assertEqual "printCaseClassPolymorphic"
+    "final case class Box[A](unbox: A)"
+    (printCaseClass "Box"
+      ["A"]
+      [ SeVar "unbox" (STyVar "A")])
 
 testPrintScala2 :: Test
 testPrintScala2 = TestCase $
@@ -71,13 +80,13 @@ testPrintScala2 = TestCase $
     (printScala2 $ SePackage ["adts"] moduleContent)
   where
     rgbAdt =
-      SeSum "Rgb"
+      SeSum "Rgb" []
         [ ScalaCtor "Red"   []
         , ScalaCtor "Green" []
         , ScalaCtor "Blue"  []
         ]
     colorAdt =
-      SeSum "Color"
+      SeSum "Color" []
         [ ScalaCtor "Light" []
         , ScalaCtor "Dark"  []
         ]
@@ -102,6 +111,42 @@ testPrintScala2 = TestCase $
       "\n" <>          -- likewise
       "}\n" <>
       "}\n"
+
+testPrintSum:: Test
+testPrintSum = TestCase $
+  assertEqual "testPrintSum"
+    expected
+    (printSum "Rgb" []
+                        [ ScalaCtor "Red"   []
+                        , ScalaCtor "Green" []
+                        , ScalaCtor "Blue"  []
+                        ])
+  where
+    expected =
+      "sealed trait Rgb\n" <>
+      "object Rgb {\n" <>
+      "  case object Red extends Rgb\n" <>
+      "  case object Green extends Rgb\n" <>
+      "  case object Blue extends Rgb\n" <>
+      "\n" <>
+      "}"
+
+testPrintSumPoly :: Test
+testPrintSumPoly = TestCase $
+  assertEqual "testPrintSumPoly"
+    expected
+    (printSum "Maybe" ["A"]
+                        [ ScalaCtor "None"   []
+                        , ScalaCtor "Just" [STyVar "A"]
+                        ])
+  where
+    expected =
+      "sealed trait Maybe[A]\n" <>
+      "object Maybe {\n" <>
+      "  case object None extends Maybe[Nothing]\n" <>
+      "  final case class Just[A](x0: A) extends Maybe[A]\n" <>
+      "\n" <>
+      "}"
 
 testPolyDef :: Test
 testPolyDef = TestCase $
@@ -128,6 +173,9 @@ printScala2Tests = TestList
   , TestLabel "printPackageAndObject 2" testPrintMultiplePartPackageAndObject
   , TestLabel "combineLines" testCombineLines
   , TestLabel "printCaseClass" testPrintCaseClass
+  , TestLabel "printCaseClassPolymorphic" testPrintCaseClassPoly
+  , TestLabel "testPrintSum" testPrintSum
+  , TestLabel "testPrintSumPoly" testPrintSumPoly
   , TestLabel "printScala2" testPrintScala2
   , TestLabel "printScala2 polymorphic def" testPolyDef
   ]

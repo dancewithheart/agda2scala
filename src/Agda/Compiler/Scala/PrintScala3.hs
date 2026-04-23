@@ -21,9 +21,8 @@ printScala3 def = case def of
     printPackageAndObject pNames
       <> bracket (map printScala3 defs)
       <> blankLine -- EOF
-  (SeSum adtName ctors) ->
-    printEnum adtName
-    <> bracketWithIndent (map printEnumCtor ctors) 2
+  (SeSum name tyParams ctors) ->
+    printSum name tyParams ctors
     <> defsSeparator
   (SeFun fName args resType funBody) ->
     "def" <> exprSeparator <> fName <> printTyParams (ssTyParams resType)
@@ -31,18 +30,33 @@ printScala3 def = case def of
     <> ":" <> exprSeparator <> printType (ssType resType) <> exprSeparator
     <> "=" <> exprSeparator <> printTerm funBody
     <> defsSeparator
-  (SeProd name args) -> printCaseClass name args <> defsSeparator
+  (SeProd name tyParams args) -> printCaseClass name args <> defsSeparator
   (SeUnhandled "" payload) -> ""
   (SeUnhandled name payload) -> "TODO " ++ show name ++ " " ++ show payload
-  other -> "unsupported printScala3 " ++ show other
 
-printEnumCtor :: ScalaCtor -> String
-printEnumCtor (ScalaCtor cName []) =
-  "case" <> exprSeparator <> cName
+-- ===== Sum types ============================================================
 
-printEnumCtor (ScalaCtor cName argTys) =
+printSum :: ScalaName -> [ScalaName] -> [ScalaCtor] -> String
+printSum name tyParams ctors =
+    printEnum name
+    <> printTyParams tyParams
+    <> bracketWithIndent (map (printEnumCtor name tyParams) ctors) 2
+
+printEnumCtor :: ScalaName -> [ScalaName] -> ScalaCtor -> String
+printEnumCtor name tyParams (ScalaCtor cName []) =
   "case" <> exprSeparator <> cName
+   <> printExtends name (asBottom tyParams)
+printEnumCtor name tyParams (ScalaCtor cName argTys) =
+  "case" <> exprSeparator <> cName <> printTyParams tyParams
   <> "(" <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys) <> ")"
+  <> printExtends name tyParams
+
+asBottom :: [ScalaName] -> [ScalaName]
+asBottom ps = replicate (length ps) "Nothing"
+
+printExtends :: ScalaName -> [ScalaName] -> String
+printExtends name [] = ""
+printExtends name tyParams = " extends " <> name <> printTyParams tyParams
 
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> colonSeparator <> exprSeparator <> printType ty
