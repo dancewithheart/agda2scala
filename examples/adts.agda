@@ -77,6 +77,6 @@ data Maybe (A : Set) : Set where
 {-# COMPILE AGDA2SCALA Maybe #-}
 
 data List (X : Set) : Set where
-  Nil     : List X
-  Cons : X -> List X -> List X
+  []   : List X
+  _::_ : X -> List X -> List X
 {-# COMPILE AGDA2SCALA List #-}

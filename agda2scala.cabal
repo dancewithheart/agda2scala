@@ -39,6 +39,7 @@ library
     Agda.Compiler.Scala.AgdaToScalaExpr.Types
     Agda.Compiler.Scala.Backend
     Agda.Compiler.Scala.NameEnv
+    Agda.Compiler.Scala.NamePolicy
     Agda.Compiler.Scala.PrintScala2
     Agda.Compiler.Scala.PrintScala3
     Agda.Compiler.Scala.ScalaExpr
@@ -76,6 +77,7 @@ test-suite agda2scala-test
   main-is:          Main.hs
   other-modules:
     NameEnvTest
+    NamePolicyTest
     PrintScala2Test
     PrintScala3Test
     ScalaBackendTest
@@ -96,6 +98,7 @@ test-suite agda2scala-hedgehog
   other-modules:
     AgdaToScalaExprProps
     NameEnvProps
+    NamePolicyProps
     PrintProps
 
   build-depends:

@@ -1,10 +1,17 @@
 [![CI](https://github.com/dancewithheart/agda2scala/actions/workflows/haskell.yml/badge.svg?branch=main)](https://github.com/dancewithheart/agda2scala/actions?query=workflow%3A%22build%22+branch%3Amain)
 
-# agda2scala
+An **experimental Agda backend** that generates Scala 2 or Scala 3 source files.
 
-WIP Agda to Scala 2 and Scala 3 backend
+Currently supported:
 
-Basic usage:
+- ✅ Sum types / ADTs (also **polymorphic ADTs** like `Maybe[A]`, `List[A]`)
+- ✅ Product types (records) (with polymorphic parameters)
+- ✅ Simple and polymorphic functions (e.g. `id[A]`)
+- ✅ Literals: Int/Nat, Bool, String (subset)
+- 🚧 Pattern matching (`match` / `cases`) – planned
+- 🚧 Mapping Agda stdlib names to Scala stdlib (`Nat`, `List`, pairs) – planned / partial
+
+## Basic usage:
 ```sh
 cabal run -- agda2scala ./examples/adts.agda
 ```
@@ -21,25 +28,12 @@ data Rgb : Set where
   Blue : Rgb
 {-# COMPILE AGDA2SCALA Rgb #-}
 
-data Color : Set where
-  Light : Rgb -> Color
-  Dark : Rgb -> Color
-{-# COMPILE AGDA2SCALA Color #-}
+-- polymorphic ADT
 
--- product types
-
-record RgbPair : Set where
-  constructor mkRgbPair
-  field
-    fst : Rgb
-    snd : Bool
-{-# COMPILE AGDA2SCALA RgbPair #-}
-
--- simple functions: const, id
-
-const : (rgbPairArg : RgbPair) -> (rgbArg : Rgb) -> RgbPair
-const rgbPairArg rgbArg = rgbPairArg
-{-# COMPILE AGDA2SCALA const #-}
+data List (X : Set) : Set where
+  []   : List X
+  _::_ : X -> List X -> List X
+{-# COMPILE AGDA2SCALA List #-}
 
 -- literals String
 
@@ -59,18 +53,25 @@ object adts:
     case Green
     case Blue
 
-  enum Color:
-    case Light(x0: Rgb)
-    case Dark(x0: Rgb)
-
-  final case class RgbPair(fst: Rgb, snd: Bool)
-
-  def const(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
+  enum List[X]:
+    case Nil extends List[Nothing]
+    case Cons[X](x0: X, x1: List[X]) extends List[X]
 
   def hello(): String = "Hello World!"
 ```
 
 More [Agda examples](./examples/adts.agda)
+
+## Identifier mapping
+
+Agda constructor names are not always valid Scala identifiers (e.g. `[]`).
+We apply a small mapping table for common constructors and then sanitize the result:
+
+- `[]` → `Nil`
+- `_∷_` / `_::_` / `_cons_` → `Cons`
+- `_,_` → `Pair`
+
+See `Agda.Compiler.Scala.NamePolicy`.
 
 ## Working with source code
 
@@ -80,7 +81,7 @@ More [Agda examples](./examples/adts.agda)
 find -name '*.hs' | entr cabal test all
 ```
 
-or using [ghcid](https://hackage.haskell.org/package/ghcid) 
+or using [ghcid](https://hackage.haskell.org/package/ghcid)
 ```shell
 ghcid
 ```
@@ -169,10 +170,10 @@ sbt ~test
   * docs for [Agda.Compiler.Backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-Backend.html)
   * build-in [JS backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-JS-Compiler.html)
   * build-in [Haskell backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-MAlonzo-Compiler.html)
-* external project with Agda backends 
-  * [omelkonian/agda-minimal-backend](https://github.com/omelkonian/agda-minimal-backend) 
+* external project with Agda backends
+  * [omelkonian/agda-minimal-backend](https://github.com/omelkonian/agda-minimal-backend)
   * [jespercockx/agda2scheme](https://github.com/jespercockx/agda2scheme)
   * [omelkonian/agda2train](https://github.com/omelkonian/agda2train)
   * [agda/agda2hs](https://github.com/agda/agda2hs), ([publication](https://iohk.io/en/research/library/papers/reasonable-agda-is-correct-haskell-writing-verified-haskell-using-agda2hs/))
   * [HectorPeeters/agda2rust](https://github.com/HectorPeeters/agda2rust), ([publication](https://repository.tudelft.nl/islandora/object/uuid:39bff395-1bd6-4905-8554-cef0cd5e7d3e))
-  * [lemastero/agda2rust](https://github.com/lemastero/agda2rust)
+  * [omelkonian/agda2rust](https://github.com/omelkonian/agda2rust)
