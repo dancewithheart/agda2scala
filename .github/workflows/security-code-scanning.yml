@@ -41,7 +41,7 @@ jobs:
         with:
           repository: dancewithheart/cabal-audit
           path: cabal-audit-src
-          ref: sarif-github-code-scanning
+          ref: sarif-github-code-scanning2
 
       - name: Install cabal-audit from source
         run: |
