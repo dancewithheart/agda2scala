@@ -8,6 +8,7 @@ import Test.HUnit (
  )
 
 import NameEnvTest (nameEnvTests)
+import NamePolicyTest (tests)
 import PrintScala2Test (printScala2Tests)
 import PrintScala3Test (printScala3Tests)
 import ScalaBackendTest (backendTests)

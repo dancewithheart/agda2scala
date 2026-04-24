@@ -2,6 +2,7 @@ module examples.adts where
 
 open import Agda.Builtin.String
 open import Agda.Builtin.Nat
+-- open import Data.Nat using (ℕ)
 
 -- simple sum type no arguments - sealed trait + case objects
 data Rgb : Set where
@@ -10,10 +11,10 @@ data Rgb : Set where
   Blue : Rgb
 {-# COMPILE AGDA2SCALA Rgb #-}
 
-data Bool : Set where
-   True : Bool
-   False : Bool
-{-# COMPILE AGDA2SCALA Bool #-}
+data Answer : Set where
+   Yes : Answer
+   No : Answer
+{-# COMPILE AGDA2SCALA Answer #-}
 
 -- simple sum type with arguments - sealed trait + case class
 
@@ -28,7 +29,7 @@ record RgbPair : Set where
   constructor mkRgbPair
   field
     fst : Rgb
-    snd : Bool
+    snd : Answer
 {-# COMPILE AGDA2SCALA RgbPair #-}
 
 -- trivial function with single argument
@@ -37,11 +38,11 @@ idRgb : Rgb -> Rgb
 idRgb theArg = theArg
 {-# COMPILE AGDA2SCALA idRgb #-}
 
--- const function with one named argument that returns custom Bool literal
+-- const function with one named argument that returns Answer literal
 
-rgbConstTrue1 : (rgb : Rgb) → Bool
-rgbConstTrue1 rgb = True
-{-# COMPILE AGDA2SCALA rgbConstTrue1 #-}
+rgbConstYes1 : (rgb : Rgb) → Answer
+rgbConstYes1 rgb = Yes
+{-# COMPILE AGDA2SCALA rgbConstYes1 #-}
 
 -- function with multiple named arguments
 
@@ -63,7 +64,7 @@ withEscapes = "line1\nline2\t\"quote\"\\backslash"
 two : Nat
 two = 2
 -- TODO {-# COMPILE AGDA2SCALA two #-}
--- {-# COMPILE AGDA2SCALA_DEBUG Maybe #-}
+-- {-# COMPILE AGDA2SCALA_DEBUG two #-}
 
 -- polymorphic functions
 
@@ -77,6 +78,12 @@ data Maybe (A : Set) : Set where
 {-# COMPILE AGDA2SCALA Maybe #-}
 
 data List (X : Set) : Set where
-  Nil     : List X
-  Cons : X -> List X -> List X
+  []   : List X
+  _::_ : X -> List X -> List X
 {-# COMPILE AGDA2SCALA List #-}
+
+--emptyNatList : List ℕ
+--emptyNatList = []
+-- {-# COMPILE AGDA2SCALA emptyNatList #-}
+-- TODO handle variance
+

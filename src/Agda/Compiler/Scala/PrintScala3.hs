@@ -45,7 +45,7 @@ printScala3 def = case def of
             <> defsSeparator
     (SeProd name tyParams args) -> printCaseClass name args <> defsSeparator
     (SeUnhandled "" payload) -> ""
-    (SeUnhandled name payload) -> "TODO " ++ show name ++ " " ++ show payload
+    (SeUnhandled name payload) -> "TODO In printScala3 got SeUnhandled " ++ show name ++ " " ++ show payload
 
 -- ===== Sum types ============================================================
 

@@ -5,7 +5,7 @@ import zio.test.junit.JUnitRunnableSpec
 import zio.test.assert
 import examples.adts.{Rgb, RgbPair, constRgbPair, hello, idRgb}
 import examples.adts.Rgb.{Blue, Green, Red}
-import examples.adts.Bool.{False, True}
+import examples.adts.Answer.{No, Yes}
 
 object RgbSpec extends JUnitRunnableSpec:
 
@@ -16,14 +16,14 @@ object RgbSpec extends JUnitRunnableSpec:
       assert(idRgb(Blue))(equalTo(Blue))
     },
     test("const on RgbPair") {
-      assert(constRgbPair(RgbPair(Blue, True), Red))(
-        equalTo(RgbPair(Blue, True))
+      assert(constRgbPair(RgbPair(Blue, Yes), Red))(
+        equalTo(RgbPair(Blue, Yes))
       ) &&
-      assert(constRgbPair(RgbPair(Red, False), Green))(
-        equalTo(RgbPair(Red, False))
+      assert(constRgbPair(RgbPair(Red, No), Green))(
+        equalTo(RgbPair(Red, No))
       ) &&
-      assert(constRgbPair(RgbPair(Blue, True), Blue))(
-        equalTo(RgbPair(Blue, True))
+      assert(constRgbPair(RgbPair(Blue, Yes), Blue))(
+        equalTo(RgbPair(Blue, Yes))
       )
     },
     test("hello returns Hello World string") {

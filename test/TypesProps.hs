@@ -76,6 +76,7 @@ prop_compileTypeTermWith_varApp_arity = property $ do
         Right ty -> case ty of
             STyVar _ -> k === 0
             STyApp _ args -> length args === k
+            Level _ -> Right (STyName "Type") -- TODO proper support for universe levels for now assume they are just types
             _ -> failure
 
 {- | De Bruijn index shifting across term binders in types.

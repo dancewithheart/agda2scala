@@ -2,6 +2,7 @@ module Agda.Compiler.Scala.NameEnv (
     NameEnv (..),
     emptyNameEnv,
     sanitizeScalaIdent,
+    scalaKeywords,
     allocFreshLocal,
     allocQName,
     registerCtors,

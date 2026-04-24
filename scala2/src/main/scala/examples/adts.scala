@@ -11,10 +11,10 @@ object Rgb {
 
 }
 
-sealed trait Bool
-object Bool {
-  case object True extends Bool
-  case object False extends Bool
+sealed trait Answer
+object Answer {
+  case object Yes extends Answer
+  case object No extends Answer
 
 }
 
@@ -25,11 +25,11 @@ object Color {
 
 }
 
-final case class RgbPair(fst: Rgb, snd: Bool)
+final case class RgbPair(fst: Rgb, snd: Answer)
 
 def idRgb(x0: Rgb): Rgb = x0
 
-def rgbConstTrue1(rgb: Rgb): Bool = Bool.True
+def rgbConstYes1(rgb: Rgb): Answer = Answer.Yes
 
 def constRgbPair(rgbPairArg: RgbPair, rgbArg: Rgb): RgbPair = rgbPairArg
 
