@@ -125,6 +125,13 @@ cabal run -- agda2scala ./examples/adts.agda
 cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
 ```
 
+* format code
+```sh
+fourmolu -i $(find src app test -name '*.hs')
+cabal-fmt -i agda2scala.cabal
+hlint src app test
+```
+
 ## end-to-end tests
 
 There are [Scala 3](./scala3) and [Scala 2](./scala2) projects for code
@@ -149,13 +156,6 @@ Generate Scala 2 code from Agda examples and running tests:
 cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
 cd ../scala2
 sbt ~test
-```
-
-* format code
-```sh
-fourmolu -i $(find src app test -name '*.hs')
-cabal-fmt -i agda2scala.cabal
-hlint src app test
 ```
 
 generate Scala 3 code:

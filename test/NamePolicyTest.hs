@@ -1,12 +1,13 @@
 module NamePolicyTest (tests) where
 
-import Test.HUnit (Test(..), assertEqual)
-import Agda.Compiler.Scala.NamePolicy (defaultNamePolicy, ctorName)
+import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
+import Test.HUnit (Test (..), assertEqual)
 
 tests :: Test
-tests = TestList
-  [ TestLabel "ctor [] -> Nil" $
-      TestCase (assertEqual "[]" "Nil" (ctorName defaultNamePolicy "[]"))
-  , TestLabel "ctor _cons_ -> Cons" $
-      TestCase (assertEqual "_cons_" "Cons" (ctorName defaultNamePolicy "_cons_"))
-  ]
+tests =
+    TestList
+        [ TestLabel "ctor [] -> Nil" $
+            TestCase (assertEqual "[]" "Nil" (ctorName defaultNamePolicy "[]"))
+        , TestLabel "ctor _cons_ -> Cons" $
+            TestCase (assertEqual "_cons_" "Cons" (ctorName defaultNamePolicy "_cons_"))
+        ]

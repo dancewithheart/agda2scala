@@ -128,7 +128,8 @@ compileTypeTermWith :: TyEnv -> Term -> Either CompileError ScalaType
 compileTypeTermWith tyEnv = \case
     Def qn elims -> do
         args <- compileTypeArgs tyEnv elims
-        let f = fromQName qn
+        let f0 = fromQName qn
+            f = mapBuiltinTypeName f0
         pure $ case args of
             [] -> STyName f
             _ -> STyApp f args
@@ -291,3 +292,11 @@ namedNameToStr n = rangedThing (woThing n)
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Abstract-Name.html#t:QName
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName
+
+mapBuiltinTypeName :: ScalaName -> ScalaName
+mapBuiltinTypeName n = case n of
+    "Nat" -> "Long"
+    "ℕ" -> "Long"
+    "Bool" -> "Boolean"
+    -- TODO String?
+    _ -> n

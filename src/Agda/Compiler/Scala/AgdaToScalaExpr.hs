@@ -25,7 +25,6 @@ import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaName,
-    ScalaType (..),
     SeVar (..),
  )
 
@@ -52,7 +51,7 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     compileFunctionBody,
     lookupVar,
  )
-import Agda.Compiler.Scala.NamePolicy (defaultNamePolicy, ctorName)
+import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
 
 -- ===== Entry point ===========================================================
 
@@ -121,8 +120,11 @@ compileCtorWith eParams conQName = do
     pure $ do
         (_tps, tyEnv) <- eParams
         argTys <- ctorArgTypesFromTypeWith tyEnv conTy
-        pure ScalaCtor{ scName = ctorName defaultNamePolicy (fromQName conQName)
-        , scArgs = argTys}
+        pure
+            ScalaCtor
+                { scName = ctorName defaultNamePolicy (fromQName conQName)
+                , scArgs = argTys
+                }
 
 compileCtor :: QName -> TCM (Either CompileError ScalaCtor)
 compileCtor conQName = do
@@ -130,8 +132,11 @@ compileCtor conQName = do
     let conTy = defType conDef
     pure $ do
         argTys <- ctorArgTypesFromType conTy
-        pure ScalaCtor{scName =  ctorName defaultNamePolicy (fromQName conQName)
-        , scArgs = argTys}
+        pure
+            ScalaCtor
+                { scName = ctorName defaultNamePolicy (fromQName conQName)
+                , scArgs = argTys
+                }
 
 -- ===== Functions =============================================================
 

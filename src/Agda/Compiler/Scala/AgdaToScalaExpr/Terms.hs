@@ -15,6 +15,7 @@ import Agda.TypeChecking.CompiledClause (CompiledClauses, CompiledClauses' (..))
 import qualified Data.Text as T
 
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError (..), fromQName)
+import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
 import Agda.Compiler.Scala.ScalaExpr (ScalaName, ScalaTerm (..))
 
 -- ===== Term variable environment ============================================
@@ -58,7 +59,7 @@ compileBodyTerm env = \case
 compileConApp :: Env -> ConHead -> [Elim' Term] -> Either CompileError ScalaTerm
 compileConApp env conHead elims = do
     args <- traverse (compileElim env) elims
-    let f = STeVar (fromQName (conName conHead))
+    let f = STeVar (ctorName defaultNamePolicy (fromQName (conName conHead)))
     pure $ case args of
         [] -> f
         _ -> STeApp f args

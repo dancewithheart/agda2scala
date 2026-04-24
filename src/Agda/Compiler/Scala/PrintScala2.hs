@@ -54,7 +54,7 @@ printScala2 def = case def of
     SeUnhandled "" _payload ->
         "" -- filtered out
     SeUnhandled name payload ->
-        "/* TODO " <> show name <> " " <> show payload <> " */" <> nl
+        "/* TODO In printScala2 got SeUnhandled " <> show name <> " " <> show payload <> " */" <> nl
 
 -- ===== Sum types ============================================================
 
