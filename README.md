@@ -150,6 +150,13 @@ cd ../scala2
 sbt ~test
 ```
 
+* format code
+```sh
+fourmolu -i $(find src app test -name '*.hs')
+cabal-fmt -i agda2scala.cabal
+hlint src app test
+```
+
 generate Scala 3 code:
 ```shell
 cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
