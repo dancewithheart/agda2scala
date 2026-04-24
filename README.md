@@ -154,14 +154,14 @@ Those tests are run on CI - Github Actions
 Generate Scala 2 code from Agda examples and running tests:
 ```shell
 cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
-cd ../scala2
+cd scala2
 sbt ~test
 ```
 
 generate Scala 3 code:
 ```shell
 cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
-cd ../scala3
+cd scala3
 sbt ~test
 ```
 
