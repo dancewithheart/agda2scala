@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Europe/Warsaw",
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+
+  "packageRules": [
+    {
+      "description": "Do not automerge Haskell dependency bound changes",
+      "matchManagers": ["haskell-cabal"],
+      "matchDatasources": ["hackage"],
+      "labels": ["dependencies", "haskell", "hackage"],
+      "automerge": false
+    },
+    {
+      "description": "Group Haskell non-major updates",
+      "matchManagers": ["haskell-cabal"],
+      "matchDatasources": ["hackage"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Haskell dependency bounds"
+    },
+    {
+      "description": "Agda version bumps should be reviewed manually",
+      "matchPackageNames": ["Agda"],
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "haskell", "agda"]
+    },
+    {
+      "description": "Automerge GitHub Actions patch/digest updates after CI",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "labels": ["dependencies", "github-actions"],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Review GitHub Actions major/minor updates manually",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major", "minor"],
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "github-actions"]
+    }
+  ]
+}
