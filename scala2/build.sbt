@@ -6,7 +6,7 @@ scalaVersion := "2.13.18"
 
 resolvers ++= Resolver.sonatypeOssRepos("snapshots")
 
-lazy val zioVersion = "2.1.24"
+lazy val zioVersion = "2.1.25"
 
 libraryDependencies ++= Seq(
   "dev.zio" %% "zio" % zioVersion,
