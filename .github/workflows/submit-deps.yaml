@@ -43,10 +43,6 @@ jobs:
           ghc-version: "9.6.7"
           cabal-version: "3.14"
 
-      - name: Build target project
-        working-directory: project
-        run: cabal build all
-
       - name: Cache Cabal store
         uses: actions/cache@v4
         with:
@@ -59,6 +55,10 @@ jobs:
           key: ${{ runner.os }}-ghc-9.6.7-cabal-3.14-${{ hashFiles('project/**/*.cabal', 'project/cabal.project*', 'cabal-plan-submit/**/*.cabal', 'cabal-plan-submit/cabal.project*', 'cabal-audit/**/*.cabal', 'cabal-audit/cabal.project*') }}
           restore-keys: |
             ${{ runner.os }}-ghc-9.6.7-cabal-3.14-
+
+      - name: Build target project
+        working-directory: project
+        run: cabal build all
 
       - name: Build cabal-plan-submit
         working-directory: cabal-plan-submit
