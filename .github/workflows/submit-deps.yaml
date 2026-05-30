@@ -31,9 +31,10 @@ jobs:
           path: cabal-plan-submit
 
       - name: Checkout cabal-audit
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@v6
         with:
-          repository: MangoIV/cabal-audit
+          repository: dancewithheart/cabal-audit
+          ref: sarif-github-code-scanning
           path: cabal-audit
 
       - name: Setup Haskell
@@ -62,13 +63,6 @@ jobs:
       - name: Build cabal-plan-submit
         working-directory: cabal-plan-submit
         run: cabal build exe:cabal-plan-submit
-
-      - name: Checkout cabal-audit
-        uses: actions/checkout@v6
-        with:
-          repository: dancewithheart/cabal-audit
-          ref: sarif-github-code-scanning
-          path: cabal-audit
 
       - name: Download deprecated Hackage metadata
         run: |
