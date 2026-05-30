@@ -25,6 +25,12 @@ jobs:
           repository: dancewithheart/cabal-plan-submit
           path: cabal-plan-submit
 
+      - name: Checkout cabal-audit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: MangoIV/cabal-audit
+          path: cabal-audit
+
       - name: Setup Haskell
         uses: haskell-actions/setup@cd0d9bdd65b20557f41bea4dbe43d0b5fbbfe553 # v2
         with:
@@ -39,7 +45,17 @@ jobs:
         working-directory: cabal-plan-submit
         run: cabal build exe:cabal-plan-submit
 
-      - name: Render snapshot
+      - name: Build cabal-audit
+        working-directory: cabal-audit
+        run: cabal build exe:cabal-audit
+
+      - name: Download deprecated Hackage metadata
+        run: |
+          curl -L \
+            https://raw.githubusercontent.com/commercialhaskell/all-cabal-metadata/master/deprecated.yaml \
+            -o deprecated.yaml
+
+      - name: Render and validate dependency snapshot
         working-directory: project
         env:
           SHA: ${{ github.sha }}
@@ -49,7 +65,7 @@ jobs:
           "$BIN" render-snapshot dist-newstyle/cache/plan.json "$SHA" "$REF" > ../snapshot.json
           "$BIN" validate-snapshot ../snapshot.json
 
-      - name: Submit snapshot
+      - name: Submit dependency snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -76,3 +92,41 @@ jobs:
           echo "Snapshot API URL: $snapshot_url"
           echo "Snapshot result: $(echo "$response" | jq -r '.result')"
           echo "Snapshot message: $(echo "$response" | jq -r '.message')"
+
+      - name: Run cabal-audit SARIF
+        working-directory: project
+        run: |
+          CABAL_AUDIT="$(cd ../cabal-audit && cabal list-bin exe:cabal-audit)"
+          "$CABAL_AUDIT" --sarif > ../cabal-audit.sarif
+
+      - name: Enrich cabal-audit SARIF with Cabal dependency paths
+        working-directory: project
+        run: |
+          BIN="$(cd ../cabal-plan-submit && cabal list-bin exe:cabal-plan-submit)"
+          "$BIN" enrich-sarif \
+            dist-newstyle/cache/plan.json \
+            ../cabal-audit.sarif \
+            > ../cabal-audit.enriched.sarif
+
+      - name: Generate deprecated-package SARIF
+        working-directory: project
+        run: |
+          BIN="$(cd ../cabal-plan-submit && cabal list-bin exe:cabal-plan-submit)"
+          "$BIN" deprecated-sarif \
+            --production-only \
+            dist-newstyle/cache/plan.json \
+            ../deprecated.yaml \
+            > ../deprecated-packages.sarif
+
+      - name: Upload enriched cabal-audit SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: cabal-audit.enriched.sarif
+          category: cabal-audit-enriched
+
+      - name: Upload deprecated-package SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: deprecated-packages.sarif
+          category: hackage-deprecated-packages
+
