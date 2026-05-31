@@ -1,4 +1,4 @@
-name: Dependency submission
+name: Dependency submission and security vulnerabilities
 
 on:
   push:
@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  security-events: write
+  contents: write          # dependency submission API
+  security-events: write   # Code Scanning SARIF upload
 
 jobs:
   submit-dependencies:
@@ -20,12 +20,12 @@ jobs:
 
     steps:
       - name: Checkout target project
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@v6
         with:
           path: project
 
       - name: Checkout cabal-plan-submit
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@v6
         with:
           repository: dancewithheart/cabal-plan-submit
           path: cabal-plan-submit
@@ -38,7 +38,7 @@ jobs:
           path: cabal-audit
 
       - name: Setup Haskell
-        uses: haskell-actions/setup@cd0d9bdd65b20557f41bea4dbe43d0b5fbbfe553 # v2
+        uses: haskell-actions/setup@v2
         with:
           ghc-version: "9.6.7"
           cabal-version: "3.14"
@@ -63,6 +63,10 @@ jobs:
       - name: Build cabal-plan-submit
         working-directory: cabal-plan-submit
         run: cabal build exe:cabal-plan-submit
+
+      - name: Build cabal-audit
+        working-directory: cabal-audit
+        run: cabal build exe:cabal-audit
 
       - name: Download deprecated Hackage metadata
         run: |
@@ -113,6 +117,7 @@ jobs:
         run: |
           CABAL_AUDIT="$(cd ../cabal-audit && cabal list-bin exe:cabal-audit | tail -n 1)"
           "$CABAL_AUDIT" --sarif --to-file ../cabal-audit.sarif
+          jq type ../cabal-audit.sarif
 
       - name: Enrich cabal-audit SARIF with Cabal dependency paths
         working-directory: project
@@ -134,14 +139,13 @@ jobs:
             > ../deprecated-packages.sarif
 
       - name: Upload enriched cabal-audit SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: cabal-audit.enriched.sarif
           category: cabal-audit-enriched
 
       - name: Upload deprecated-package SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: deprecated-packages.sarif
           category: hackage-deprecated-packages
-
