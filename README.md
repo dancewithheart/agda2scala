@@ -62,6 +62,20 @@ object adts:
 
 More [Agda examples](./examples/adts.agda)
 
+## Architecture
+
+We use 2 internal representation
+1 AgdaIR is close to Agda compiler representation
+2. ScalaIR is close to Scala language representation
+
+```text
+             TCM glue                      prettyPrint
+Definition ==========> AgdaIR ==> ScalaIR ============> String
+```
+
+At the end we choose between Scala2 and Scala3 syntax.
+Possible future directions: Kotlin, Java, JVM bytecode
+
 ## Identifier mapping
 
 Agda constructor names are not always valid Scala identifiers (e.g. `[]`).

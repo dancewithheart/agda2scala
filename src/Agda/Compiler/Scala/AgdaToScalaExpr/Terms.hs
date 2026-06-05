@@ -8,6 +8,8 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     compileBodyTerm,
 ) where
 
+
+import Data.Maybe (catMaybes)
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (ConHead (..), Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
@@ -50,24 +52,40 @@ compileFunctionBody argNs (Just cc) =
 
 compileBodyTerm :: Env -> Term -> Either CompileError ScalaTerm
 compileBodyTerm env = \case
-    Var i _ -> STeVar <$> lookupVar env i
-    Def qn _ -> pure (STeVar (fromQName qn))
+    Var i elims -> do
+        f <- STeVar <$> lookupVar env i
+        applyElims env f elims
+    Def qn elims -> do
+        let f = STeVar (fromQName qn)
+        applyElims env f elims
     Con ch _ es -> compileConApp env ch es
     Lit lit -> compileLiteral lit
     t -> Left (UnsupportedTerm t)
 
 compileConApp :: Env -> ConHead -> [Elim' Term] -> Either CompileError ScalaTerm
 compileConApp env conHead elims = do
-    args <- traverse (compileElim env) elims
+    args <- fmap catMaybes (traverse (compileElimMaybe env) elims)
     let f = STeVar (ctorName defaultNamePolicy (fromQName (conName conHead)))
     pure $ case args of
         [] -> f
-        _ -> STeApp f args
+        _  -> STeApp f args
 
-compileElim :: Env -> Elim' Term -> Either CompileError ScalaTerm
-compileElim env = \case
-    Apply a -> compileBodyTerm env (unArg a)
-    _ -> Left (UnsupportedTerm (Var 0 [])) -- refine later (Proj/IApply)
+applyElims :: Env -> ScalaTerm -> [Elim' Term] -> Either CompileError ScalaTerm
+applyElims env f elims = do
+    args <- fmap catMaybes (traverse (compileElimMaybe env) elims)
+    pure $ case args of
+        [] -> f
+        _  -> STeApp f args
+
+compileElimMaybe :: Env -> Elim' Term -> Either CompileError (Maybe ScalaTerm)
+compileElimMaybe env = \case
+    Apply a ->
+        case unArg a of
+            -- erase universe-level artifacts at term level
+            Level _ -> pure Nothing
+            Sort _  -> pure Nothing
+            t       -> Just <$> compileBodyTerm env t
+    _ -> Left (UnsupportedTerm (Var 0 [])) -- Proj/IApply later
 
 compileLiteral :: Literal -> Either CompileError ScalaTerm
 compileLiteral = \case

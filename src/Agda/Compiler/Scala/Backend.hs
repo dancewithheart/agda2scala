@@ -207,7 +207,7 @@ lookupScalaDebugPragma qn = getUniqueCompilerPragma pragmaDebug qn
 
 noPragmaResult :: Definition -> ScalaDefinition
 -- noPragmaResult Defn{defName = defName} = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
-noPragmaResult def = SeUnhandled "" ""
+noPragmaResult _def = SeUnhandled "" ""
 
 scalaPostCompile ::
     ScalaEnv ->

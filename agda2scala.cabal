@@ -43,6 +43,10 @@ library
     Agda.Compiler.Scala.PrintScala2
     Agda.Compiler.Scala.PrintScala3
     Agda.Compiler.Scala.ScalaExpr
+    Agda.Compiler.Scala.IR.Agda
+    Agda.Compiler.Scala.IR.Scala
+    Agda.Compiler.Scala.Lower.AgdaToIR
+    Agda.Compiler.Scala.Lower.IRToScala
     Paths_agda2scala
 
   autogen-modules:  Paths_agda2scala
