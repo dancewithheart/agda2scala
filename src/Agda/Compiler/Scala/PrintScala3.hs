@@ -135,7 +135,7 @@ printPat pat =
       if b then "true" else "false"
 
     SPLitString s ->
-      show s
+      "\"" <> escapeScalaString s <> "\""
 
 -- Escaping for Scala string literal content (no surrounding quotes).
 escapeScalaString :: String -> String
