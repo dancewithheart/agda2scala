@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 
 module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
