@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
--- handle interactions with Agda interlans
+-- handle interactions with Agda internals
 module Agda.Compiler.Scala.Lower.AgdaToIR
   ( lowerDefinition
   ) where

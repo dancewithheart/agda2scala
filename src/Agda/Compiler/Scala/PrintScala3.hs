@@ -44,8 +44,8 @@ printScala3 def = case def of
             <> exprSeparator
             <> printTerm funBody
             <> defsSeparator
-    (SeProd name tyParams args) -> printCaseClass name args <> defsSeparator
-    (SeUnhandled "" payload) -> ""
+    (SeProd name _tyParams args) -> printCaseClass name args <> defsSeparator
+    (SeUnhandled "" _payload) -> ""
     (SeUnhandled name payload) -> "TODO In printScala3 got SeUnhandled " ++ show name ++ " " ++ show payload
 
 -- ===== Sum types ============================================================
@@ -76,7 +76,7 @@ asBottom :: [ScalaName] -> [ScalaName]
 asBottom ps = replicate (length ps) "Nothing"
 
 printExtends :: ScalaName -> [ScalaName] -> String
-printExtends name [] = ""
+printExtends _ [] = ""
 printExtends name tyParams = " extends " <> name <> printTyParams tyParams
 
 ctorParam :: Int -> ScalaType -> String
@@ -176,10 +176,6 @@ printCaseObject :: ScalaName -> ScalaName -> String
 printCaseObject superName caseName =
     "case object" <> exprSeparator <> caseName <> exprSeparator <> "extends" <> exprSeparator <> superName
 
-printEnumCase :: ScalaName -> String
-printEnumCase caseName =
-    "case" <> exprSeparator <> caseName
-
 printPackageAndObject :: [ScalaName] -> String
 printPackageAndObject [] = ""
 printPackageAndObject [oname] = printObject oname
@@ -229,4 +225,4 @@ combineLines :: [String] -> String
 combineLines xs = strip $ unlines (filter (not . null) xs)
 
 combineLinesWithIndent :: String -> [String] -> String
-combineLinesWithIndent indent xs = strip $ unlines (fmap (indent ++) (filter (not . null) xs))
+combineLinesWithIndent indent' xs = strip $ unlines (fmap (indent' ++) (filter (not . null) xs))
