@@ -93,3 +93,13 @@ compileLiteral = \case
     LitWord64 n -> pure (STeLitInt (fromIntegral n))
     LitString s -> pure (STeLitString (T.unpack s))
     l -> Left (UnsupportedTerm (Lit l))
+
+
+--compileCompiledClauses :: Env -> CompiledClauses -> Either CompileError ScalaTerm
+--compileCompiledClauses env = \case
+--  Done _ t -> compileBodyTerm env t
+--  Case i branches -> do
+--    scrut <- STeVar <$> lookupVar env i
+--    alts  <- traverse (compileBranch env) branches
+--    pure (STeMatch scrut alts)
+--  _ -> Left UnsupportedCompiledClauses

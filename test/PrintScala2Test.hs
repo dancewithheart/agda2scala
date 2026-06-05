@@ -12,10 +12,12 @@ import Agda.Compiler.Scala.PrintScala2 (
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
+    ScalaPat (..),
     ScalaTerm (..),
     ScalaType (..),
     ScalaTypeScheme (..),
     SeVar (..),
+    scalaTypeScheme
  )
 import Test.HUnit (Test (..), assertEqual)
 
@@ -202,6 +204,29 @@ testPolyDef =
     expected =
         "def id[A](x1: A): A = x1\n"
 
+testPrintMatch :: Test
+testPrintMatch = TestCase $
+  assertEqual "printScala2 match"
+    expected
+    (printScala2 expr)
+  where
+    expr =
+      SeFun
+        "not"
+        [SeVar "x0" (STyName "Answer")]
+        (scalaTypeScheme (STyName "Answer"))
+        (STeMatch
+          (STeVar "x0")
+          [ (SPCtor "Yes" [], STeVar "No")
+          , (SPCtor "No" [], STeVar "Yes")
+          ])
+
+    expected =
+      "def not(x0: Answer): Answer = x0 match {\n" <>
+      "  case Yes => No\n" <>
+      "  case No => Yes\n" <>
+      "}\n"
+
 printScala2Tests :: Test
 printScala2Tests =
     TestList
@@ -217,4 +242,5 @@ printScala2Tests =
         , TestLabel "testPrintSumPoly" testPrintSumPoly
         , TestLabel "printScala2" testPrintScala2
         , TestLabel "printScala2 polymorphic def" testPolyDef
+        , TestLabel "printScala2 pattern match" testPrintMatch
         ]

@@ -1,10 +1,10 @@
-module NamePolicyTest (tests) where
+module NamePolicyTest (namePolicytests) where
 
 import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
 import Test.HUnit (Test (..), assertEqual)
 
-tests :: Test
-tests =
+namePolicytests :: Test
+namePolicytests =
     TestList
         [ TestLabel "ctor [] -> Nil" $
             TestCase (assertEqual "[]" "Nil" (ctorName defaultNamePolicy "[]"))

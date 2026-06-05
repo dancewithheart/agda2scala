@@ -54,12 +54,14 @@ import Agda.Compiler.Scala.ScalaExpr
 
 lowerDefinition :: Definition -> CompilerPragma -> TCM (Either CompileError AgdaDecl)
 lowerDefinition def _pragma = case def of
+  -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Datatype
   Defn{theDef = Datatype{dataCons = cons}, defName = qn, defType = ty} ->
     lowerData qn ty cons
 
   Defn{theDef = RecordDefn (RecordData{_recTel = tel}), defName = qn, defType = ty} ->
     pure (DRecord <$> lowerRecord qn ty tel)
 
+  -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Function
   Defn{theDef = Function{funCompiled = cc}, defName = qn, defType = ty} ->
     pure (DFun <$> lowerFun qn ty cc)
 

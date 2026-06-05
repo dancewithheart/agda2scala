@@ -60,7 +60,12 @@ import Agda.Compiler.Scala.AgdaToScalaExpr (CompileError, compileDefn)
 import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv, lookupCtorOwner, registerCtors)
 import Agda.Compiler.Scala.PrintScala2 (printScala2)
 import Agda.Compiler.Scala.PrintScala3 (printScala3)
-import Agda.Compiler.Scala.ScalaExpr (ScalaExpr (..), ScalaTerm (..), unHandled)
+import Agda.Compiler.Scala.ScalaExpr
+  ( ScalaExpr (..)
+  , ScalaPat (..)
+  , ScalaTerm (..)
+  , unHandled
+  )
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
@@ -192,6 +197,24 @@ qualifyTermWithEnv ne = go
     go (STeLitBool b) = STeLitBool b
     go (STeLitString s) = STeLitString s
     go (STeError e) = STeError e
+    go (STeMatch scrut alts) =
+      STeMatch
+        (go scrut)
+        [ (goPat pat, go rhs)
+        | (pat, rhs) <- alts
+        ]
+
+    goPat SPWild = SPWild
+    goPat (SPVar n) = SPVar n
+    goPat (SPCtor n args) =
+      let n' =
+            case lookupCtorOwner n ne of
+              Just parent -> parent <> "." <> n
+              Nothing     -> n
+      in SPCtor n' (map goPat args)
+    goPat (SPLitInt n) = SPLitInt n
+    goPat (SPLitBool b) = SPLitBool b
+    goPat (SPLitString s) = SPLitString s
 
 lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
 lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName

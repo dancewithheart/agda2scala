@@ -11,6 +11,7 @@ import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaName,
+    ScalaPat(..),
     ScalaTerm (..),
     ScalaType (..),
     ScalaTypeScheme (..),
@@ -103,6 +104,38 @@ printTerm (STeLitInt n) = show n
 printTerm (STeLitBool b) = if b then "true" else "false"
 printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
 printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+printTerm (STeMatch scrut alts) =
+  printTerm scrut <> " match" <> defsSeparator
+    <> combineLinesWithIndent indent (map printCase alts)
+
+printCase :: (ScalaPat, ScalaTerm) -> String
+printCase (pat, rhs) =
+  "case" <> exprSeparator <> printPat pat
+    <> exprSeparator <> "=>" <> exprSeparator <> printTerm rhs
+
+printPat :: ScalaPat -> String
+printPat pat =
+  case pat of
+    SPWild ->
+      "_"
+
+    SPVar name ->
+      name
+
+    SPCtor name [] ->
+      name
+
+    SPCtor name args ->
+      name <> "(" <> intercalate ", " (map printPat args) <> ")"
+
+    SPLitInt n ->
+      show n
+
+    SPLitBool b ->
+      if b then "true" else "false"
+
+    SPLitString s ->
+      show s
 
 -- Escaping for Scala string literal content (no surrounding quotes).
 escapeScalaString :: String -> String

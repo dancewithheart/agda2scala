@@ -3,6 +3,7 @@ module Agda.Compiler.Scala.ScalaExpr (
     ScalaType (..),
     ScalaExpr (..),
     SeVar (..),
+    ScalaPat (..),
     ScalaTerm (..),
     ScalaTypeScheme (..),
     ScalaCtor (..),
@@ -28,10 +29,20 @@ data ScalaTypeScheme = ScalaTypeScheme
 scalaTypeScheme :: ScalaType -> ScalaTypeScheme
 scalaTypeScheme st = ScalaTypeScheme{ssTyParams = [], ssType = st}
 
+data ScalaPat
+    = SPWild
+    | SPVar ScalaName
+    | SPCtor ScalaName [ScalaPat]
+    | SPLitInt Int
+    | SPLitBool Bool
+    | SPLitString String
+    deriving (Eq, Show)
+
 data ScalaTerm
     = STeVar ScalaName
     | STeApp ScalaTerm [ScalaTerm]
     | STeLam [ScalaName] ScalaTerm
+    | STeMatch ScalaTerm [(ScalaPat, ScalaTerm)]
     | STeLitInt Int
     | STeLitBool Bool
     | STeLitString String

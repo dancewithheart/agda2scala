@@ -10,9 +10,12 @@ import Agda.Compiler.Scala.PrintScala3 (
  )
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
+    ScalaPat (..),
     ScalaExpr (..),
+    ScalaTerm (..),
     ScalaType (..),
     SeVar (..),
+    scalaTypeScheme
  )
 import Test.HUnit (Test (..), assertEqual)
 
@@ -97,6 +100,28 @@ testPrintScala3 =
             <> "    case Light\n"
             <> "    case Dark\n"
 
+testPrintMatch :: Test
+testPrintMatch = TestCase $
+  assertEqual "printScala3 match"
+    expected
+    (printScala3 expr)
+  where
+    expr =
+      SeFun
+        "not"
+        [SeVar "x0" (STyName "Answer")]
+        (scalaTypeScheme (STyName "Answer"))
+        (STeMatch
+          (STeVar "x0")
+          [ (SPCtor "Yes" [], STeVar "No")
+          , (SPCtor "No" [], STeVar "Yes")
+          ])
+
+    expected =
+      "def not(x0: Answer): Answer = x0 match\n" <>
+      "  case Yes => No\n" <>
+      "  case No => Yes\n"
+
 printScala3Tests :: Test
 printScala3Tests =
     TestList
@@ -106,4 +131,5 @@ printScala3Tests =
         , TestLabel "combineLines" testCombineLines
         , TestLabel "printCaseClass" testPrintCaseClass
         , TestLabel "printScala3" testPrintScala3
+        , TestLabel "testPrintMatch" testPrintMatch
         ]
