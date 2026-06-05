@@ -87,3 +87,11 @@ data List (X : Set) : Set where
 -- {-# COMPILE AGDA2SCALA emptyNatList #-}
 -- TODO handle variance
 
+-- pattern matching
+
+not : Answer -> Answer
+not Yes  = No
+not No = Yes
+{-# COMPILE AGDA2SCALA not #-}
+-- {-# COMPILE AGDA2SCALA_DEBUG not #-}
+

@@ -8,7 +8,7 @@ import Test.HUnit (
  )
 
 import NameEnvTest (nameEnvTests)
-import NamePolicyTest (tests)
+import NamePolicyTest (namePolicytests)
 import PrintScala2Test (printScala2Tests)
 import PrintScala3Test (printScala3Tests)
 import ScalaBackendTest (backendTests)
@@ -20,6 +20,7 @@ allTests =
         , printScala2Tests
         , printScala3Tests
         , nameEnvTests
+        , namePolicytests
         ]
 
 main :: IO ()

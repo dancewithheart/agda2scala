@@ -22,6 +22,7 @@ import Agda.Compiler.Scala.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
   , ScalaName
+  , ScalaPat(..)
   , ScalaTerm(..)
   , SeVar(..)
   )
@@ -82,3 +83,31 @@ lowerTerm policy =
 
     STeError err ->
       STeError err
+
+    STeMatch scrut alts ->
+      STeMatch
+        (lowerTerm policy scrut)
+        [ (lowerPat policy pat, lowerTerm policy rhs)
+        | (pat, rhs) <- alts
+        ]
+
+lowerPat :: NamePolicy -> ScalaPat -> ScalaPat
+lowerPat policy =
+  \case
+    SPWild ->
+      SPWild
+
+    SPVar name ->
+      SPVar (termName policy name)
+
+    SPCtor name args ->
+      SPCtor (ctorName policy name) (map (lowerPat policy) args)
+
+    SPLitInt n ->
+      SPLitInt n
+
+    SPLitBool b ->
+      SPLitBool b
+
+    SPLitString s ->
+      SPLitString s

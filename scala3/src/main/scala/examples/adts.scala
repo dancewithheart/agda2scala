@@ -35,3 +35,7 @@ object adts:
   enum List[X]:
     case Nil extends List[Nothing]
     case Cons[X](x0: X, x1: List[X]) extends List[X]
+
+  def not(x0: Answer): Answer = x0 match
+    case Answer.Yes => Answer.No
+    case Answer.No => Answer.Yes

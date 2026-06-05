@@ -9,16 +9,26 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
 ) where
 
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
+import qualified Data.Map as Map
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (ConHead (..), Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
-import Agda.TypeChecking.CompiledClause (CompiledClauses, CompiledClauses' (..))
+import Agda.TypeChecking.CompiledClause
+  ( Case(..)
+  , CompiledClauses
+  , CompiledClauses'(..)
+  , WithArity(..)
+  )
 import qualified Data.Text as T
 
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError (..), fromQName)
 import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
-import Agda.Compiler.Scala.ScalaExpr (ScalaName, ScalaTerm (..))
+import Agda.Compiler.Scala.ScalaExpr
+  ( ScalaName
+  , ScalaPat(..)
+  , ScalaTerm(..)
+  )
 
 -- ===== Term variable environment ============================================
 
@@ -41,12 +51,32 @@ lookupVar (Env xs) i =
 -- ===== Function bodies =======================================================
 
 compileFunctionBody :: [ScalaName] -> Maybe CompiledClauses -> Either CompileError ScalaTerm
-compileFunctionBody _ Nothing = Left UnsupportedCompiledClauses
-compileFunctionBody argNs (Just cc) =
-    case cc of
-        Case{} -> Left UnsupportedCompiledClauses
-        Done _ term -> compileBodyTerm (envFromArgs argNs) term
-        _ -> Left UnsupportedCompiledClauses
+compileFunctionBody _ Nothing       = Left UnsupportedCompiledClauses
+compileFunctionBody argNs (Just cc) = compileCompiledClauses (envFromArgs argNs) cc
+
+compileCompiledClauses :: Env -> CompiledClauses -> Either CompileError ScalaTerm
+compileCompiledClauses env = \case
+    Done _ term -> compileBodyTerm env term
+    Case arg branches -> do
+      scrut <- STeVar <$> lookupVar env (unArg arg)
+      alts <- compileBranches env branches
+      pure (STeMatch scrut alts)
+    _ -> Left UnsupportedCompiledClauses
+
+compileBranches :: Env -> Case CompiledClauses -> Either CompileError [(ScalaPat, ScalaTerm)]
+compileBranches env branches
+    | projPatterns branches = Left UnsupportedCompiledClauses
+    | not (Map.null (litBranches branches)) = Left UnsupportedCompiledClauses
+    | isJust (catchallBranch branches) = Left UnsupportedCompiledClauses
+    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
+    | otherwise = traverse compileConBranch (Map.toList (conBranches branches))
+  where
+    compileConBranch (conQName, WithArity arity cc)
+      | arity == 0 = do
+          rhs <- compileCompiledClauses env cc
+          pure (SPCtor (fromQName conQName) [], rhs)
+      | otherwise =
+          Left UnsupportedCompiledClauses
 
 -- ===== Terms ================================================================
 

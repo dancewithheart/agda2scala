@@ -10,9 +10,12 @@ import Agda.Compiler.Scala.PrintScala3 (
  )
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
+    ScalaPat (..),
     ScalaExpr (..),
+    ScalaTerm (..),
     ScalaType (..),
     SeVar (..),
+    scalaTypeScheme
  )
 import Test.HUnit (Test (..), assertEqual)
 
@@ -97,6 +100,53 @@ testPrintScala3 =
             <> "    case Light\n"
             <> "    case Dark\n"
 
+testPrintMatch :: Test
+testPrintMatch = TestCase $
+    assertEqual "printScala3 match"
+        expected
+        (printScala3 expr)
+  where
+    expr =
+        SeFun
+            "not"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeVar "Answer.No")
+                , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
+                ]
+            )
+    expected =
+        "def not(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => Answer.No\n"
+            <> "    case Answer.No => Answer.Yes"
+            <> "\n"
+
+testPrintMatchWithAppRhs :: Test
+testPrintMatchWithAppRhs = TestCase $
+    assertEqual "printScala3 match with application rhs"
+        expected
+        (printScala3 expr)
+  where
+    expr =
+        SeFun
+            "normalize"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeApp (STeVar "wrap") [STeVar "Answer.No"])
+                , (SPCtor "Answer.No" [], STeApp (STeVar "wrap") [STeVar "Answer.Yes"])
+                ]
+            )
+
+    expected =
+        "def normalize(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => wrap(Answer.No)\n"
+            <> "    case Answer.No => wrap(Answer.Yes)"
+            <> "\n"
+
 printScala3Tests :: Test
 printScala3Tests =
     TestList
@@ -106,4 +156,6 @@ printScala3Tests =
         , TestLabel "combineLines" testCombineLines
         , TestLabel "printCaseClass" testPrintCaseClass
         , TestLabel "printScala3" testPrintScala3
+        , TestLabel "testPrintMatch" testPrintMatch
+        , TestLabel "testPrintMatchWithAppRhs" testPrintMatchWithAppRhs
         ]

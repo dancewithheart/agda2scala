@@ -11,6 +11,7 @@ import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaName,
+    ScalaPat(..),
     ScalaTerm (..),
     ScalaType (..),
     ScalaTypeScheme (..),
@@ -43,8 +44,8 @@ printScala3 def = case def of
             <> exprSeparator
             <> printTerm funBody
             <> defsSeparator
-    (SeProd name tyParams args) -> printCaseClass name args <> defsSeparator
-    (SeUnhandled "" payload) -> ""
+    (SeProd name _tyParams args) -> printCaseClass name args <> defsSeparator
+    (SeUnhandled "" _payload) -> ""
     (SeUnhandled name payload) -> "TODO In printScala3 got SeUnhandled " ++ show name ++ " " ++ show payload
 
 -- ===== Sum types ============================================================
@@ -75,7 +76,7 @@ asBottom :: [ScalaName] -> [ScalaName]
 asBottom ps = replicate (length ps) "Nothing"
 
 printExtends :: ScalaName -> [ScalaName] -> String
-printExtends name [] = ""
+printExtends _ [] = ""
 printExtends name tyParams = " extends " <> name <> printTyParams tyParams
 
 ctorParam :: Int -> ScalaType -> String
@@ -103,6 +104,38 @@ printTerm (STeLitInt n) = show n
 printTerm (STeLitBool b) = if b then "true" else "false"
 printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
 printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+printTerm (STeMatch scrut alts) =
+  printTerm scrut <> " match" <> defsSeparator
+    <> combineLinesWithIndent (indent <> indent) (map printCase alts)
+
+printCase :: (ScalaPat, ScalaTerm) -> String
+printCase (pat, rhs) =
+  "case" <> exprSeparator <> printPat pat
+    <> exprSeparator <> "=>" <> exprSeparator <> printTerm rhs
+
+printPat :: ScalaPat -> String
+printPat pat =
+  case pat of
+    SPWild ->
+      "_"
+
+    SPVar name ->
+      name
+
+    SPCtor name [] ->
+      name
+
+    SPCtor name args ->
+      name <> "(" <> intercalate ", " (map printPat args) <> ")"
+
+    SPLitInt n ->
+      show n
+
+    SPLitBool b ->
+      if b then "true" else "false"
+
+    SPLitString s ->
+      "\"" <> escapeScalaString s <> "\""
 
 -- Escaping for Scala string literal content (no surrounding quotes).
 escapeScalaString :: String -> String
@@ -142,10 +175,6 @@ printEnum adtName = "enum" <> exprSeparator <> adtName
 printCaseObject :: ScalaName -> ScalaName -> String
 printCaseObject superName caseName =
     "case object" <> exprSeparator <> caseName <> exprSeparator <> "extends" <> exprSeparator <> superName
-
-printEnumCase :: ScalaName -> String
-printEnumCase caseName =
-    "case" <> exprSeparator <> caseName
 
 printPackageAndObject :: [ScalaName] -> String
 printPackageAndObject [] = ""
@@ -196,4 +225,4 @@ combineLines :: [String] -> String
 combineLines xs = strip $ unlines (filter (not . null) xs)
 
 combineLinesWithIndent :: String -> [String] -> String
-combineLinesWithIndent indent xs = strip $ unlines (fmap (indent ++) (filter (not . null) xs))
+combineLinesWithIndent indent' xs = strip $ unlines (fmap (indent' ++) (filter (not . null) xs))
