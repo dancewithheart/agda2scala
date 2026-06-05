@@ -9,7 +9,7 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
 ) where
 
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import qualified Data.Map as Map
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (ConHead (..), Elim' (..), Term (..))
@@ -64,8 +64,12 @@ compileCompiledClauses env = \case
     _ -> Left UnsupportedCompiledClauses
 
 compileBranches :: Env -> Case CompiledClauses -> Either CompileError [(ScalaPat, ScalaTerm)]
-compileBranches env branches =
-  traverse compileConBranch (Map.toList (conBranches branches))
+compileBranches env branches
+    | projPatterns branches = Left UnsupportedCompiledClauses
+    | not (Map.null (litBranches branches)) = Left UnsupportedCompiledClauses
+    | isJust (catchallBranch branches) = Left UnsupportedCompiledClauses
+    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
+    | otherwise = traverse compileConBranch (Map.toList (conBranches branches))
   where
     compileConBranch (conQName, WithArity arity cc)
       | arity == 0 = do
