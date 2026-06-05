@@ -102,25 +102,50 @@ testPrintScala3 =
 
 testPrintMatch :: Test
 testPrintMatch = TestCase $
-  assertEqual "printScala3 match"
-    expected
-    (printScala3 expr)
+    assertEqual "printScala3 match"
+        expected
+        (printScala3 expr)
   where
     expr =
-      SeFun
-        "not"
-        [SeVar "x0" (STyName "Answer")]
-        (scalaTypeScheme (STyName "Answer"))
-        (STeMatch
-          (STeVar "x0")
-          [ (SPCtor "Yes" [], STeVar "No")
-          , (SPCtor "No" [], STeVar "Yes")
-          ])
+        SeFun
+            "not"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeVar "Answer.No")
+                , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
+                ]
+            )
+    expected =
+        "def not(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => Answer.No\n"
+            <> "    case Answer.No => Answer.Yes"
+            <> "\n"
+
+testPrintMatchWithAppRhs :: Test
+testPrintMatchWithAppRhs = TestCase $
+    assertEqual "printScala3 match with application rhs"
+        expected
+        (printScala3 expr)
+  where
+    expr =
+        SeFun
+            "normalize"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeApp (STeVar "wrap") [STeVar "Answer.No"])
+                , (SPCtor "Answer.No" [], STeApp (STeVar "wrap") [STeVar "Answer.Yes"])
+                ]
+            )
 
     expected =
-      "def not(x0: Answer): Answer = x0 match\n" <>
-      "  case Yes => No\n" <>
-      "  case No => Yes\n"
+        "def normalize(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => wrap(Answer.No)\n"
+            <> "    case Answer.No => wrap(Answer.Yes)"
+            <> "\n"
 
 printScala3Tests :: Test
 printScala3Tests =
@@ -132,4 +157,5 @@ printScala3Tests =
         , TestLabel "printCaseClass" testPrintCaseClass
         , TestLabel "printScala3" testPrintScala3
         , TestLabel "testPrintMatch" testPrintMatch
+        , TestLabel "testPrintMatchWithAppRhs" testPrintMatchWithAppRhs
         ]

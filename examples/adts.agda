@@ -16,12 +16,6 @@ data Answer : Set where
    No : Answer
 {-# COMPILE AGDA2SCALA Answer #-}
 
-not : Answer -> Answer
-not Yes  = No
-not No = Yes
-{-# COMPILE AGDA2SCALA not #-}
-{-# COMPILE AGDA2SCALA_DEBUG not #-}
-
 -- simple sum type with arguments - sealed trait + case class
 
 data Color : Set where
@@ -92,4 +86,12 @@ data List (X : Set) : Set where
 --emptyNatList = []
 -- {-# COMPILE AGDA2SCALA emptyNatList #-}
 -- TODO handle variance
+
+-- pattern matching
+
+not : Answer -> Answer
+not Yes  = No
+not No = Yes
+{-# COMPILE AGDA2SCALA not #-}
+-- {-# COMPILE AGDA2SCALA_DEBUG not #-}
 

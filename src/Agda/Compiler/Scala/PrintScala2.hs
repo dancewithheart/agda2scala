@@ -122,8 +122,8 @@ printTerm x = case x of
     STeLitString s -> "\"" <> escapeScalaString s <> "\""
     STeMatch scrut alts ->
       printTerm scrut <> sp <> "match" <> sp <> "{\n"
-        <> unlines (map (indentBlock 2 . printCase) alts)
-        <> "}"
+          <> concatMap (indentBlock 2 . printCase) alts
+          <> "}"
     STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
 
 printCase :: (ScalaPat, ScalaTerm) -> String

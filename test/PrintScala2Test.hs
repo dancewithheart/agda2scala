@@ -206,26 +206,26 @@ testPolyDef =
 
 testPrintMatch :: Test
 testPrintMatch = TestCase $
-  assertEqual "printScala2 match"
-    expected
-    (printScala2 expr)
+    assertEqual "printScala2 match"
+        expected
+        (printScala2 expr)
   where
     expr =
-      SeFun
-        "not"
-        [SeVar "x0" (STyName "Answer")]
-        (scalaTypeScheme (STyName "Answer"))
-        (STeMatch
-          (STeVar "x0")
-          [ (SPCtor "Yes" [], STeVar "No")
-          , (SPCtor "No" [], STeVar "Yes")
-          ])
-
+        SeFun
+            "not"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeVar "Answer.No")
+                , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
+                ]
+            )
     expected =
-      "def not(x0: Answer): Answer = x0 match {\n" <>
-      "  case Yes => No\n" <>
-      "  case No => Yes\n" <>
-      "}\n"
+        "def not(x0: Answer): Answer = x0 match {\n"
+            <> "  case Answer.Yes => Answer.No\n"
+            <> "  case Answer.No => Answer.Yes\n"
+            <> "}\n"
 
 printScala2Tests :: Test
 printScala2Tests =

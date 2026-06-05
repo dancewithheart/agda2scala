@@ -106,7 +106,7 @@ printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
 printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
 printTerm (STeMatch scrut alts) =
   printTerm scrut <> " match" <> defsSeparator
-    <> combineLinesWithIndent indent (map printCase alts)
+    <> combineLinesWithIndent (indent <> indent) (map printCase alts)
 
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
