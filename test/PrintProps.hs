@@ -10,7 +10,7 @@ module PrintProps (tests) where
 
 import Data.List (isInfixOf)
 
-import Hedgehog (Gen (..), Group (..), GroupName (..), Property, PropertyName (..), assert, forAll, property, success, (===))
+import Hedgehog (Gen (..), Group (..), Property, assert, forAll, property, success, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
