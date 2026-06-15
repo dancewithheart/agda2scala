@@ -3,6 +3,7 @@
 module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     Env (..),
     envFromArgs,
+    extendEnv,
     lookupVar,
     compileFunctionBody,
     compileBodyTerm,
@@ -71,12 +72,12 @@ compileBranches env branches
     | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
     | otherwise = traverse compileConBranch (Map.toList (conBranches branches))
   where
-    compileConBranch (conQName, WithArity arity cc)
-      | arity == 0 = do
-          rhs <- compileCompiledClauses env cc
-          pure (SPCtor (fromQName conQName) [], rhs)
-      | otherwise =
-          Left UnsupportedCompiledClauses
+    compileConBranch (conQName, WithArity arityN cc) = do
+      let patVars = freshPatVars arityN
+          pat     = SPCtor (fromQName conQName) (map SPVar patVars)
+          env'    = extendEnv patVars env
+      rhs <- compileCompiledClauses env' cc
+      pure (pat, rhs)
 
 -- ===== Terms ================================================================
 
@@ -123,3 +124,20 @@ compileLiteral = \case
     LitWord64 n -> pure (STeLitInt (fromIntegral n))
     LitString s -> pure (STeLitString (T.unpack s))
     l -> Left (UnsupportedTerm (Lit l))
+
+freshPatVars :: Int -> [ScalaName]
+freshPatVars arityN =
+  [ "p" <> show i | i <- [0 .. arityN - 1] ]
+
+-- Agda de Bruijn convention used here:
+-- Env index 0 is the most recently introduced binder.
+--
+-- Constructor arguments are printed left-to-right:
+--   C(p0, p1)
+--
+-- But de Bruijn lookup sees the newest binder first:
+--   Var 0 -> p1
+--   Var 1 -> p0
+extendEnv :: [ScalaName] -> Env -> Env
+extendEnv names (Env xs) =
+  Env (reverse names <> xs)

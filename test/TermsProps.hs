@@ -10,13 +10,14 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Terms (compileBodyTerm, Env(..))
 import Agda.Compiler.Scala.ScalaExpr (ScalaTerm(..))
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError)
 
-import Agda.Syntax.Common (Arg(..), defaultArg)
+import Agda.Syntax.Common (Arg, defaultArg)
 import Agda.Syntax.Internal (Term(..), Elim'(..))
 
 tests :: Group
 tests =
   Group "Terms / application"
     [ ("Def with k Apply args compiles to application of arity k", prop_def_apply_arity)
+    , ("pattern vars extend Env with newest binder at index 0", prop_extendEnv_patternVarsNewestFirst)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -41,3 +42,12 @@ prop_def_apply_arity = property $ do
         _             -> do
           annotateShow tm
           failure
+
+prop_extendEnv_patternVarsNewestFirst :: Property
+prop_extendEnv_patternVarsNewestFirst = property $ do
+  arity <- forAll (Gen.int (Range.linear 0 8))
+  let patVars = [ "p" <> show i | i <- [0 .. arity - 1] ]
+      env     = extendEnv patVars (Env ["old"])
+  traverse_
+    (\(i, expected) -> lookupVar env i === Right expected)
+    (zip [0 ..] (reverse patVars))
