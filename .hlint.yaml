@@ -2,3 +2,4 @@
 
 - ignore: {name: "Redundant bracket"}
 - ignore: {name: "Eta reduce"}
+- ignore: {name: "Avoid lambda"}
