@@ -1,0 +1,4 @@
+# .hlint.yaml
+
+- ignore: {name: "Redundant bracket"}
+- ignore: {name: "Eta reduce"}

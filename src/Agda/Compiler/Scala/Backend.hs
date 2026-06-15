@@ -246,7 +246,7 @@ scalaPreModule ::
     Maybe FilePath ->
     TCM (Recompile ScalaModuleEnv ScalaModule)
 scalaPreModule _ _ _ _ = do
-    menv <- liftIO $ initModuleEnv
+    menv <- liftIO initModuleEnv
     pure $ Recompile menv
 
 initModuleEnv :: IO ScalaModuleEnv

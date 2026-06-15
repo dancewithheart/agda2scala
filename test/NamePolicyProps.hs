@@ -98,11 +98,13 @@ prop_semigroup_assoc = property $ do
     c <- forAll genPolicy
     (a <> b) <> c === a <> (b <> c)
 
+{- HLINT ignore "Monoid law, left identity" -}
 prop_monoid_left_identity :: Property
 prop_monoid_left_identity = property $ do
     a <- forAll genPolicy
     mempty <> a === a
 
+{- HLINT ignore "Monoid law, right identity" -}
 prop_monoid_right_identity :: Property
 prop_monoid_right_identity = property $ do
     a <- forAll genPolicy

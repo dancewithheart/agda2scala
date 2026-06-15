@@ -174,6 +174,7 @@ prop_sanitize_idempotent = property $ do
     s <- forAll genAnyString
     sanitizeScalaIdent (sanitizeScalaIdent s) === sanitizeScalaIdent s
 
+{- HLINT ignore "Hoist not" -}
 -- allocFreshLocal never returns a keyword, never duplicates
 prop_allocFreshLocal_unique_nonKeyword :: Property
 prop_allocFreshLocal_unique_nonKeyword = property $ do
