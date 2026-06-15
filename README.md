@@ -60,20 +60,20 @@ object adts:
   def hello(): String = "Hello World!"
 ```
 
-More [Agda examples](./examples/adts.agda)
+More [Agda examples](./examples/adts.agda) and [output Scala 3 code](./scala3/src/main/scala/examples/adts.scala).
 
 ## Architecture
 
 We use 2 internal representation
-1 AgdaIR is close to Agda compiler representation
-2. ScalaIR is close to Scala language representation
+1. [AgdaIR](./src/Agda/Compiler/Scala/IR/Agda.hs) is close to Agda compiler representation
+2. [ScalaIR](./src/Agda/Compiler/Scala/IR/Scala.hs) is close to Scala language representation
 
 ```text
              TCM glue                      prettyPrint
 Definition ==========> AgdaIR ==> ScalaIR ============> String
 ```
 
-At the end we choose between Scala2 and Scala3 syntax.
+At the end we choose between [Scala 2](./src/Agda/Compiler/Scala/Print/PrintScala2.hs) and [Scala 3](./src/Agda/Compiler/Scala/Print/PrintScala3.hs) syntax.
 Possible future directions: Kotlin, Java, JVM bytecode
 
 ## Identifier mapping
@@ -85,7 +85,7 @@ We apply a small mapping table for common constructors and then sanitize the res
 - `_∷_` / `_::_` / `_cons_` → `Cons`
 - `_,_` → `Pair`
 
-See `Agda.Compiler.Scala.NamePolicy`.
+See [Agda.Compiler.Scala.NamePolicy](./src/Agda/Compiler/Scala/NamePolicy.hs).
 
 ## Working with source code
 
@@ -143,6 +143,10 @@ cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./ex
 ```sh
 fourmolu -i $(find src app test -name '*.hs')
 cabal-fmt -i agda2scala.cabal
+```
+
+* static code analysis using [HLint](https://hackage.haskell.org/package/hlint/docs/Language-Haskell-HLint.html):
+```sh
 hlint src app test
 ```
 
@@ -163,7 +167,7 @@ checks:
 * run Scala unit tests that calls Scala code
 ```
 
-Those tests are run on CI - Github Actions
+Those tests are [run on CI - Github Actions](/.github/workflows/haskell.yml).
 
 Generate Scala 2 code from Agda examples and running tests:
 ```shell
