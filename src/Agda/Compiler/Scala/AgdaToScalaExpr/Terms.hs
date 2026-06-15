@@ -23,7 +23,10 @@ import Agda.TypeChecking.CompiledClause
   )
 import qualified Data.Text as T
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError (..), fromQName)
+import Agda.Compiler.Scala.AgdaToScalaExpr.Types
+  ( CompileError (..)
+  , CaseUnsupported (..)
+  , fromQName)
 import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
 import Agda.Compiler.Scala.ScalaExpr
   ( ScalaName
@@ -78,10 +81,10 @@ compileBranches env branches = do
 
 validateCaseShape :: Case CompiledClauses -> Either CompileError ()
 validateCaseShape branches
-    | projPatterns branches                  = Left UnsupportedCompiledClauses
-    | not (Map.null (litBranches branches))  = Left UnsupportedCompiledClauses
-    | isJust (catchallBranch branches)       = Left UnsupportedCompiledClauses
-    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
+    | projPatterns branches                  = Left $ UnsupportedCaseShape HasProjectionPatterns
+    | not (Map.null (litBranches branches))  = Left $ UnsupportedCaseShape HasLiteralBranches
+    | isJust (catchallBranch branches)       = Left $ UnsupportedCaseShape HasCatchAllBranch
+    | fromMaybe False (fallThrough branches) = Left $ UnsupportedCaseShape HasFallThrough
     | otherwise                              = Right ()
 
 -- ===== Terms ================================================================

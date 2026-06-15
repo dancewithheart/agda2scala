@@ -2,6 +2,7 @@
 
 module Agda.Compiler.Scala.AgdaToScalaExpr.Types (
     CompileError (..),
+    CaseUnsupported (..),
     TyEnv (..),
     emptyTyEnv,
     lookupTyVar,
@@ -52,12 +53,20 @@ import Agda.Compiler.Scala.ScalaExpr (
 -- ===== Errors ================================================================
 
 data CompileError
-    = UnsupportedDefinition QName
-    | UnsupportedType Type
-    | UnsupportedTerm Term
-    | UnsupportedCompiledClauses
-    | VarOutOfRange Int Int
-    deriving (Eq, Show)
+  = UnsupportedDefinition QName
+  | UnsupportedType Type
+  | UnsupportedTerm Term
+  | UnsupportedCompiledClauses
+  | UnsupportedCaseShape CaseUnsupported
+  | VarOutOfRange Int Int
+  deriving (Eq, Show)
+
+data CaseUnsupported
+  = HasLiteralBranches
+  | HasCatchAllBranch
+  | HasFallThrough
+  | HasProjectionPatterns
+  deriving (Eq, Show)
 
 -- ===== Type variable environment ============================================
 
