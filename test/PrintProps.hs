@@ -22,8 +22,9 @@ import Agda.Compiler.Scala.ScalaExpr (
     scalaTypeScheme,
  )
 
-import Agda.Compiler.Scala.PrintScala2 (escapeScalaString, printScala2, printType)
-import Agda.Compiler.Scala.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.Print.Common (escapeScalaString)
+import Agda.Compiler.Scala.Print.PrintScala2 (printScala2, printType)
+import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
 
 tests :: Group
 tests =

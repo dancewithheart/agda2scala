@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.PrintScala2 (
+module Agda.Compiler.Scala.Print.PrintScala2 (
     printScala2,
     printCaseObject,
     printSealedTrait,
@@ -6,12 +6,12 @@ module Agda.Compiler.Scala.PrintScala2 (
     printCaseClass,
     printSum,
     printType,
-    combineLines,
-    escapeScalaString,
+    combineLines
 ) where
 
 import Data.List (dropWhileEnd, intercalate)
 
+import Agda.Compiler.Scala.Print.Common (escapeScalaString)
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
@@ -153,26 +153,6 @@ printPat pat =
 
     SPLitString s ->
       "\"" <> escapeScalaString s <> "\""
-
--- Escaping for Scala string literal content (no surrounding quotes).
-escapeScalaString :: String -> String
-escapeScalaString = concatMap $ \c -> case c of
-    '\\' -> "\\\\"
-    '\"' -> "\\\""
-    '\n' -> "\\n"
-    '\r' -> "\\r"
-    '\t' -> "\\t"
-    '\b' -> "\\b"
-    '\f' -> "\\f"
-    _
-        | c < ' ' -> unicodeEscape c
-        | otherwise -> [c]
-  where
-    unicodeEscape ch =
-        let n = fromEnum ch
-            hex = "0123456789abcdef"
-            h k = hex !! ((n `div` (16 ^ k)) `mod` 16)
-         in ['\\', 'u', h 3, h 2, h 1, h 0]
 
 -- ===== Types ================================================================
 

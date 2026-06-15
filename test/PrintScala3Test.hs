@@ -1,6 +1,6 @@
 module PrintScala3Test (printScala3Tests) where
 
-import Agda.Compiler.Scala.PrintScala3 (
+import Agda.Compiler.Scala.Print.PrintScala3 (
     combineLines,
     printCaseClass,
     printCaseObject,
