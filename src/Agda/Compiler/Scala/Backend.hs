@@ -59,8 +59,8 @@ import Agda.Utils.GetOpt (ArgDescr (ReqArg), OptDescr (Option))
 
 import Agda.Compiler.Scala.AgdaToScalaExpr (CompileError, compileDefn)
 import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv, lookupCtorOwner, registerCtors)
-import Agda.Compiler.Scala.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.Print.PrintScala2 (printScala2)
+import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
 import Agda.Compiler.Scala.ScalaExpr
   ( ScalaExpr (..)
   , ScalaPat (..)

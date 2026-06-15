@@ -15,8 +15,8 @@ import Agda.Compiler.Scala.Backend (
     shouldWriteModule,
  )
 import Agda.Compiler.Scala.NameEnv (emptyNameEnv)
-import Agda.Compiler.Scala.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.Print.PrintScala2 (printScala2)
+import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
 import Agda.Compiler.Scala.ScalaExpr (ScalaCtor (..), ScalaExpr (..))
 
 testIsEnabled :: Test

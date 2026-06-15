@@ -3,6 +3,7 @@
 module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     Env (..),
     envFromArgs,
+    extendEnv,
     lookupVar,
     compileFunctionBody,
     compileBodyTerm,
@@ -22,7 +23,10 @@ import Agda.TypeChecking.CompiledClause
   )
 import qualified Data.Text as T
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError (..), fromQName)
+import Agda.Compiler.Scala.AgdaToScalaExpr.Types
+  ( CompileError (..)
+  , CaseUnsupported (..)
+  , fromQName)
 import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
 import Agda.Compiler.Scala.ScalaExpr
   ( ScalaName
@@ -64,19 +68,24 @@ compileCompiledClauses env = \case
     _ -> Left UnsupportedCompiledClauses
 
 compileBranches :: Env -> Case CompiledClauses -> Either CompileError [(ScalaPat, ScalaTerm)]
-compileBranches env branches
-    | projPatterns branches = Left UnsupportedCompiledClauses
-    | not (Map.null (litBranches branches)) = Left UnsupportedCompiledClauses
-    | isJust (catchallBranch branches) = Left UnsupportedCompiledClauses
-    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
-    | otherwise = traverse compileConBranch (Map.toList (conBranches branches))
+compileBranches env branches = do
+    validateCaseShape branches
+    traverse compileConBranch (Map.toList (conBranches branches))
   where
-    compileConBranch (conQName, WithArity arity cc)
-      | arity == 0 = do
-          rhs <- compileCompiledClauses env cc
-          pure (SPCtor (fromQName conQName) [], rhs)
-      | otherwise =
-          Left UnsupportedCompiledClauses
+    compileConBranch (conQName, WithArity arityN cc) = do
+      let patVars = freshPatVars arityN
+          pat     = SPCtor (fromQName conQName) (map SPVar patVars)
+          env'    = extendEnv patVars env
+      rhs <- compileCompiledClauses env' cc
+      pure (pat, rhs)
+
+validateCaseShape :: Case CompiledClauses -> Either CompileError ()
+validateCaseShape branches
+    | projPatterns branches                  = Left $ UnsupportedCaseShape HasProjectionPatterns
+    | not (Map.null (litBranches branches))  = Left $ UnsupportedCaseShape HasLiteralBranches
+    | isJust (catchallBranch branches)       = Left $ UnsupportedCaseShape HasCatchAllBranch
+    | fromMaybe False (fallThrough branches) = Left $ UnsupportedCaseShape HasFallThrough
+    | otherwise                              = Right ()
 
 -- ===== Terms ================================================================
 
@@ -123,3 +132,20 @@ compileLiteral = \case
     LitWord64 n -> pure (STeLitInt (fromIntegral n))
     LitString s -> pure (STeLitString (T.unpack s))
     l -> Left (UnsupportedTerm (Lit l))
+
+freshPatVars :: Int -> [ScalaName]
+freshPatVars arityN =
+  [ "p" <> show i | i <- [0 .. arityN - 1] ]
+
+-- Agda de Bruijn convention used here:
+-- Env index 0 is the most recently introduced binder.
+--
+-- Constructor arguments are printed left-to-right:
+--   C(p0, p1)
+--
+-- But de Bruijn lookup sees the newest binder first:
+--   Var 0 -> p1
+--   Var 1 -> p0
+extendEnv :: [ScalaName] -> Env -> Env
+extendEnv names (Env xs) =
+  Env (reverse names <> xs)

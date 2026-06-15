@@ -95,3 +95,7 @@ not No = Yes
 {-# COMPILE AGDA2SCALA not #-}
 -- {-# COMPILE AGDA2SCALA_DEBUG not #-}
 
+unColor : Color -> Rgb
+unColor (Light c) = c
+unColor (Dark c)  = c
+{-# COMPILE AGDA2SCALA unColor #-}

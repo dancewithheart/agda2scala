@@ -40,8 +40,9 @@ library
     Agda.Compiler.Scala.Backend
     Agda.Compiler.Scala.NameEnv
     Agda.Compiler.Scala.NamePolicy
-    Agda.Compiler.Scala.PrintScala2
-    Agda.Compiler.Scala.PrintScala3
+    Agda.Compiler.Scala.Print.Common
+    Agda.Compiler.Scala.Print.PrintScala2
+    Agda.Compiler.Scala.Print.PrintScala3
     Agda.Compiler.Scala.ScalaExpr
     Agda.Compiler.Scala.IR.Agda
     Agda.Compiler.Scala.IR.Scala
