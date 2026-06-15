@@ -2,22 +2,32 @@
 
 module TermsProps (tests) where
 
-import Hedgehog (Group(..), Property, property, forAll, (===))
+import Data.Foldable (traverse_)
+import Hedgehog
+  ( Group(..)
+  , Property
+  , forAll
+  , property
+  , (===)
+  )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Terms (compileBodyTerm, Env(..))
-import Agda.Compiler.Scala.ScalaExpr (ScalaTerm(..))
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError)
-
-import Agda.Syntax.Common (Arg, defaultArg)
-import Agda.Syntax.Internal (Term(..), Elim'(..))
+import Agda.Compiler.Scala.AgdaToScalaExpr.Terms
+  ( Env(..)
+  , envFromArgs
+  , extendEnv
+  , lookupVar
+  )
+import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError(..))
 
 tests :: Group
 tests =
-  Group "Terms / application"
+  Group "Terms / Env / application"
     [ ("Def with k Apply args compiles to application of arity k", prop_def_apply_arity)
     , ("pattern vars extend Env with newest binder at index 0", prop_extendEnv_patternVarsNewestFirst)
+    , ("function args enter Env with last arg at index 0", prop_envFromArgs_functionArgsNewestFirst)
+    , ("lookupVar reports index and Env size when out of range", prop_lookupVar_outOfRange)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -43,11 +53,40 @@ prop_def_apply_arity = property $ do
           annotateShow tm
           failure
 
+-- f x0 x1 x2 becomes Env ["x2", "x1", "x0"]
+-- so
+-- Var 0 -> x2
+-- Var 1 -> x1
+-- Var 2 -> x0
+prop_envFromArgs_functionArgsNewestFirst :: Property
+prop_envFromArgs_functionArgsNewestFirst = property $ do
+  argCount <- forAll (Gen.int (Range.linear 1 12))
+  let args = [ "x" <> show i | i <- [0 .. argCount - 1] ]
+      env  = envFromArgs args
+  traverse_
+    (\(i, expected) -> lookupVar env i === Right expected)
+    (zip [0 ..] (reverse args))
+
 prop_extendEnv_patternVarsNewestFirst :: Property
 prop_extendEnv_patternVarsNewestFirst = property $ do
-  arity <- forAll (Gen.int (Range.linear 0 8))
-  let patVars = [ "p" <> show i | i <- [0 .. arity - 1] ]
-      env     = extendEnv patVars (Env ["old"])
+  oldCount <- forAll (Gen.int (Range.linear 0 8))
+  patCount <- forAll (Gen.int (Range.linear 1 8))
+  let oldVars = [ "x" <> show i | i <- [0 .. oldCount - 1] ]
+      patVars = [ "p" <> show i | i <- [0 .. patCount - 1] ]
+      oldEnv = envFromArgs oldVars
+      env    = extendEnv patVars oldEnv
   traverse_
     (\(i, expected) -> lookupVar env i === Right expected)
     (zip [0 ..] (reverse patVars))
+  traverse_
+    (\(i, expected) -> lookupVar env (patCount + i) === Right expected)
+    (zip [0 ..] (reverse oldVars))
+
+prop_lookupVar_outOfRange :: Property
+prop_lookupVar_outOfRange = property $ do
+  size <- forAll (Gen.int (Range.linear 0 12))
+  extra <- forAll (Gen.int (Range.linear 0 12))
+  let vars = [ "x" <> show i | i <- [0 .. size - 1] ]
+      env  = Env vars
+      ix   = size + extra
+  lookupVar env ix === Left (VarOutOfRange ix size)
