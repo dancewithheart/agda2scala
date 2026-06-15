@@ -67,7 +67,7 @@ jobs:
           distribution: 'adopt'
           java-version: '21'
       - name: Set up Scala and SBT
-        uses: sbt/setup-sbt@af116cce31c00823d3903ce687f9cda3a4f19f1b # v1
+        uses: sbt/setup-sbt@3afe9cf056c5d139bfc46579af1192d77a2f0821 # v1
       - name: compile & test result Scala 2 code
         run: sbt clean test
         working-directory: ./scala2
