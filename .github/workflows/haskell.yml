@@ -79,8 +79,8 @@ jobs:
       - name: Set up Scala and SBT
         uses: sbt/setup-sbt@3afe9cf056c5d139bfc46579af1192d77a2f0821 # v1
       - name: compile & test result Scala 2 code
-        run: sbt clean test
+        run: sbt ";clean;testFull"
         working-directory: ./scala2
       - name: compile & test result Scala 3 code
-        run: sbt clean test
+        run: sbt ";clean;testFull"
         working-directory: ./scala3
