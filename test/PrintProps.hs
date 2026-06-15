@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 {- | Property tests for Scala printing.
@@ -10,7 +9,7 @@ module PrintProps (tests) where
 
 import Data.List (isInfixOf)
 
-import Hedgehog (Gen (..), Group (..), Property, assert, forAll, property, success, (===))
+import Hedgehog (Gen, Group (..), Property, assert, forAll, property, success)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -46,12 +45,6 @@ type ScalaName = String
 genUpperIdent :: Gen ScalaName
 genUpperIdent = do
     c <- Gen.upper
-    cs <- Gen.list (Range.linear 0 12) (Gen.choice [Gen.alphaNum, Gen.element ['_']])
-    pure (c : cs)
-
-genLowerIdent :: Gen ScalaName
-genLowerIdent = do
-    c <- Gen.lower
     cs <- Gen.list (Range.linear 0 12) (Gen.choice [Gen.alphaNum, Gen.element ['_']])
     pure (c : cs)
 
@@ -105,11 +98,10 @@ genTyParam = do
 -- ===== Small AST builders ====================================================
 
 mkFun0 :: String -> ScalaType -> ScalaTerm -> ScalaExpr
-mkFun0 name ret body =
-    SeFun name [] (scalaTypeScheme ret) body
+mkFun0 name ret = SeFun name [] (scalaTypeScheme ret)
 
 mkModule :: [ScalaExpr] -> ScalaExpr
-mkModule defs = SePackage ["examples", "props"] defs
+mkModule = SePackage ["examples", "props"]
 
 render2 :: ScalaExpr -> String
 render2 = printScala2

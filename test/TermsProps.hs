@@ -10,10 +10,8 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Terms (compileBodyTerm, Env(..))
 import Agda.Compiler.Scala.ScalaExpr (ScalaTerm(..))
 import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError)
 
-import Agda.Syntax.Common (Arg, defaultArg)
-
+import Agda.Syntax.Common (Arg(..), defaultArg)
 import Agda.Syntax.Internal (Term(..), Elim'(..))
-import Agda.Syntax.Common (Arg(..))
 
 tests :: Group
 tests =
@@ -28,9 +26,9 @@ prop_def_apply_arity :: Property
 prop_def_apply_arity = property $ do
   k <- forAll (Gen.int (Range.linear 0 5))
 
-  let env = Env ["x0"]
-      let elims = replicate k (mkApply (Var 0 []))
-          t     = Var 0 elims
+  let env   = Env ["x0"]
+      elims = replicate k (mkApply (Var 0 []))
+      t     = Var 0 elims
 
   case compileBodyTerm env t of
     Left _ -> do
@@ -38,6 +36,8 @@ prop_def_apply_arity = property $ do
       k === 0
     Right tm ->
       case tm of
-        STeVar _       -> k === 0
-        STeApp _ args  -> length args === k
-        _              -> False === True
+        STeVar _      -> k === 0
+        STeApp _ args -> length args === k
+        _             -> do
+          annotateShow tm
+          failure

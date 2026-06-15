@@ -23,6 +23,7 @@ import Data.Version (showVersion)
 
 import Paths_agda2scala (version)
 
+{- HLINT ignore "Use fewer imports" -}
 import Agda.Compiler.Backend -- otherwise GHC complains about Backend and Backend'
 import Agda.Compiler.Backend (
     Backend,
@@ -161,9 +162,9 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                 putStrLn "===== AGDA2SCALA DEBUG ====="
                 putStrLn ("QName: " <> show qn)
                 putStrLn "defType:"
-                putStrLn (show (defType def))
+                print (defType def)
                 putStrLn "theDef:"
-                putStrLn (show (theDef def))
+                print (theDef def)
                 putStrLn "===== END DEBUG ====="
         case modulePragma of
             Nothing -> pure (noPragmaResult def)
@@ -246,7 +247,7 @@ scalaPreModule ::
     Maybe FilePath ->
     TCM (Recompile ScalaModuleEnv ScalaModule)
 scalaPreModule _ _ _ _ = do
-    menv <- liftIO $ initModuleEnv
+    menv <- liftIO initModuleEnv
     pure $ Recompile menv
 
 initModuleEnv :: IO ScalaModuleEnv

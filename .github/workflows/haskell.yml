@@ -19,6 +19,15 @@ jobs:
           cabal-version: '3.10.3'
           cabal-update: true
 
+      - name: Set up HLint
+        uses: haskell-actions/hlint-setup@fe9cd1cd1af94a23900c06738e73f6ddb092966a # v2
+
+      - name: Check with HLint
+        uses: haskell-actions/hlint-run@eaca4cfbf4a69f4eb875df38b6bc3e1657020378 # v2
+        with:
+          path: '["src/", "app/", "test/"]'
+          fail-on: warning
+
       - name: Configure the build
         run: |
           cabal configure --enable-tests --enable-benchmarks --disable-documentation
@@ -32,7 +41,7 @@ jobs:
           key: ${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}
         with:
           path: ${{ steps.setup.outputs.cabal-store }}
-          key: ${{ env.key }}-plan-${{ hashFiles('**/plan.json') }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
           restore-keys: ${{ env.key }}-
 
       - name: Install dependencies
@@ -64,8 +73,9 @@ jobs:
       - name: Set up JVM
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
-          distribution: 'adopt'
+          distribution: 'temurin'
           java-version: '21'
+          cache: 'sbt'
       - name: Set up Scala and SBT
         uses: sbt/setup-sbt@3afe9cf056c5d139bfc46579af1192d77a2f0821 # v1
       - name: compile & test result Scala 2 code
