@@ -11,7 +11,12 @@ module Agda.Compiler.Scala.Print.PrintScala2 (
 
 import Data.List (dropWhileEnd, intercalate)
 
-import Agda.Compiler.Scala.Print.Common (escapeScalaString)
+import Agda.Compiler.Scala.Print.Common
+  ( escapeScalaString
+  , printPat
+  , printType
+  , printTyParams
+  )
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
@@ -129,44 +134,6 @@ printTerm x = case x of
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
   "case" <> sp <> printPat pat <> sp <> "=>" <> sp <> printTerm rhs
-
-printPat :: ScalaPat -> String
-printPat pat =
-  case pat of
-    SPWild ->
-      "_"
-
-    SPVar name ->
-      name
-
-    SPCtor name [] ->
-      name
-
-    SPCtor name args ->
-      name <> "(" <> intercalate ", " (map printPat args) <> ")"
-
-    SPLitInt n ->
-      show n
-
-    SPLitBool b ->
-      if b then "true" else "false"
-
-    SPLitString s ->
-      "\"" <> escapeScalaString s <> "\""
-
--- ===== Types ================================================================
-
-printType :: ScalaType -> String
-printType (STyName n) = n
-printType (STyVar v) = v
-printType (STyApp n ts) =
-    n <> "[" <> intercalate ", " (map printType ts) <> "]"
-printType (STyFun a b) =
-    printType a <> " => " <> printType b
-
-printTyParams :: [ScalaName] -> String
-printTyParams [] = ""
-printTyParams ps = "[" <> intercalate ", " ps <> "]"
 
 -- ===== Vars / packages ======================================================
 

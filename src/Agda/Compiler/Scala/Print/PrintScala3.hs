@@ -7,7 +7,12 @@ module Agda.Compiler.Scala.Print.PrintScala3 (
     combineLines,
 ) where
 
-import Agda.Compiler.Scala.Print.Common (escapeScalaString)
+import Agda.Compiler.Scala.Print.Common
+  ( escapeScalaString
+  , printPat
+  , printType
+  , printTyParams
+  )
 import Agda.Compiler.Scala.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
@@ -86,16 +91,6 @@ ctorParam i ty = "x" <> show i <> colonSeparator <> exprSeparator <> printType t
 printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"
 
-printType :: ScalaType -> String
-printType (STyName name) = name
-printType (STyVar v) = v
-printType (STyApp n ts) = n <> "[" <> intercalate ", " (map printType ts) <> "]"
-printType (STyFun a b) = printType a <> " => " <> printType b
-
-printTyParams :: [ScalaName] -> String
-printTyParams [] = ""
-printTyParams ps = "[" <> intercalate ", " ps <> "]"
-
 printTerm :: ScalaTerm -> String
 printTerm (STeVar scalaName) = scalaName
 printTerm (STeApp st sts) =
@@ -113,30 +108,6 @@ printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
   "case" <> exprSeparator <> printPat pat
     <> exprSeparator <> "=>" <> exprSeparator <> printTerm rhs
-
-printPat :: ScalaPat -> String
-printPat pat =
-  case pat of
-    SPWild ->
-      "_"
-
-    SPVar name ->
-      name
-
-    SPCtor name [] ->
-      name
-
-    SPCtor name args ->
-      name <> "(" <> intercalate ", " (map printPat args) <> ")"
-
-    SPLitInt n ->
-      show n
-
-    SPLitBool b ->
-      if b then "true" else "false"
-
-    SPLitString s ->
-      "\"" <> escapeScalaString s <> "\""
 
 printVar :: SeVar -> String
 printVar (SeVar sName sType) = sName <> colonSeparator <> exprSeparator <> (printType sType)
