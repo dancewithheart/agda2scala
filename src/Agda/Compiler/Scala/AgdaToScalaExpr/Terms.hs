@@ -65,12 +65,9 @@ compileCompiledClauses env = \case
     _ -> Left UnsupportedCompiledClauses
 
 compileBranches :: Env -> Case CompiledClauses -> Either CompileError [(ScalaPat, ScalaTerm)]
-compileBranches env branches
-    | projPatterns branches = Left UnsupportedCompiledClauses
-    | not (Map.null (litBranches branches)) = Left UnsupportedCompiledClauses
-    | isJust (catchallBranch branches) = Left UnsupportedCompiledClauses
-    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
-    | otherwise = traverse compileConBranch (Map.toList (conBranches branches))
+compileBranches env branches = do
+    validateCaseShape branches
+    traverse compileConBranch (Map.toList (conBranches branches))
   where
     compileConBranch (conQName, WithArity arityN cc) = do
       let patVars = freshPatVars arityN
@@ -78,6 +75,14 @@ compileBranches env branches
           env'    = extendEnv patVars env
       rhs <- compileCompiledClauses env' cc
       pure (pat, rhs)
+
+validateCaseShape :: Case CompiledClauses -> Either CompileError ()
+validateCaseShape branches
+    | projPatterns branches                  = Left UnsupportedCompiledClauses
+    | not (Map.null (litBranches branches))  = Left UnsupportedCompiledClauses
+    | isJust (catchallBranch branches)       = Left UnsupportedCompiledClauses
+    | fromMaybe False (fallThrough branches) = Left UnsupportedCompiledClauses
+    | otherwise                              = Right ()
 
 -- ===== Terms ================================================================
 
