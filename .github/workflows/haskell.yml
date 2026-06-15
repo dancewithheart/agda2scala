@@ -73,8 +73,9 @@ jobs:
       - name: Set up JVM
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
-          distribution: 'adopt'
+          distribution: 'temurin'
           java-version: '21'
+          cache: 'sbt'
       - name: Set up Scala and SBT
         uses: sbt/setup-sbt@3afe9cf056c5d139bfc46579af1192d77a2f0821 # v1
       - name: compile & test result Scala 2 code
