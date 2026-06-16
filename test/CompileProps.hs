@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module AgdaToScalaExprProps (tests) where
+module CompileProps (tests) where
 
 import qualified Data.Text as T
 import Hedgehog (
@@ -16,18 +16,15 @@ import Hedgehog (
  )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-
-import Agda.Compiler.Scala.AgdaToScalaExpr (
+import Agda.Compiler.Scala.Compile (
     CompileError (..),
     Env (..),
     compileBodyTerm,
     compileTypeTerm,
     lookupVar,
  )
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (TyEnv (..), compileTypeTermWith)
-
-import Agda.Compiler.Scala.ScalaExpr (ScalaTerm (..), ScalaType (..))
-
+import Agda.Compiler.Scala.Compile.Types (TyEnv (..), compileTypeTermWith)
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm (..), ScalaType (..))
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
@@ -35,7 +32,7 @@ import Agda.Syntax.Literal (Literal (..))
 tests :: Group
 tests =
     Group
-        "AgdaToScalaExprProps"
+        "CompileProps"
         [ ("prop_lookupVar_inRange", prop_lookupVar_inRange)
         , ("prop_lookupVar_outOfRange", prop_lookupVar_outOfRange)
         , ("prop_compileTypeTerm_var_isTyVar", prop_compileTypeTerm_var_isTyVar)
@@ -45,6 +42,7 @@ tests =
         , ("prop_typeVar_roundtrip", prop_typeVar_roundtrip)
         , ("prop_compileBodyTerm_varLaw", prop_compileBodyTerm_varLaw)
         , ("prop_compileBodyTerm_literals", prop_compileBodyTerm_literals)
+        , ("prop_compileTypeTermWith_var_app_arity", prop_compileTypeTermWith_var_app_arity)
         ]
 
 -- ===== generators ============================================================
@@ -60,10 +58,9 @@ genName :: Gen String
 genName = Gen.string (Range.linear 1 12) Gen.alphaNum
 
 genIndexInRange :: Env -> Gen Int
-genIndexInRange (Env xs) =
-    case length xs of
-        0 -> Gen.discard
-        k -> Gen.int (Range.linear 0 (k - 1))
+genIndexInRange (Env xs) = case length xs of
+  0 -> Gen.discard
+  k -> Gen.int (Range.linear 0 (k - 1))
 
 genIndexOutOfRange :: Env -> Gen Int
 genIndexOutOfRange (Env xs) = do
@@ -72,12 +69,11 @@ genIndexOutOfRange (Env xs) = do
     Gen.int (Range.linear k (k + 20))
 
 genTypeTerm :: Gen Term
-genTypeTerm =
-    Gen.choice
-        [ Var <$> Gen.int (Range.linear 0 20) <*> pure []
-        , pure (Sort (error "Sort payload not inspected in compileTypeTerm")) -- if compileTypeTerm ignores payload
-        -- You can add Def/Con later once you have QName/ConHead generators
-        ]
+genTypeTerm = Gen.choice
+  [ Var <$> Gen.int (Range.linear 0 20) <*> pure []
+  , pure (Sort (error "Sort payload not inspected in compileTypeTerm")) -- if compileTypeTerm ignores payload
+  -- You can add Def/Con later once you have QName/ConHead generators
+  ]
 
 -- ===== properties ============================================================
 
@@ -150,16 +146,14 @@ prop_compileBodyTerm_literals = property $ do
 -- type application preserves arity for Var - don’t “lose” type arguments
 prop_compileTypeTermWith_var_app_arity :: Property
 prop_compileTypeTermWith_var_app_arity = property $ do
-    -- TyEnv with one named type var at index 0
-    let tyEnv = TyEnv [Just "A"] -- adjust constructor/import for your Types module
-    k <- forAll (Gen.int (Range.linear 0 5))
-    let elims = replicate k (Apply (Arg (error "arginfo") (Var 0 [])))
-        t = Var 0 elims
-
-    case compileTypeTermWith tyEnv t of
-        Left _ -> failure
-        Right ty ->
-            case ty of
-                STyVar _ -> k === 0
-                STyApp _ args -> length args === k
-                _ -> failure
+  -- TyEnv with one named type var at index 0
+  let tyEnv = TyEnv [Just "A"] -- adjust constructor/import for your Types module
+  k <- forAll (Gen.int (Range.linear 0 5))
+  let elims = replicate k (Apply (Arg (error "arginfo") (Var 0 [])))
+      t = Var 0 elims
+  case compileTypeTermWith tyEnv t of
+    Left _ -> failure
+    Right ty -> case ty of
+      STyVar _      -> k === 0
+      STyApp _ args -> length args === k
+      _             -> failure

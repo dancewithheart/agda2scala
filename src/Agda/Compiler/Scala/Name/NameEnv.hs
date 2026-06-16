@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.NameEnv (
+module Agda.Compiler.Scala.Name.NameEnv (
     NameEnv (..),
     emptyNameEnv,
     sanitizeScalaIdent,
@@ -14,10 +14,8 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
-
 import Agda.Syntax.Abstract.Name (QName)
-
-import Agda.Compiler.Scala.ScalaExpr (ScalaCtor (..), ScalaName)
+import Agda.Compiler.Scala.IR.ScalaExpr(ScalaCtor (..), ScalaName)
 
 -- Scala 3 keywords: https://scala-lang.org/files/archive/spec/3.4/01-lexical-syntax.html#regular-keywords
 -- Scala 2 keywords: https://scala-lang.org/files/archive/spec/2.13/01-lexical-syntax.html#identifiers

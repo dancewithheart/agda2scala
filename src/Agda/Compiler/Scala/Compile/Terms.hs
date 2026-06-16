@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
+module Agda.Compiler.Scala.Compile.Terms (
     Env (..),
     envFromArgs,
     extendEnv,
@@ -8,7 +8,6 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     compileFunctionBody,
     compileBodyTerm,
 ) where
-
 
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import qualified Data.Map as Map
@@ -23,12 +22,12 @@ import Agda.TypeChecking.CompiledClause
   )
 import qualified Data.Text as T
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types
+import Agda.Compiler.Scala.Compile.Types
   ( CompileError (..)
   , CaseUnsupported (..)
   , fromQName)
-import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
   , ScalaTerm(..)

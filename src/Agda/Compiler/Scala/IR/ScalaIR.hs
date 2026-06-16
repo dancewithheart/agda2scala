@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.IR.Scala
+module Agda.Compiler.Scala.IR.ScalaIR
   ( ScalaModule(..)
   , ScalaExpr(..)
   , ScalaType(..)
@@ -8,7 +8,7 @@ module Agda.Compiler.Scala.IR.Scala
   , SeVar(..)
   ) where
 
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.IR.ScalaExpr
 
 data ScalaModule = ScalaModule
   { smPackage :: [ScalaName]

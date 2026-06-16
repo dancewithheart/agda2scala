@@ -1,6 +1,6 @@
-module PrintScala2Test (printScala2Tests) where
+module Render.PrintScala2Test (printScala2Tests) where
 
-import Agda.Compiler.Scala.Print.PrintScala2 (
+import Agda.Compiler.Scala.Render.PrintScala2 (
     combineLines,
     printCaseClass,
     printCaseObject,
@@ -9,7 +9,7 @@ import Agda.Compiler.Scala.Print.PrintScala2 (
     printSealedTrait,
     printSum,
  )
-import Agda.Compiler.Scala.ScalaExpr (
+import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaPat (..),

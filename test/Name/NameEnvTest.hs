@@ -1,10 +1,10 @@
-module NameEnvTest (nameEnvTests) where
+module Name.NameEnvTest (nameEnvTests) where
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Test.HUnit (Test (..), assertBool, assertEqual)
 
-import Agda.Compiler.Scala.NameEnv (
+import Agda.Compiler.Scala.Name.NameEnv (
     NameEnv (..),
     allocFreshLocal,
     emptyNameEnv,

@@ -1,6 +1,6 @@
-module NamePolicyTest (namePolicytests) where
+module Name.NamePolicyTest (namePolicytests) where
 
-import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
+import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
 import Test.HUnit (Test (..), assertEqual)
 
 namePolicytests :: Test

@@ -14,10 +14,9 @@ import Agda.Compiler.Scala.Backend (
     selectPrinter,
     shouldWriteModule,
  )
-import Agda.Compiler.Scala.NameEnv (emptyNameEnv)
-import Agda.Compiler.Scala.Print.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
-import Agda.Compiler.Scala.ScalaExpr (ScalaCtor (..), ScalaExpr (..))
+import Agda.Compiler.Scala.Name.NameEnv (emptyNameEnv)
+import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaCtor (..), ScalaExpr (..))
 
 testIsEnabled :: Test
 testIsEnabled =
@@ -49,7 +48,7 @@ testSelectPrinterDefault = TestCase $ do
     let p = selectPrinter defaultOptions
     -- Compare by applying to a tiny AST; functions can't be compared directly.
     let ast = SePackage ["x"] []
-    assertEqual "default is Scala2 printer" (p ast) (printScala2 ast)
+    assertEqual "default is Scala2 printer" (p ast) (printScala3 ast)
 
 testSelectPrinterScala3 :: Test
 testSelectPrinterScala3 = TestCase $ do

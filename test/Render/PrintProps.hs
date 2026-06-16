@@ -5,7 +5,7 @@
 We test observable output properties rather than internal helper functions.
 This makes tests robust across refactors.
 -}
-module PrintProps (tests) where
+module Render.PrintProps (tests) where
 
 import Data.List (isInfixOf)
 
@@ -13,7 +13,7 @@ import Hedgehog (Gen, Group (..), Property, assert, forAll, property, success)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.ScalaExpr (
+import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaExpr (..),
     ScalaTerm (..),
     ScalaType (..),
@@ -22,14 +22,14 @@ import Agda.Compiler.Scala.ScalaExpr (
     scalaTypeScheme,
  )
 
-import Agda.Compiler.Scala.Print.Common (escapeScalaString)
-import Agda.Compiler.Scala.Print.PrintScala2 (printScala2, printType)
-import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.Render.Common (escapeScalaString)
+import Agda.Compiler.Scala.Render.PrintScala2 (printScala2, printType)
+import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 
 tests :: Group
 tests =
     Group
-        "PrintProps"
+        "Render.PrintProps"
         [ ("prop_scala2_stringEscapes_newline", prop_scala2_stringEscapes_newline)
         , ("prop_scala2_stringEscapes_quote", prop_scala2_stringEscapes_quote)
         , ("prop_scala2_boolLowercase", prop_scala2_boolLowercase)

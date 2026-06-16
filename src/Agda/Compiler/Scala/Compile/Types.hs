@@ -1,30 +1,30 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Agda.Compiler.Scala.AgdaToScalaExpr.Types (
+module Agda.Compiler.Scala.Compile.Types (
     CompileError (..),
     CaseUnsupported (..),
     TyEnv (..),
-    emptyTyEnv,
-    lookupTyVar,
-    unrollPi,
-    isTypeParamBinder,
+    binderName,
+    compileDomTypeWith,
+    compileType,
+    compileTypeWith,
+    compileTypeTermWith,
+    compileTypeTerm,
     ctorArgTypesFromTypeWith,
     ctorArgTypesFromType,
     dataTyParamsFromType,
-    funSchemeFromType,
-    compileDomTypeWith,
-    compileTypeWith,
-    compileType,
-    compileTypeTermWith,
-    compileTypeTerm,
-    binderName,
+    emptyTyEnv,
     fromQName,
+    funSchemeFromType,
+    isTypeLike,
+    isTypeParamBinder,
+    lookupTyVar,
     pushTermBinder,
     pushTyParam,
+    unrollPi,
 ) where
 
 import Control.Monad (foldM)
-
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Common (Arg (..), Hiding (..), NamedName, Ranged (..), WithOrigin (..), getHiding)
 import Agda.Syntax.Common.Pretty (prettyShow)
@@ -42,12 +42,12 @@ import Agda.Syntax.Internal (
  )
 import Agda.TypeChecking.Substitute (absBody)
 
-import Agda.Compiler.Scala.NameEnv (sanitizeScalaIdent)
-import Agda.Compiler.Scala.ScalaExpr (
-    ScalaName,
-    ScalaType (..),
-    ScalaTypeScheme (..),
-    SeVar (..),
+import Agda.Compiler.Scala.Name.NameEnv (sanitizeScalaIdent)
+import Agda.Compiler.Scala.IR.ScalaExpr (
+  ScalaName,
+  ScalaType (..),
+  ScalaTypeScheme (..),
+  SeVar (..),
  )
 
 -- ===== Errors ================================================================
@@ -97,11 +97,10 @@ pushTermBinder :: TyEnv -> TyEnv
 pushTermBinder (TyEnv xs) = TyEnv (Nothing : xs)
 
 lookupTyVar :: TyEnv -> Int -> ScalaName
-lookupTyVar (TyEnv xs) i =
-    case drop i xs of
-        (Just v : _) -> v
-        (Nothing : _) -> "t" <> show i -- TODO dependent term binder; fallback for now
-        [] -> "t" <> show i
+lookupTyVar (TyEnv xs) i = case drop i xs of
+  (Just v : _) -> v
+  (Nothing : _) -> "t" <> show i -- TODO dependent term binder; fallback for now
+  [] -> "t" <> show i
 
 -- ===== Pi traversal ==========================================================
 
@@ -122,8 +121,8 @@ compileDomTypeWith tyEnv = compileTypeWith tyEnv . unDom
 
 compileTypeWith :: TyEnv -> Type -> Either CompileError ScalaType
 compileTypeWith tyEnv = \case
-    El _ t -> compileTypeTermWith tyEnv t
-    t -> Left (UnsupportedType t)
+  El _ t -> compileTypeTermWith tyEnv t
+  t      -> Left (UnsupportedType t)
 
 -- Agda.Syntax.Internal.Type:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Type
@@ -254,7 +253,7 @@ A higher-kinded parameter like "F : Type u -> Type u" appears as El _ (Pi _ -> S
 isTypeLike :: Type -> Bool
 isTypeLike = \case
     El _ t -> goTerm t
-    _ -> False
+    _      -> False
   where
     goTerm = \case
         Sort _ -> True
@@ -304,8 +303,8 @@ fromQName = prettyShow . qnameName
 
 mapBuiltinTypeName :: ScalaName -> ScalaName
 mapBuiltinTypeName n = case n of
-    "Nat" -> "Long"
-    "ℕ" -> "Long"
-    "Bool" -> "Boolean"
     -- TODO String?
-    _ -> n
+    "Nat"  -> "Long"
+    "ℕ"    -> "Long"
+    "Bool" -> "Boolean"
+    _      -> n

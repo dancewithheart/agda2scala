@@ -1,25 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TermsProps (tests) where
+module Compile.TermsProps (tests) where
 
 import Data.Foldable (traverse_)
 import Hedgehog
   ( Group(..)
   , Property
+  , annotateShow
+  , failure
   , forAll
   , property
   , (===)
   )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-
-import Agda.Compiler.Scala.AgdaToScalaExpr.Terms
+import Agda.Syntax.Common (defaultArg)
+import Agda.Syntax.Internal (Elim' (..), Term (..))
+import Agda.Compiler.Scala.Compile.Terms
   ( Env(..)
   , envFromArgs
   , extendEnv
   , lookupVar
   )
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (CompileError(..))
+import Agda.Compiler.Scala.Compile (compileBodyTerm)
+import Agda.Compiler.Scala.Compile.Types (CompileError(..))
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..))
 
 tests :: Group
 tests =

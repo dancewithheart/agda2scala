@@ -7,7 +7,7 @@ Name hygiene is one of the easiest areas to make property-testable.
 Scala keywords:
   Scala 3 keywords list: https://docs.scala-lang.org/scala3/reference/changed-features/keywords.html
 -}
-module NameEnvProps (tests) where
+module Name.NameEnvProps (tests) where
 
 import Data.Char (isAlphaNum, isLetter)
 import Data.List (mapAccumL, nub)
@@ -17,7 +17,7 @@ import Hedgehog (Gen, Group (..), Property, assert, forAll, property, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.NameEnv (
+import Agda.Compiler.Scala.Name.NameEnv (
     allocFreshLocal,
     emptyNameEnv,
     sanitizeScalaIdent,
@@ -26,7 +26,7 @@ import Agda.Compiler.Scala.NameEnv (
 tests :: Group
 tests =
     Group
-        "NameEnvProps"
+        "Name.NameEnvProps"
         [ ("prop_sanitize_nonEmpty", prop_sanitize_nonEmpty)
         , ("prop_sanitize_validScalaIdentChars", prop_sanitize_validScalaIdentChars)
         , ("prop_sanitize_notKeyword", prop_sanitize_notKeyword)

@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.NamePolicy (
+module Agda.Compiler.Scala.Name.NamePolicy (
     NamePolicy (..),
     emptyNamePolicy,
     stdlibNamePolicy,
@@ -10,9 +10,8 @@ module Agda.Compiler.Scala.NamePolicy (
 
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-
-import Agda.Compiler.Scala.NameEnv (sanitizeScalaIdent)
-import Agda.Compiler.Scala.ScalaExpr (ScalaName)
+import Agda.Compiler.Scala.Name.NameEnv (sanitizeScalaIdent)
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaName)
 
 {- | Naming policy has mapping tables for:
   - constructor identifiers (data constructors)

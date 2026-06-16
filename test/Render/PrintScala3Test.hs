@@ -1,6 +1,6 @@
-module PrintScala3Test (printScala3Tests) where
+module Render.PrintScala3Test (printScala3Tests) where
 
-import Agda.Compiler.Scala.Print.PrintScala3 (
+import Agda.Compiler.Scala.Render.PrintScala3 (
     combineLines,
     printCaseClass,
     printCaseObject,
@@ -8,7 +8,7 @@ import Agda.Compiler.Scala.Print.PrintScala3 (
     printScala3,
     printSealedTrait,
  )
-import Agda.Compiler.Scala.ScalaExpr (
+import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
     ScalaPat (..),
     ScalaExpr (..),
