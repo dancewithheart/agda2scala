@@ -6,6 +6,7 @@ import Data.Foldable (traverse_)
 import Hedgehog
   ( Group(..)
   , Property
+  , PropertyT
   , annotateShow
   , failure
   , forAll
@@ -14,8 +15,10 @@ import Hedgehog
   )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import Agda.Syntax.Common (defaultArg)
+import Agda.Syntax.Abstract.Name ( QName, mkName_ , qualify_ )
+import Agda.Syntax.Common ( NameId(..), defaultArg)
 import Agda.Syntax.Internal (Elim' (..), Term (..))
+import Agda.Syntax.TopLevelModuleName.Boot ( noModuleNameHash )
 import Agda.Compiler.Scala.Compile.Terms
   ( Env(..)
   , envFromArgs
@@ -38,25 +41,38 @@ tests =
 mkApply :: Term -> Elim' Term
 mkApply t = Apply (defaultArg t)
 
+-- For this generated subset, compileBodyTerm must succeed.
+-- If k == 0, Def lowers to STeVar.
+-- If k > 0, Def lowers to STeApp with exactly k arguments.
 prop_def_apply_arity :: Property
 prop_def_apply_arity = property $ do
-  k <- forAll (Gen.int (Range.linear 0 5))
+  k <- forAll (Gen.int (Range.linear 0 8))
 
-  let env   = Env ["x0"]
-      elims = replicate k (mkApply (Var 0 []))
-      t     = Var 0 elims
+  let env = Env ["x"]
+      t =
+        Def
+          dummyQName
+          (replicate k (mkApply (Var 0 [])))
 
-  case compileBodyTerm env t of
-    Left _ -> do
-      -- acceptable only if k==0 and variable resolves; otherwise fail
-      k === 0
-    Right tm ->
-      case tm of
-        STeVar _      -> k === 0
-        STeApp _ args -> length args === k
-        _             -> do
-          annotateShow tm
-          failure
+  tm <- evalEither (compileBodyTerm env t)
+
+  case tm of
+    STeVar _ -> k === 0
+    STeApp _ args -> length args === k
+    other -> do
+      annotateShow other
+      failure
+
+evalEither :: (Show e) => Either e a -> PropertyT IO a
+evalEither x = case x of
+    Right a -> pure a
+    Left e -> do
+      annotateShow e
+      failure
+
+dummyQName :: QName
+dummyQName =
+  qualify_ (mkName_ (NameId 0 noModuleNameHash) ("f" :: String))
 
 -- f x0 x1 x2 becomes Env ["x2", "x1", "x0"]
 -- so

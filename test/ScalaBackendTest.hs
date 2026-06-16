@@ -30,7 +30,7 @@ tests =
         , testCase "--out-dir stores target output directory" test_outDirOpt
         , testCase "--scala-dialect stores selected dialect" test_scalaDialectOpt
         , testCase "initModuleEnv starts with empty NameEnv" test_initModuleEnv
-        , testCase "selectPrinter defaults to Scala2" test_selectPrinterDefault
+        , testCase "selectPrinter defaults to Scala3" test_selectPrinterDefault
         , testCase "selectPrinter chooses Scala3 when requested" test_selectPrinterScala3
         , testCase "shouldWriteModule skips modules with only empty SeUnhandled definitions" test_shouldWriteModule_allUnhandled
         , testCase "shouldWriteModule writes modules with at least one handled definition" test_shouldWriteModule_someHandled
