@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.ScalaExpr (
+module Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaName,
     ScalaType (..),
     ScalaExpr (..),

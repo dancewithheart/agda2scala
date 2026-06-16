@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.Print.Common
+module Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
   , printPat
   , printType
@@ -7,9 +7,8 @@ module Agda.Compiler.Scala.Print.Common
 
 import Data.List (intercalate)
 
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
-  , ScalaExpr(..)
   , ScalaPat(..)
   , ScalaType (..)
   )
@@ -28,9 +27,13 @@ escapeScalaString = concatMap $ \c -> case c of
         | c < ' ' -> unicodeEscape c
         | otherwise -> [c]
   where
+    unicodeEscape :: Char -> String
     unicodeEscape ch =
-        let n = fromEnum ch
+        let n :: Int
+            n = fromEnum ch
+            hex :: String
             hex = "0123456789abcdef"
+            h :: Int -> Char
             h k = hex !! ((n `div` (16 ^ k)) `mod` 16)
          in ['\\', 'u', h 3, h 2, h 1, h 0]
 

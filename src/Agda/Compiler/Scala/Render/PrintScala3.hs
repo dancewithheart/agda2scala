@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.Print.PrintScala3 (
+module Agda.Compiler.Scala.Render.PrintScala3 (
     printScala3,
     printCaseObject,
     printSealedTrait,
@@ -7,13 +7,13 @@ module Agda.Compiler.Scala.Print.PrintScala3 (
     combineLines,
 ) where
 
-import Agda.Compiler.Scala.Print.Common
+import Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
   , printPat
   , printType
   , printTyParams
   )
-import Agda.Compiler.Scala.ScalaExpr (
+import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaName,

@@ -14,14 +14,14 @@ import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.IR.Agda
+import Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaData(..)
   , AgdaDecl(..)
   , AgdaRecord(..)
   )
 import Agda.Compiler.Scala.Lower.IRToScala ( toScalaExpr )
-import Agda.Compiler.Scala.NamePolicy ( defaultNamePolicy )
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.Name.NamePolicy ( defaultNamePolicy )
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
   , ScalaType(..)

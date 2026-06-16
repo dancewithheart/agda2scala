@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
+module Agda.Compiler.Scala.Compile.Terms (
     Env (..),
     envFromArgs,
     extendEnv,
@@ -8,7 +8,6 @@ module Agda.Compiler.Scala.AgdaToScalaExpr.Terms (
     compileFunctionBody,
     compileBodyTerm,
 ) where
-
 
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import qualified Data.Map as Map
@@ -23,34 +22,57 @@ import Agda.TypeChecking.CompiledClause
   )
 import qualified Data.Text as T
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types
+import Agda.Compiler.Scala.Compile.Types
   ( CompileError (..)
   , CaseUnsupported (..)
   , fromQName)
-import Agda.Compiler.Scala.NamePolicy (ctorName, defaultNamePolicy)
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
   , ScalaTerm(..)
   )
 
--- ===== Term variable environment ============================================
+-- ===== Environment ===========================================================
+--
+-- Agda terms use de Bruijn indices:
+--
+--   Var 0 = most recently introduced binder
+--   Var 1 = binder before that
+--
+-- We keep that convention directly in Env:
+--
+--   Env ["last", "first"]
+--
+-- Therefore all places that introduce binders must go through envFromArgs
+-- or extendEnv.
 
-{- | Term-variable environment for resolving de Bruijn Vars in *terms*.
-Convention: index 0 is the most recent binder.
--}
 newtype Env = Env {unEnv :: [ScalaName]}
     deriving (Eq, Show)
 
 -- Args come in source order; we want env[0] = last binder (de Bruijn 0).
 envFromArgs :: [ScalaName] -> Env
-envFromArgs = Env . reverse
+envFromArgs names = Env (reverse names)
+
+freshPatVars :: Int -> [ScalaName]
+freshPatVars arityN = [ "p" <> show i | i <- [0 .. arityN - 1] ]
+
+-- Agda de Bruijn convention used here:
+-- Env index 0 is the most recently introduced binder.
+--
+-- Constructor arguments are printed left-to-right:
+--   C(p0, p1)
+--
+-- But de Bruijn lookup sees the newest binder first:
+--   Var 0 -> p1
+--   Var 1 -> p0
+extendEnv :: [ScalaName] -> Env -> Env
+extendEnv names (Env xs) = Env (reverse names <> xs)
 
 lookupVar :: Env -> Int -> Either CompileError ScalaName
-lookupVar (Env xs) i =
-    case drop i xs of
-        v : _ -> Right v
-        [] -> Left (VarOutOfRange i (length xs))
+lookupVar (Env xs) i = case drop i xs of
+  v : _ -> Right v
+  []    -> Left (VarOutOfRange i (length xs))
 
 -- ===== Function bodies =======================================================
 
@@ -132,20 +154,3 @@ compileLiteral = \case
     LitWord64 n -> pure (STeLitInt (fromIntegral n))
     LitString s -> pure (STeLitString (T.unpack s))
     l -> Left (UnsupportedTerm (Lit l))
-
-freshPatVars :: Int -> [ScalaName]
-freshPatVars arityN =
-  [ "p" <> show i | i <- [0 .. arityN - 1] ]
-
--- Agda de Bruijn convention used here:
--- Env index 0 is the most recently introduced binder.
---
--- Constructor arguments are printed left-to-right:
---   C(p0, p1)
---
--- But de Bruijn lookup sees the newest binder first:
---   Var 0 -> p1
---   Var 1 -> p0
-extendEnv :: [ScalaName] -> Env -> Env
-extendEnv names (Env xs) =
-  Env (reverse names <> xs)

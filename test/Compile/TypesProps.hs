@@ -1,24 +1,32 @@
-module TypesProps (tests) where
+{-# LANGUAGE OverloadedStrings #-}
 
-import Hedgehog (Gen (..), Group (..), Property, forAll, property, (===))
+module Compile.TypesProps (tests) where
+
+import Hedgehog
+  ( Group(..)
+  , Property
+  , failure
+  , forAll
+  , property
+  , (===)
+  )
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types (
+import Agda.Compiler.Scala.Compile.Types (
     TyEnv (..),
     compileTypeTermWith,
     lookupTyVar,
  )
 
-import Agda.Compiler.Scala.ScalaExpr (ScalaType (..))
-
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaType (..))
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 
 tests :: Group
 tests =
     Group
-        "TypesProps"
+        "Compile.Types properties"
         [ ("prop_lookupTyVar_resolves_named", prop_lookupTyVar_resolves_named)
         , ("prop_compileTypeTermWith_varApp_arity", prop_compileTypeTermWith_varApp_arity)
         , ("prop_compileTypeTermWith_shifted_index", prop_compileTypeTermWith_shifted_index)
@@ -76,7 +84,6 @@ prop_compileTypeTermWith_varApp_arity = property $ do
         Right ty -> case ty of
             STyVar _ -> k === 0
             STyApp _ args -> length args === k
-            Level _ -> Right (STyName "Type") -- TODO proper support for universe levels for now assume they are just types
             _ -> failure
 
 {- | De Bruijn index shifting across term binders in types.

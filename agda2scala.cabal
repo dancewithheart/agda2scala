@@ -34,20 +34,20 @@ library
   import:           warnings
   hs-source-dirs:   src
   exposed-modules:
-    Agda.Compiler.Scala.AgdaToScalaExpr
-    Agda.Compiler.Scala.AgdaToScalaExpr.Terms
-    Agda.Compiler.Scala.AgdaToScalaExpr.Types
     Agda.Compiler.Scala.Backend
-    Agda.Compiler.Scala.NameEnv
-    Agda.Compiler.Scala.NamePolicy
-    Agda.Compiler.Scala.Print.Common
-    Agda.Compiler.Scala.Print.PrintScala2
-    Agda.Compiler.Scala.Print.PrintScala3
-    Agda.Compiler.Scala.ScalaExpr
-    Agda.Compiler.Scala.IR.Agda
-    Agda.Compiler.Scala.IR.Scala
+    Agda.Compiler.Scala.Compile
+    Agda.Compiler.Scala.Compile.Terms
+    Agda.Compiler.Scala.Compile.Types
+    Agda.Compiler.Scala.Name.NameEnv
+    Agda.Compiler.Scala.Name.NamePolicy
+    Agda.Compiler.Scala.IR.ScalaExpr
+    Agda.Compiler.Scala.IR.AgdaIR
+    Agda.Compiler.Scala.IR.ScalaIR
     Agda.Compiler.Scala.Lower.AgdaToIR
     Agda.Compiler.Scala.Lower.IRToScala
+    Agda.Compiler.Scala.Render.Common
+    Agda.Compiler.Scala.Render.PrintScala3
+    Agda.Compiler.Scala.Render.PrintScala2
     Paths_agda2scala
   ghc-options:
       -Wall
@@ -62,7 +62,7 @@ library
   autogen-modules:  Paths_agda2scala
   build-depends:
     , Agda                  >=2.8.0  && <2.9.0
-    , base >=4.13 && <4.23
+    , base                  >=4.13   && <4.23
     , containers            >=0.6.0  && <0.9
     , deepseq               >=1.4.4  && <1.6
     , text                  >=2.0.2  && <2.2
@@ -89,7 +89,7 @@ executable agda2scala
   build-depends:
     , Agda        >=2.8.0 && <2.9.0
     , agda2scala
-    , base >=4.13 && <4.23
+    , base        >=4.13 && <4.23
 
   default-language: Haskell2010
 
@@ -100,17 +100,20 @@ test-suite agda2scala-test
   hs-source-dirs:   test
   main-is:          Main.hs
   other-modules:
-    NameEnvTest
-    NamePolicyTest
-    PrintScala2Test
-    PrintScala3Test
+    Compile.TypesTest
+    Name.NameEnvTest
+    Name.NamePolicyTest
+    Render.PrintScala2Test
+    Render.PrintScala3Test
     ScalaBackendTest
+    Support.Assertions
 
   build-depends:
     , Agda                  >=2.8.0   && <2.9.0
     , agda2scala
-    , base >=4.13 && <4.23
-    , HUnit                 >=1.6.2.0
+    , base                  >=4.13 && <4.23
+    , tasty
+    , tasty-hunit
     , unordered-containers  >=0.2.20  && <0.3
 
 test-suite agda2scala-hedgehog
@@ -120,18 +123,20 @@ test-suite agda2scala-hedgehog
   hs-source-dirs:   test
   main-is:          HedgehogMain.hs
   other-modules:
-    AgdaToScalaExprProps
-    NameEnvProps
-    NamePolicyProps
-    PrintProps
+    CompileProps
+    Compile.TermsProps
+    Compile.TypesProps
+    Name.NameEnvProps
+    Name.NamePolicyProps
+    Render.PrintProps
     IRToScalaProps
 
   build-depends:
     , Agda                  >=2.8.0  && <2.9.0
     , agda2scala
-    , base >=4.13 && <4.23
+    , base                  >=4.13   && <4.23
     , containers            >=0.6.0  && <0.9
-    , hedgehog >=1.4 && <1.8
+    , hedgehog              >=1.4    && <1.8
     , text                  >=2.0.2  && <2.2
     , unordered-containers  >=0.2.20 && <0.3
 

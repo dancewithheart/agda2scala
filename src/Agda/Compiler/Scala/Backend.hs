@@ -20,12 +20,9 @@ import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import Data.Version (showVersion)
-
 import Paths_agda2scala (version)
-
-{- HLINT ignore "Use fewer imports" -}
-import Agda.Compiler.Backend -- otherwise GHC complains about Backend and Backend'
 import Agda.Compiler.Backend (
+    Backend'_boot(..),
     Backend,
     Backend',
     CompilerPragma,
@@ -33,49 +30,34 @@ import Agda.Compiler.Backend (
     Flag,
     IsMain,
     Recompile (..),
-    TCM,
-    backendInteractHole,
-    backendInteractTop,
-    backendName,
-    backendVersion,
-    commandLineFlags,
-    compileDef,
-    getUniqueCompilerPragma,
-    isEnabled,
-    mayEraseType,
-    options,
-    postCompile,
-    postModule,
-    preCompile,
-    preModule,
-    scopeCheckingSuffices,
-    withCurrentModule,
+    TCM
  )
+import qualified Agda.Compiler.Backend.Base as BackendBase
 import Agda.Compiler.Common (compileDir)
 import Agda.Main (runAgda)
+import Agda.Syntax.Abstract.Name( QName(..) )
 import Agda.Syntax.Common (moduleNameParts)
-import Agda.Syntax.TopLevelModuleName (moduleNameToFileName)
+import Agda.Syntax.TopLevelModuleName (TopLevelModuleName, moduleNameToFileName)
+import Agda.TypeChecking.Monad.Env ( withCurrentModule )
+import Agda.TypeChecking.Monad.Signature (getUniqueCompilerPragma)
 import Agda.Utils.GetOpt (ArgDescr (ReqArg), OptDescr (Option))
 
-import Agda.Compiler.Scala.AgdaToScalaExpr (CompileError, compileDefn)
-import Agda.Compiler.Scala.NameEnv (NameEnv, emptyNameEnv, lookupCtorOwner, registerCtors)
-import Agda.Compiler.Scala.Print.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.Compile (CompileError, compileDefinition)
+import Agda.Compiler.Scala.Name.NameEnv (NameEnv, emptyNameEnv, lookupCtorOwner, registerCtors)
+import Agda.Compiler.Scala.Render.PrintScala2 (printScala2)
+import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaExpr (..)
   , ScalaPat (..)
   , ScalaTerm (..)
   , unHandled
   )
 
-lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
-lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
-
 runScalaBackend :: IO ()
 runScalaBackend = runAgda [scalaBackend]
 
 scalaBackend :: Backend
-scalaBackend = Backend scalaBackend'
+scalaBackend = BackendBase.Backend scalaBackend'
 
 data Options = Options
     { optOutDir :: Maybe FilePath
@@ -99,7 +81,7 @@ type ScalaDefinition = ScalaExpr
 {- Backend contains implementations of hooks called around compilation of Agda code -}
 scalaBackend' :: Backend' ScalaFlags ScalaEnv ScalaModuleEnv ScalaModule ScalaDefinition
 scalaBackend' =
-    Backend'
+    BackendBase.Backend'
         { backendName = T.pack "agda2scala"
         , backendVersion = scalaBackendVersion
         , backendInteractTop = Nothing
@@ -116,11 +98,8 @@ scalaBackend' =
         , mayEraseType = const $ return True
         }
 
-scalaBackendVersion :: Maybe T.Text
-scalaBackendVersion = Just $ T.pack $ showVersion version
-
-defaultOptions :: ScalaFlags
-defaultOptions = Options{optOutDir = Nothing, scalaDialect = Nothing}
+---------------------------------------------
+-- options
 
 scalaCmdLineFlags :: [OptDescr (Flag ScalaFlags)]
 scalaCmdLineFlags =
@@ -142,6 +121,9 @@ outDirOpt dir opts = return opts{optOutDir = Just dir}
 scalaDialectOpt :: (Monad m) => String -> Options -> m Options
 scalaDialectOpt sVer opts = return opts{scalaDialect = Just sVer}
 
+---------------------------------------------
+-- compile into Scala Expr
+
 scalaCompileDef ::
     ScalaEnv ->
     ScalaModuleEnv ->
@@ -155,10 +137,6 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
         case moduleDebugPragma of
             Nothing -> pure ()
             Just _ -> liftIO $ do
-                -- putStrLn "===== AGDA2SCALA DEBUG: Definition ====="
-                -- putStrLn (show def)
-                -- putStrLn "===== END DEBUG ====="
-
                 putStrLn "===== AGDA2SCALA DEBUG ====="
                 putStrLn ("QName: " <> show qn)
                 putStrLn "defType:"
@@ -169,7 +147,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
         case modulePragma of
             Nothing -> pure (noPragmaResult def)
             Just pragma -> do
-                e <- compileDefn def pragma -- TCM (Either CompileError ScalaExpr)
+                e <- compileDefinition def pragma
                 let expr = lowerCompile qn e -- ScalaExpr
                 case expr of
                     SeSum parent _tyParams ctors -> do
@@ -185,40 +163,41 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                     _ ->
                         pure expr
 
+lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
+lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
+
 qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
 qualifyTermWithEnv ne = go
   where
-    go (STeVar n) =
-        case lookupCtorOwner n ne of
-            Just parent -> STeVar (parent <> "." <> n)
-            Nothing -> STeVar n
-    go (STeApp f xs) = STeApp (go f) (map go xs)
+    go (STeVar n) = case lookupCtorOwner n ne of
+      Just parent -> STeVar (parent <> "." <> n)
+      Nothing -> STeVar n
+    go (STeApp f xs)    = STeApp (go f) (map go xs)
     go (STeLam ns body) = STeLam ns (go body)
-    go (STeLitInt i) = STeLitInt i
-    go (STeLitBool b) = STeLitBool b
+    go (STeLitInt i)    = STeLitInt i
+    go (STeLitBool b)   = STeLitBool b
     go (STeLitString s) = STeLitString s
-    go (STeError e) = STeError e
+    go (STeError e)     = STeError e
     go (STeMatch scrut alts) =
       STeMatch
         (go scrut)
-        [ (goPat pat, go rhs)
-        | (pat, rhs) <- alts
-        ]
-
-    goPat SPWild = SPWild
-    goPat (SPVar n) = SPVar n
+        [ (goPat pat, go rhs) | (pat, rhs) <- alts ]
+    goPat SPWild          = SPWild
+    goPat (SPVar n)       = SPVar n
     goPat (SPCtor n args) =
-      let n' =
-            case lookupCtorOwner n ne of
-              Just parent -> parent <> "." <> n
-              Nothing     -> n
+      let n' = case lookupCtorOwner n ne of
+                 Just parent -> parent <> "." <> n
+                 Nothing     -> n
       in SPCtor n' (map goPat args)
-    goPat (SPLitInt n) = SPLitInt n
-    goPat (SPLitBool b) = SPLitBool b
+    goPat (SPLitInt n)    = SPLitInt n
+    goPat (SPLitBool b)   = SPLitBool b
     goPat (SPLitString s) = SPLitString s
 
+---------------------------------------------
+-- pragmas specific for agda2scala
+
 lookupScalaPragma :: QName -> TCM (Maybe CompilerPragma)
-lookupScalaPragma defName = getUniqueCompilerPragma pragmaTag defName
+lookupScalaPragma name = getUniqueCompilerPragma pragmaTag name
 
 pragmaTag :: T.Text
 pragmaTag = T.pack "AGDA2SCALA"
@@ -233,25 +212,8 @@ noPragmaResult :: Definition -> ScalaDefinition
 -- noPragmaResult Defn{defName = defName} = SeUnhandled (show defName) "No AGDA2SCALA pragma" -- TODO filter Unhandled but show in logs
 noPragmaResult _def = SeUnhandled "" ""
 
-scalaPostCompile ::
-    ScalaEnv ->
-    IsMain ->
-    Map TopLevelModuleName ScalaModule ->
-    TCM ()
-scalaPostCompile _ _ _ = return ()
-
-scalaPreModule ::
-    ScalaEnv ->
-    IsMain ->
-    TopLevelModuleName ->
-    Maybe FilePath ->
-    TCM (Recompile ScalaModuleEnv ScalaModule)
-scalaPreModule _ _ _ _ = do
-    menv <- liftIO initModuleEnv
-    pure $ Recompile menv
-
-initModuleEnv :: IO ScalaModuleEnv
-initModuleEnv = newIORef emptyNameEnv
+---------------------------------------------
+-- output Scala code in scalaPostModule
 
 scalaPostModule ::
     ScalaEnv ->
@@ -277,11 +239,12 @@ scalaPostModule env modEnv _isMain mName cdefs = do
     fileContent _nameEnv = selectPrinter env scalaExprs
 
 selectPrinter :: Options -> (ScalaExpr -> String)
-selectPrinter env =
-    case scalaDialect env of
-        Just "Scala3" -> printScala3
-        Just "scala2" -> printScala2
-        Nothing -> printScala2
+selectPrinter env = case scalaDialect env of
+  Just "Scala3" -> printScala3
+  Just "scala3" -> printScala3
+  Just "Scala2" -> printScala2
+  Just "scala2" -> printScala2
+  _             -> printScala3
 
 shouldWriteModule :: [ScalaDefinition] -> Bool
 shouldWriteModule defs = not (all unHandled defs)
@@ -293,7 +256,36 @@ compileModule :: TopLevelModuleName -> [ScalaDefinition] -> ScalaDefinition
 compileModule mName cdefs = SePackage (moduleName mName) cdefs
 
 moduleName :: TopLevelModuleName -> [String]
-moduleName n = Nel.toList (fmap T.unpack (moduleNameParts n)) -- (Nel.last (moduleNameParts n))
+moduleName n = Nel.toList (fmap T.unpack (moduleNameParts n))
 
 compileLog :: String -> TCM ()
 compileLog msg = liftIO $ putStrLn msg
+
+---------------------------------------------
+-- other callbacks
+
+scalaPostCompile ::
+    ScalaEnv ->
+    IsMain ->
+    Map TopLevelModuleName ScalaModule ->
+    TCM ()
+scalaPostCompile _ _ _ = return ()
+
+scalaPreModule ::
+    ScalaEnv ->
+    IsMain ->
+    TopLevelModuleName ->
+    Maybe FilePath ->
+    TCM (Recompile ScalaModuleEnv ScalaModule)
+scalaPreModule _ _ _ _ = do
+    menv <- liftIO initModuleEnv
+    pure $ Recompile menv
+
+scalaBackendVersion :: Maybe T.Text
+scalaBackendVersion = Just $ T.pack $ showVersion version
+
+defaultOptions :: ScalaFlags
+defaultOptions = Options{optOutDir = Nothing, scalaDialect = Nothing}
+
+initModuleEnv :: IO ScalaModuleEnv
+initModuleEnv = newIORef emptyNameEnv

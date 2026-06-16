@@ -1,0 +1,175 @@
+module Render.PrintScala3Test (tests) where
+
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertEqual, testCase)
+
+import Agda.Compiler.Scala.IR.ScalaExpr
+    ( ScalaCtor (..)
+    , ScalaExpr (..)
+    , ScalaPat (..)
+    , ScalaTerm (..)
+    , ScalaType (..)
+    , SeVar (..)
+    , scalaTypeScheme
+    )
+import Agda.Compiler.Scala.Render.PrintScala3
+    ( combineLines
+    , printCaseClass
+    , printCaseObject
+    , printPackageAndObject
+    , printScala3
+    , printSealedTrait
+    )
+import Support.Assertions (assertStringEqual)
+
+tests :: TestTree
+tests =
+    testGroup
+        "Render.Scala3"
+        [ testGroup
+            "module headers"
+            [ testCase "prints object when module has one name part" test_printPackage
+            ]
+        , testGroup
+            "declarations"
+            [ testCase "prints sealed trait for an ADT parent" test_printSealedTrait
+            , testCase "prints case object for a zero-argument constructor" test_printCaseObject
+            , testCase "prints case class for a record/product type" test_printCaseClass
+            ]
+        , testGroup
+            "layout"
+            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
+            , testCase "prints package with two enum declarations and skips empty unhandled declarations" test_printScala3Package
+            ]
+        , testGroup
+            "pattern matching"
+            [ testCase "prints flat constructor match" test_printMatch
+            , testCase "prints flat constructor match with application on the right-hand side" test_printMatchWithAppRhs
+            ]
+        ]
+
+test_printCaseObject :: IO ()
+test_printCaseObject =
+    assertEqual
+        "Scala 3 case object"
+        "case object Light extends Color"
+        (printCaseObject "Color" "Light")
+
+test_printSealedTrait :: IO ()
+test_printSealedTrait =
+    assertEqual
+        "Scala 3 sealed trait"
+        "sealed trait Color"
+        (printSealedTrait "Color")
+
+test_printPackage :: IO ()
+test_printPackage =
+    assertEqual
+        "Scala 3 object"
+        "object adts"
+        (printPackageAndObject ["adts"])
+
+test_combineLines :: IO ()
+test_combineLines =
+    assertEqual
+        "combined lines"
+        "a\nb"
+        (combineLines ["", "a", "", "", "b", "", "", ""])
+
+test_printCaseClass :: IO ()
+test_printCaseClass =
+    assertEqual
+        "Scala 3 case class"
+        "final case class RgbPair(snd: Bool, fst: Rgb)"
+        ( printCaseClass
+            "RgbPair"
+            [ SeVar "snd" (STyName "Bool")
+            , SeVar "fst" (STyName "Rgb")
+            ]
+        )
+
+test_printScala3Package :: IO ()
+test_printScala3Package =
+    assertStringEqual
+        "Scala 3 printer renders a package object with two enums and skips empty SeUnhandled declarations"
+        expected
+        (printScala3 $ SePackage ["adts"] moduleContent)
+  where
+    rgbAdt =
+        SeSum
+            "Rgb"
+            []
+            [ ScalaCtor "Red" []
+            , ScalaCtor "Green" []
+            , ScalaCtor "Blue" []
+            ]
+
+    colorAdt =
+        SeSum
+            "Color"
+            []
+            [ ScalaCtor "Light" []
+            , ScalaCtor "Dark" []
+            ]
+
+    blank = SeUnhandled "" ""
+    moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
+
+    expected =
+        "object adts:\n"
+            <> "  enum Rgb:\n"
+            <> "    case Red\n"
+            <> "    case Green\n"
+            <> "    case Blue\n"
+            <> "\n"
+            <> "  enum Color:\n"
+            <> "    case Light\n"
+            <> "    case Dark\n"
+
+test_printMatch :: IO ()
+test_printMatch =
+    assertStringEqual
+        "Scala 3 printer renders flat constructor match"
+        expected
+        (printScala3 expr)
+  where
+    expr =
+        SeFun
+            "not"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeVar "Answer.No")
+                , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
+                ]
+            )
+
+    expected =
+        "def not(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => Answer.No\n"
+            <> "    case Answer.No => Answer.Yes\n"
+
+test_printMatchWithAppRhs :: IO ()
+test_printMatchWithAppRhs =
+    assertStringEqual
+        "Scala 3 printer renders flat constructor match with application RHS"
+        expected
+        (printScala3 expr)
+  where
+    expr =
+        SeFun
+            "normalize"
+            [SeVar "x0" (STyName "Answer")]
+            (scalaTypeScheme (STyName "Answer"))
+            ( STeMatch
+                (STeVar "x0")
+                [ (SPCtor "Answer.Yes" [], STeApp (STeVar "wrap") [STeVar "Answer.No"])
+                , (SPCtor "Answer.No" [], STeApp (STeVar "wrap") [STeVar "Answer.Yes"])
+                ]
+            )
+
+    expected =
+        "def normalize(x0: Answer): Answer = x0 match\n"
+            <> "    case Answer.Yes => wrap(Answer.No)\n"
+            <> "    case Answer.No => wrap(Answer.Yes)\n"

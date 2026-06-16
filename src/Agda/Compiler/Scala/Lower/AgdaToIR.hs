@@ -3,7 +3,7 @@
 
 -- handle interactions with Agda internals
 module Agda.Compiler.Scala.Lower.AgdaToIR
-  ( lowerDefinition
+  ( toAgdaExpr
   ) where
 
 import Agda.Compiler.Backend
@@ -27,10 +27,8 @@ import Agda.TypeChecking.Monad (TCM, getConstInfo)
 import Agda.TypeChecking.Monad.Base (Definition(..))
 import Agda.TypeChecking.Substitute (absBody)
 
-import Agda.Compiler.Scala.AgdaToScalaExpr.Terms
-  ( compileFunctionBody
-  )
-import Agda.Compiler.Scala.AgdaToScalaExpr.Types
+import Agda.Compiler.Scala.Compile.Terms (compileFunctionBody)
+import Agda.Compiler.Scala.Compile.Types
   ( CompileError(..)
   , TyEnv
   , binderName
@@ -40,20 +38,20 @@ import Agda.Compiler.Scala.AgdaToScalaExpr.Types
   , fromQName
   , funSchemeFromType
   )
-import Agda.Compiler.Scala.IR.Agda
+import Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaData(..)
   , AgdaDecl(..)
   , AgdaFun(..)
   , AgdaRecord(..)
   )
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaName
   , SeVar(..)
   )
 
-lowerDefinition :: Definition -> CompilerPragma -> TCM (Either CompileError AgdaDecl)
-lowerDefinition def _pragma = case def of
+toAgdaExpr :: Definition -> CompilerPragma -> TCM (Either CompileError AgdaDecl)
+toAgdaExpr def _pragma = case def of
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Datatype
   Defn{theDef = Datatype{dataCons = cons}, defName = qn, defType = ty} ->
     lowerData qn ty cons

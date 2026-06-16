@@ -1,4 +1,4 @@
-module Agda.Compiler.Scala.Print.PrintScala2 (
+module Agda.Compiler.Scala.Render.PrintScala2 (
     printScala2,
     printCaseObject,
     printSealedTrait,
@@ -11,13 +11,13 @@ module Agda.Compiler.Scala.Print.PrintScala2 (
 
 import Data.List (dropWhileEnd, intercalate)
 
-import Agda.Compiler.Scala.Print.Common
+import Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
   , printPat
   , printType
   , printTyParams
   )
-import Agda.Compiler.Scala.ScalaExpr (
+import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
     ScalaExpr (..),
     ScalaName,

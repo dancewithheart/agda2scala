@@ -1,82 +1,107 @@
-module ScalaBackendTest (backendTests) where
+module ScalaBackendTest (tests) where
 
 import Data.IORef (readIORef)
-import Test.HUnit (Test (..), assertEqual)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
 import Agda.Compiler.Backend (isEnabled)
-import Agda.Compiler.Scala.Backend (
-    Options (..),
-    defaultOptions,
-    initModuleEnv,
-    outDirOpt,
-    scalaBackend',
-    scalaDialectOpt,
-    selectPrinter,
-    shouldWriteModule,
- )
-import Agda.Compiler.Scala.NameEnv (emptyNameEnv)
-import Agda.Compiler.Scala.Print.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.Print.PrintScala3 (printScala3)
-import Agda.Compiler.Scala.ScalaExpr (ScalaCtor (..), ScalaExpr (..))
+import Agda.Compiler.Scala.Backend
+    ( Options (..)
+    , defaultOptions
+    , initModuleEnv
+    , outDirOpt
+    , scalaBackend'
+    , scalaDialectOpt
+    , selectPrinter
+    , shouldWriteModule
+    )
+import Agda.Compiler.Scala.IR.ScalaExpr
+    ( ScalaCtor (..)
+    , ScalaExpr (..)
+    )
+import Agda.Compiler.Scala.Name.NameEnv (emptyNameEnv)
+import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 
-testIsEnabled :: Test
-testIsEnabled =
-    TestCase
-        (assertEqual "isEnabled" (isEnabled scalaBackend' defaultOptions) True)
+tests :: TestTree
+tests =
+    testGroup
+        "Scala backend / options and module output"
+        [ testCase "backend is enabled by default" test_isEnabled
+        , testCase "--out-dir stores target output directory" test_outDirOpt
+        , testCase "--scala-dialect stores selected dialect" test_scalaDialectOpt
+        , testCase "initModuleEnv starts with empty NameEnv" test_initModuleEnv
+        , testCase "selectPrinter defaults to Scala3" test_selectPrinterDefault
+        , testCase "selectPrinter chooses Scala3 when requested" test_selectPrinterScala3
+        , testCase "shouldWriteModule skips modules with only empty SeUnhandled definitions" test_shouldWriteModule_allUnhandled
+        , testCase "shouldWriteModule writes modules with at least one handled definition" test_shouldWriteModule_someHandled
+        ]
 
--- test option setters
-
-testOutDirOpt :: Test
-testOutDirOpt = TestCase $ do
-    opts' <- outDirOpt "scala2/src/main/scala" defaultOptions
-    assertEqual "outDirOpt sets optOutDir" (optOutDir opts') (Just "scala2/src/main/scala")
-
-testScalaDialectOpt :: Test
-testScalaDialectOpt = TestCase $ do
-    opts' <- scalaDialectOpt "Scala3" defaultOptions
-    assertEqual "scalaDialectOpt sets scalaDialect" (scalaDialect opts') (Just "Scala3")
-
--- test scalaPreModule initializes NameEnv correctly
-testInitModuleEnv :: Test
-testInitModuleEnv = TestCase $ do
-    ref <- initModuleEnv
-    ne <- readIORef ref
-    assertEqual "initModuleEnv starts empty" ne emptyNameEnv
-
--- test dialect chooses printer
-testSelectPrinterDefault :: Test
-testSelectPrinterDefault = TestCase $ do
-    let p = selectPrinter defaultOptions
-    -- Compare by applying to a tiny AST; functions can't be compared directly.
-    let ast = SePackage ["x"] []
-    assertEqual "default is Scala2 printer" (p ast) (printScala2 ast)
-
-testSelectPrinterScala3 :: Test
-testSelectPrinterScala3 = TestCase $ do
-    let opts = defaultOptions{scalaDialect = Just "Scala3"}
-        p = selectPrinter opts
-        ast = SePackage ["x"] []
-    assertEqual "Scala3 printer chosen" (p ast) (printScala3 ast)
-
-testShouldWriteModule :: Test
-testShouldWriteModule = TestCase $ do
+test_isEnabled :: IO ()
+test_isEnabled =
     assertEqual
-        "all unhandled => don't write"
+        "backend enabled"
+        True
+        (isEnabled scalaBackend' defaultOptions)
+
+test_outDirOpt :: IO ()
+test_outDirOpt = do
+    opts <- outDirOpt "scala2/src/main/scala" defaultOptions
+    assertEqual
+        "output directory"
+        (Just "scala2/src/main/scala")
+        (optOutDir opts)
+
+test_scalaDialectOpt :: IO ()
+test_scalaDialectOpt = do
+    opts <- scalaDialectOpt "Scala3" defaultOptions
+    assertEqual
+        "Scala dialect"
+        (Just "Scala3")
+        (scalaDialect opts)
+
+test_initModuleEnv :: IO ()
+test_initModuleEnv = do
+    ref <- initModuleEnv
+    nameEnv <- readIORef ref
+    assertEqual
+        "initial module NameEnv"
+        emptyNameEnv
+        nameEnv
+
+test_selectPrinterDefault :: IO ()
+test_selectPrinterDefault = do
+    let printer = selectPrinter defaultOptions
+        ast = SePackage ["x"] []
+    assertEqual
+        "default printer output"
+        (printScala3 ast)
+        (printer ast)
+
+test_selectPrinterScala3 :: IO ()
+test_selectPrinterScala3 = do
+    let opts = defaultOptions{scalaDialect = Just "Scala3"}
+        printer = selectPrinter opts
+        ast = SePackage ["x"] []
+
+    assertEqual
+        "Scala3 printer output"
+        (printScala3 ast)
+        (printer ast)
+
+test_shouldWriteModule_allUnhandled :: IO ()
+test_shouldWriteModule_allUnhandled =
+    assertEqual
+        "module should not be written"
         False
         (shouldWriteModule [SeUnhandled "" ""])
-    assertEqual
-        "some handled => write"
-        True
-        (shouldWriteModule [SeUnhandled "" "", SeSum "Rgb" [] [ScalaCtor{scName = "Red", scArgs = []}]])
 
-backendTests :: Test
-backendTests =
-    TestList
-        [ TestLabel "isEnabled" testIsEnabled
-        , TestLabel "--out-dir=scala2/src/main/scala" testOutDirOpt
-        , TestLabel "--scala-dialect=Scala3" testScalaDialectOpt
-        , TestLabel "initModuleEnv starts empty" testInitModuleEnv
-        , TestLabel "default is Scala2 printer" testSelectPrinterDefault
-        , TestLabel "Scala3 printer chosen" testSelectPrinterScala3
-        , TestLabel "write module when there are unhandled defs" testShouldWriteModule
-        ]
+test_shouldWriteModule_someHandled :: IO ()
+test_shouldWriteModule_someHandled =
+    assertEqual
+        "module should be written"
+        True
+        ( shouldWriteModule
+            [ SeUnhandled "" ""
+            , SeSum "Rgb" [] [ScalaCtor{scName = "Red", scArgs = []}]
+            ]
+        )

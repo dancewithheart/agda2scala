@@ -1,11 +1,11 @@
-module Agda.Compiler.Scala.IR.Agda
+module Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaDecl(..)
   , AgdaData(..)
   , AgdaRecord(..)
   , AgdaFun(..)
   ) where
 
-import Agda.Compiler.Scala.ScalaExpr
+import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor
   , ScalaName
   , ScalaTerm

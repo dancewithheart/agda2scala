@@ -1,29 +1,26 @@
 module Main (main) where
 
-import System.Exit (exitFailure, exitSuccess)
-import Test.HUnit (
-    Test (..),
-    failures,
-    runTestTT,
- )
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
-import NameEnvTest (nameEnvTests)
-import NamePolicyTest (namePolicytests)
-import PrintScala2Test (printScala2Tests)
-import PrintScala3Test (printScala3Tests)
-import ScalaBackendTest (backendTests)
-
-allTests :: Test
-allTests =
-    TestList
-        [ backendTests
-        , printScala2Tests
-        , printScala3Tests
-        , nameEnvTests
-        , namePolicytests
-        ]
+import qualified Name.NameEnvTest
+import qualified Name.NamePolicyTest
+import qualified Render.PrintScala2Test
+import qualified Render.PrintScala3Test
+import qualified ScalaBackendTest
+import qualified Compile.TypesTest
 
 main :: IO ()
-main = do
-    result <- runTestTT allTests
-    if (failures result) > 0 then exitFailure else exitSuccess
+main =
+    defaultMain tests
+
+tests :: TestTree
+tests =
+    testGroup
+        "agda2scala unit tests"
+        [ Name.NameEnvTest.tests
+        , Name.NamePolicyTest.tests
+        , Render.PrintScala2Test.tests
+        , Render.PrintScala3Test.tests
+        , ScalaBackendTest.tests
+        , Compile.TypesTest.tests
+        ]

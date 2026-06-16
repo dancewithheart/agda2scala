@@ -8,8 +8,16 @@ Currently supported:
 - ✅ Product types (records) (with polymorphic parameters)
 - ✅ Simple and polymorphic functions (e.g. `id[A]`)
 - ✅ Literals: Int/Nat, Bool, String (subset)
-- 🚧 Pattern matching (`match` / `cases`) – planned
-- 🚧 Mapping Agda stdlib names to Scala stdlib (`Nat`, `List`, pairs) – planned / partial
+- ✅ Pattern matching on constructors
+  - ✅ zero-arity constructors
+  - ✅ flat constructor patterns with arguments
+  - 🚧 nested constructor patterns
+  - 🚧 literal branches / catch-all branches
+- ✅ 🚧 Mapping Agda stdlib names to Scala stdlib (`Nat`, `List`, pairs)
+
+Roadmap is captured in milestones:
+* support polymorphic ADTs: List, Red Black Tree, ZIO: https://github.com/dancewithheart/agda2scala/issues/17
+* support FP abstractions: Functor, Monad: https://github.com/dancewithheart/agda2scala/issues/12
 
 ## Basic usage:
 ```sh
@@ -85,7 +93,7 @@ We apply a small mapping table for common constructors and then sanitize the res
 - `_∷_` / `_::_` / `_cons_` → `Cons`
 - `_,_` → `Pair`
 
-See [Agda.Compiler.Scala.NamePolicy](./src/Agda/Compiler/Scala/NamePolicy.hs).
+See [Agda.Compiler.Scala.Name.NamePolicy](./src/Agda/Compiler/Scala/NamePolicy.hs).
 
 ## Working with source code
 
@@ -136,7 +144,7 @@ cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=sca
 ```sh
 cabal run -- agda2scala --help
 cabal run -- agda2scala ./examples/adts.agda
-cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
 ```
 
 * format code
@@ -163,8 +171,8 @@ They have unit tests, that use code generated from examples.
 Agda examples ==============> src/main/scala <============ src/test/scala
 
 checks:
-* compile Agda examples
-* run Scala unit tests that calls Scala code
+* compile Agda examples to Scala code
+* run Scala unit tests that calls that Scala code
 ```
 
 Those tests are [run on CI - Github Actions](/.github/workflows/haskell.yml).
@@ -188,10 +196,11 @@ sbt ~test
   * docs for [Agda.Compiler.Backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-Backend.html)
   * build-in [JS backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-JS-Compiler.html)
   * build-in [Haskell backend](https://hackage.haskell.org/package/Agda/docs/Agda-Compiler-MAlonzo-Compiler.html)
-* external project with Agda backends
-  * [omelkonian/agda-minimal-backend](https://github.com/omelkonian/agda-minimal-backend)
+* other backends:
+  * Haskell [agda/agda2hs](https://github.com/agda/agda2hs), ([publication](https://iohk.io/en/research/library/papers/reasonable-agda-is-correct-haskell-writing-verified-haskell-using-agda2hs/))
+  * Rust [omelkonian/agda2rust](https://github.com/omelkonian/agda2rust)
   * [jespercockx/agda2scheme](https://github.com/jespercockx/agda2scheme)
+  * [omelkonian/agda-minimal-backend](https://github.com/omelkonian/agda-minimal-backend)
   * [omelkonian/agda2train](https://github.com/omelkonian/agda2train)
-  * [agda/agda2hs](https://github.com/agda/agda2hs), ([publication](https://iohk.io/en/research/library/papers/reasonable-agda-is-correct-haskell-writing-verified-haskell-using-agda2hs/))
   * [HectorPeeters/agda2rust](https://github.com/HectorPeeters/agda2rust), ([publication](https://repository.tudelft.nl/islandora/object/uuid:39bff395-1bd6-4905-8554-cef0cd5e7d3e))
-  * [omelkonian/agda2rust](https://github.com/omelkonian/agda2rust)
+

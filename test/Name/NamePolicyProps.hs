@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module NamePolicyProps (tests) where
+module Name.NamePolicyProps (tests) where
 
 import qualified Data.Char as Char
 import qualified Data.HashMap.Strict as HM
@@ -8,8 +8,8 @@ import Hedgehog (Gen, Group (..), Property, assert, forAll, property, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.NameEnv (scalaKeywords)
-import Agda.Compiler.Scala.NamePolicy (NamePolicy (..), ctorName, defaultNamePolicy)
+import Agda.Compiler.Scala.Name.NameEnv (scalaKeywords)
+import Agda.Compiler.Scala.Name.NamePolicy (NamePolicy (..), ctorName, defaultNamePolicy)
 
 tests :: [Group]
 tests =
