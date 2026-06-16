@@ -16,7 +16,7 @@ Currently supported:
 - ✅ 🚧 Mapping Agda stdlib names to Scala stdlib (`Nat`, `List`, pairs)
 
 Roadmap is captured in milestones:
-* support polymoprhic ADTs: List, Red Black Tree, ZIO: https://github.com/dancewithheart/agda2scala/issues/17
+* support polymorphic ADTs: List, Red Black Tree, ZIO: https://github.com/dancewithheart/agda2scala/issues/17
 * support FP abstractions: Functor, Monad: https://github.com/dancewithheart/agda2scala/issues/12
 
 ## Basic usage:
