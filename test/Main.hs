@@ -1,42 +1,26 @@
 module Main (main) where
 
-import Control.Monad (when)
-import System.Exit (exitFailure, exitSuccess)
-import Test.HUnit (
-    Test (..),
-    cases,
-    errors,
-    failures,
-    runTestTT,
-    tried
- )
-import Name.NameEnvTest (nameEnvTests)
-import Name.NamePolicyTest (namePolicytests)
-import Compile.TypesTest (typeTests)
-import Render.PrintScala2Test (printScala2Tests)
-import Render.PrintScala3Test (printScala3Tests)
-import ScalaBackendTest (backendTests)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
-allTests :: Test
-allTests =
-    TestList
-        [ backendTests
-        , printScala2Tests
-        , printScala3Tests
-        , nameEnvTests
-        , namePolicytests
-        , typeTests
-        ]
+import qualified Name.NameEnvTest
+import qualified Name.NamePolicyTest
+import qualified Render.PrintScala2Test
+import qualified Render.PrintScala3Test
+import qualified ScalaBackendTest
+import qualified Compile.TypesTest
 
 main :: IO ()
-main = do
-  counts <- runTestTT allTests
+main =
+    defaultMain tests
 
-  putStrLn ""
-  putStrLn "━━━ HUnit summary ━━━"
-  putStrLn ("cases:    " <> show (cases counts))
-  putStrLn ("tried:    " <> show (tried counts))
-  putStrLn ("errors:   " <> show (errors counts))
-  putStrLn ("failures: " <> show (failures counts))
-
-  when (errors counts + failures counts > 0) exitFailure
+tests :: TestTree
+tests =
+    testGroup
+        "agda2scala unit tests"
+        [ Name.NameEnvTest.tests
+        , Name.NamePolicyTest.tests
+        , Render.PrintScala2Test.tests
+        , Render.PrintScala3Test.tests
+        , ScalaBackendTest.tests
+        , Compile.TypesTest.tests
+        ]

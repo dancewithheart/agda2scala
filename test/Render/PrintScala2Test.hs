@@ -1,107 +1,132 @@
-module Render.PrintScala2Test (printScala2Tests) where
+module Render.PrintScala2Test (tests) where
 
-import Agda.Compiler.Scala.Render.PrintScala2 (
-    combineLines,
-    printCaseClass,
-    printCaseObject,
-    printPackageAndObject,
-    printScala2,
-    printSealedTrait,
-    printSum,
- )
-import Agda.Compiler.Scala.IR.ScalaExpr (
-    ScalaCtor (..),
-    ScalaExpr (..),
-    ScalaPat (..),
-    ScalaTerm (..),
-    ScalaType (..),
-    ScalaTypeScheme (..),
-    SeVar (..),
-    scalaTypeScheme
- )
-import Test.HUnit (Test (..), assertEqual)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
-testPrintCaseObject :: Test
-testPrintCaseObject =
-    TestCase $
-        assertEqual
-            "printCaseObject"
-            "case object Light extends Color"
-            (printCaseObject "Color" "Light")
+import Agda.Compiler.Scala.IR.ScalaExpr
+    ( ScalaCtor (..)
+    , ScalaExpr (..)
+    , ScalaPat (..)
+    , ScalaTerm (..)
+    , ScalaType (..)
+    , ScalaTypeScheme (..)
+    , SeVar (..)
+    , scalaTypeScheme
+    )
+import Agda.Compiler.Scala.Render.PrintScala2
+    ( combineLines
+    , printCaseClass
+    , printCaseObject
+    , printPackageAndObject
+    , printScala2
+    , printSealedTrait
+    , printSum
+    )
+import Support.Assertions (assertStringEqual)
 
-testPrintSealedTrait :: Test
-testPrintSealedTrait =
-    TestCase $
-        assertEqual
-            "printSealedTrait"
-            "sealed trait Color"
-            (printSealedTrait "Color")
+tests :: TestTree
+tests =
+    testGroup
+        "Render.Scala2"
+        [ testGroup
+            "module headers"
+            [ testCase "prints object when module has one name part" test_objectWhenNoPackage
+            , testCase "prints package and object for two-part module name" test_packageAndObject
+            , testCase "prints dotted package and object for multi-part module name" test_multiplePartPackageAndObject
+            ]
+        , testGroup
+            "declarations"
+            [ testCase "prints sealed trait for an ADT parent" test_printSealedTrait
+            , testCase "prints case object for a zero-argument constructor" test_printCaseObject
+            , testCase "prints case class for a record/product type" test_printCaseClass
+            , testCase "prints polymorphic case class" test_printCaseClassPoly
+            , testCase "prints monomorphic sum type" test_printSum
+            , testCase "prints polymorphic sum type" test_printSumPoly
+            , testCase "prints polymorphic function definition" test_polyDef
+            ]
+        , testGroup
+            "layout"
+            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
+            , testCase "prints package with handled declarations and skips empty unhandled declarations" test_printScala2Package
+            ]
+        , testGroup
+            "pattern matching"
+            [ testCase "prints flat constructor match" test_printMatch
+            ]
+        ]
 
-testObjectWhenNoPackage :: Test
-testObjectWhenNoPackage =
-    TestCase $
-        assertEqual
-            "printPackageAndObject"
-            "object adts"
-            (printPackageAndObject ["adts"])
+test_printCaseObject :: IO ()
+test_printCaseObject =
+    assertEqual
+        "Scala 2 case object"
+        "case object Light extends Color"
+        (printCaseObject "Color" "Light")
 
-testPrintPackageAndObject :: Test
-testPrintPackageAndObject =
-    TestCase $
-        assertEqual
-            "printPackageAndObject"
-            "package example\n\nobject adts"
-            (printPackageAndObject ["example", "adts"])
+test_printSealedTrait :: IO ()
+test_printSealedTrait =
+    assertEqual
+        "Scala 2 sealed trait"
+        "sealed trait Color"
+        (printSealedTrait "Color")
 
-testPrintMultiplePartPackageAndObject :: Test
-testPrintMultiplePartPackageAndObject =
-    TestCase $
-        assertEqual
-            "printPackageAndObject"
-            "package org.example\n\nobject adts"
-            (printPackageAndObject ["org", "example", "adts"])
+test_objectWhenNoPackage :: IO ()
+test_objectWhenNoPackage =
+    assertEqual
+        "Scala 2 object"
+        "object adts"
+        (printPackageAndObject ["adts"])
 
-testCombineLines :: Test
-testCombineLines =
-    TestCase $
-        assertEqual
-            "combineLines"
-            "a\nb"
-            (combineLines ["", "a", "", "", "b", "", "", ""])
+test_packageAndObject :: IO ()
+test_packageAndObject =
+    assertEqual
+        "Scala 2 package and object"
+        "package example\n\nobject adts"
+        (printPackageAndObject ["example", "adts"])
 
-testPrintCaseClass :: Test
-testPrintCaseClass =
-    TestCase $
-        assertEqual
-            "printCaseClass"
-            "final case class RgbPair(snd: Bool, fst: Rgb)"
-            ( printCaseClass
-                "RgbPair"
-                []
-                [ SeVar "snd" (STyName "Bool")
-                , SeVar "fst" (STyName "Rgb")
-                ]
-            )
+test_multiplePartPackageAndObject :: IO ()
+test_multiplePartPackageAndObject =
+    assertEqual
+        "Scala 2 dotted package and object"
+        "package org.example\n\nobject adts"
+        (printPackageAndObject ["org", "example", "adts"])
 
-testPrintCaseClassPoly :: Test
-testPrintCaseClassPoly =
-    TestCase $
-        assertEqual
-            "printCaseClassPolymorphic"
-            "final case class Box[A](unbox: A)"
-            ( printCaseClass
-                "Box"
-                ["A"]
-                [SeVar "unbox" (STyVar "A")]
-            )
+test_combineLines :: IO ()
+test_combineLines =
+    assertEqual
+        "combined lines"
+        "a\nb"
+        (combineLines ["", "a", "", "", "b", "", "", ""])
 
-testPrintScala2 :: Test
-testPrintScala2 =
-    TestCase $
-        assertEqual
-            "printScala2"
-            expected
-            (printScala2 $ SePackage ["adts"] moduleContent)
+test_printCaseClass :: IO ()
+test_printCaseClass =
+    assertEqual
+        "Scala 2 case class"
+        "final case class RgbPair(snd: Bool, fst: Rgb)"
+        ( printCaseClass
+            "RgbPair"
+            []
+            [ SeVar "snd" (STyName "Bool")
+            , SeVar "fst" (STyName "Rgb")
+            ]
+        )
+
+test_printCaseClassPoly :: IO ()
+test_printCaseClassPoly =
+    assertEqual
+        "Scala 2 polymorphic case class"
+        "final case class Box[A](unbox: A)"
+        ( printCaseClass
+            "Box"
+            ["A"]
+            [SeVar "unbox" (STyVar "A")]
+        )
+
+test_printScala2Package :: IO ()
+test_printScala2Package =
+    assertStringEqual
+        "Scala 2 printer renders a package object with two ADTs and skips empty SeUnhandled declarations"
+        expected
+        (printScala2 $ SePackage ["adts"] moduleContent)
   where
     rgbAdt =
         SeSum
@@ -111,6 +136,7 @@ testPrintScala2 =
             , ScalaCtor "Green" []
             , ScalaCtor "Blue" []
             ]
+
     colorAdt =
         SeSum
             "Color"
@@ -118,8 +144,10 @@ testPrintScala2 =
             [ ScalaCtor "Light" []
             , ScalaCtor "Dark" []
             ]
+
     blank = SeUnhandled "" ""
     moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
+
     expected =
         "object adts\n"
             <> "{\n"
@@ -130,30 +158,29 @@ testPrintScala2 =
             <> "  case object Green extends Rgb\n"
             <> "  case object Blue extends Rgb\n"
             <> "\n"
-            <> "}\n" -- this blank line is currently produced by your printer
+            <> "}\n"
             <> "\n"
             <> "sealed trait Color\n"
             <> "object Color {\n"
             <> "  case object Light extends Color\n"
             <> "  case object Dark extends Color\n"
             <> "\n"
-            <> "}\n" -- likewise
+            <> "}\n"
             <> "}\n"
 
-testPrintSum :: Test
-testPrintSum =
-    TestCase $
-        assertEqual
-            "testPrintSum"
-            expected
-            ( printSum
-                "Rgb"
-                []
-                [ ScalaCtor "Red" []
-                , ScalaCtor "Green" []
-                , ScalaCtor "Blue" []
-                ]
-            )
+test_printSum :: IO ()
+test_printSum =
+    assertStringEqual
+        "Scala 2 printer renders a monomorphic ADT as sealed trait plus companion object"
+        expected
+        ( printSum
+            "Rgb"
+            []
+            [ ScalaCtor "Red" []
+            , ScalaCtor "Green" []
+            , ScalaCtor "Blue" []
+            ]
+        )
   where
     expected =
         "sealed trait Rgb\n"
@@ -164,19 +191,18 @@ testPrintSum =
             <> "\n"
             <> "}"
 
-testPrintSumPoly :: Test
-testPrintSumPoly =
-    TestCase $
-        assertEqual
-            "testPrintSumPoly"
-            expected
-            ( printSum
-                "Maybe"
-                ["A"]
-                [ ScalaCtor "None" []
-                , ScalaCtor "Just" [STyVar "A"]
-                ]
-            )
+test_printSumPoly :: IO ()
+test_printSumPoly =
+    assertStringEqual
+        "Scala 2 printer renders a polymorphic ADT with Nothing for zero-argument constructors"
+        expected
+        ( printSum
+            "Maybe"
+            ["A"]
+            [ ScalaCtor "None" []
+            , ScalaCtor "Just" [STyVar "A"]
+            ]
+        )
   where
     expected =
         "sealed trait Maybe[A]\n"
@@ -186,13 +212,12 @@ testPrintSumPoly =
             <> "\n"
             <> "}"
 
-testPolyDef :: Test
-testPolyDef =
-    TestCase $
-        assertEqual
-            "prints def with [A] and return A"
-            expected
-            (printScala2 expr)
+test_polyDef :: IO ()
+test_polyDef =
+    assertStringEqual
+        "Scala 2 printer renders type parameters on polymorphic functions"
+        expected
+        (printScala2 expr)
   where
     expr =
         SeFun
@@ -204,9 +229,10 @@ testPolyDef =
     expected =
         "def id[A](x1: A): A = x1\n"
 
-testPrintMatch :: Test
-testPrintMatch = TestCase $
-    assertEqual "printScala2 match"
+test_printMatch :: IO ()
+test_printMatch =
+    assertStringEqual
+        "Scala 2 printer renders flat constructor match"
         expected
         (printScala2 expr)
   where
@@ -221,26 +247,9 @@ testPrintMatch = TestCase $
                 , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
                 ]
             )
+
     expected =
         "def not(x0: Answer): Answer = x0 match {\n"
             <> "  case Answer.Yes => Answer.No\n"
             <> "  case Answer.No => Answer.Yes\n"
             <> "}\n"
-
-printScala2Tests :: Test
-printScala2Tests =
-    TestList
-        [ TestLabel "printCaseObject" testPrintCaseObject
-        , TestLabel "printSealedTrait" testPrintSealedTrait
-        , TestLabel "printObject" testObjectWhenNoPackage
-        , TestLabel "printPackageAndObject" testPrintPackageAndObject
-        , TestLabel "printPackageAndObject 2" testPrintMultiplePartPackageAndObject
-        , TestLabel "combineLines" testCombineLines
-        , TestLabel "printCaseClass" testPrintCaseClass
-        , TestLabel "printCaseClassPolymorphic" testPrintCaseClassPoly
-        , TestLabel "testPrintSum" testPrintSum
-        , TestLabel "testPrintSumPoly" testPrintSumPoly
-        , TestLabel "printScala2" testPrintScala2
-        , TestLabel "printScala2 polymorphic def" testPolyDef
-        , TestLabel "printScala2 pattern match" testPrintMatch
-        ]

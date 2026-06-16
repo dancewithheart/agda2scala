@@ -85,7 +85,13 @@ To resolve Vars correctly, TyEnv stores:
 Index 0 is the most recent binder.
 -}
 newtype TyEnv = TyEnv {unTyEnv :: [Maybe ScalaName]}
-    deriving (Eq, Show)
+  deriving (Eq, Show)
+
+instance Semigroup TyEnv where
+  TyEnv left <> TyEnv right = TyEnv (left <> right)
+
+instance Monoid TyEnv where
+  mempty = TyEnv []
 
 emptyTyEnv :: TyEnv
 emptyTyEnv = TyEnv []

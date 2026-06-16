@@ -1,13 +1,25 @@
-module Name.NamePolicyTest (namePolicytests) where
+module Name.NamePolicyTest (tests) where
 
-import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
-import Test.HUnit (Test (..), assertEqual)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (assertEqual, testCase)
 
-namePolicytests :: Test
-namePolicytests =
-    TestList
-        [ TestLabel "ctor [] -> Nil" $
-            TestCase (assertEqual "[]" "Nil" (ctorName defaultNamePolicy "[]"))
-        , TestLabel "ctor _cons_ -> Cons" $
-            TestCase (assertEqual "_cons_" "_cons_" (ctorName defaultNamePolicy "_cons_"))
+import Agda.Compiler.Scala.Name.NamePolicy
+    ( ctorName
+    , defaultNamePolicy
+    )
+
+tests :: TestTree
+tests =
+    testGroup
+        "Name.NamePolicy / Agda constructor names"
+        [ testCase "constructor [] is rendered as Nil" $
+            assertEqual "Scala constructor name" "Nil" (ctorName defaultNamePolicy "[]")
+        , testCase "constructor _::_ is rendered as Cons" $
+            assertEqual "Scala constructor name" "Cons" (ctorName defaultNamePolicy "_::_")
+        , testCase "constructor _∷_ is rendered as Cons" $
+            assertEqual "Scala constructor name" "Cons" (ctorName defaultNamePolicy "_∷_")
+        , testCase "constructor _,_ is rendered as Pair" $
+            assertEqual "Scala constructor name" "Pair" (ctorName defaultNamePolicy "_,_")
+        , testCase "constructor _cons_ is not rewritten by the default policy" $
+            assertEqual "Scala constructor name" "_cons_" (ctorName defaultNamePolicy "_cons_")
         ]

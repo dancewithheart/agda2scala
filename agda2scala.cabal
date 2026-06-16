@@ -106,12 +106,14 @@ test-suite agda2scala-test
     Render.PrintScala2Test
     Render.PrintScala3Test
     ScalaBackendTest
+    Support.Assertions
 
   build-depends:
     , Agda                  >=2.8.0   && <2.9.0
     , agda2scala
     , base                  >=4.13 && <4.23
-    , HUnit                 >=1.6.2.0
+    , tasty
+    , tasty-hunit
     , unordered-containers  >=0.2.20  && <0.3
 
 test-suite agda2scala-hedgehog
