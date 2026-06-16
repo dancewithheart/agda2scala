@@ -144,7 +144,7 @@ cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=sca
 ```sh
 cabal run -- agda2scala --help
 cabal run -- agda2scala ./examples/adts.agda
-cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
 ```
 
 * format code

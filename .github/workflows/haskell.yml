@@ -65,10 +65,10 @@ jobs:
         run: cabal test all
 
       - name: Compile example Agda code to Scala 2
-        run: cabal run -- agda2scala --out-dir=scala2/src/main/scala ./examples/adts.agda
+        run: cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
 
       - name: Compile example Agda code to Scala 3
-        run: cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
+        run: cabal run -- agda2scala --out-dir=scala3/src/main/scala ./examples/adts.agda
 
       - name: Set up JVM
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
