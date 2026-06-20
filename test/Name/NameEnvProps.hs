@@ -11,29 +11,33 @@ module Name.NameEnvProps (nameEnvProps) where
 
 import Data.Char (isAlphaNum, isLetter)
 import Data.List (mapAccumL, nub)
+import qualified Data.HashSet as HS
 import qualified Data.Set as Set
 
 import Hedgehog (Gen, Group (..), Property, assert, forAll, property, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.Name.NameEnv (
-    allocFreshLocal,
-    emptyNameEnv,
-    sanitizeScalaIdent,
- )
+import Agda.Compiler.Scala.Name.NameEnv
+    ( NameEnv (..)
+    , allocFreshLocal
+    , emptyNameEnv
+    , sanitizeScalaIdent
+    )
 
 nameEnvProps :: Group
 nameEnvProps =
     Group
-        "Name.NameEnvProps"
-        [ ("prop_sanitize_nonEmpty", prop_sanitize_nonEmpty)
-        , ("prop_sanitize_validScalaIdentChars", prop_sanitize_validScalaIdentChars)
-        , ("prop_sanitize_notKeyword", prop_sanitize_notKeyword)
-        , ("prop_allocFreshLocal_unique", prop_allocFreshLocal_unique)
-        , ("prop_allocFreshLocal_deterministic", prop_allocFreshLocal_deterministic)
-        , ("prop_sanitize_idempotent", prop_sanitize_idempotent)
-        , ("prop_allocFreshLocal_unique_nonKeyword", prop_allocFreshLocal_unique_nonKeyword)
+        "Name.NameEnv / Scala identifier hygiene"
+        [ ("sanitized identifiers are never empty", prop_sanitize_nonEmpty)
+        , ("sanitized identifiers contain only Scala identifier characters", prop_sanitize_validScalaIdentChars)
+        , ("sanitized identifiers are never Scala keywords", prop_sanitize_notKeyword)
+        , ("sanitizing an already sanitized identifier is stable (idempotent)", prop_sanitize_idempotent)
+        , ("fresh local allocation returns unique names", prop_allocFreshLocal_unique)
+        , ("fresh local allocation is deterministic for the same inputs", prop_allocFreshLocal_deterministic)
+        , ("fresh local allocation never returns a Scala keyword", prop_allocFreshLocal_unique_nonKeyword)
+        , ("fresh local allocation marks every returned name as taken", prop_allocFreshLocal_marksAllocatedNamesTaken)
+        , ("first allocation returns the sanitized base name when it is available", prop_allocFreshLocal_firstUsesSanitizedBase)
         ]
 
 -- ===== Generators ============================================================
@@ -43,7 +47,7 @@ genAnyString =
     Gen.frequency
         [ (6, Gen.string (Range.linear 0 30) Gen.alphaNum)
         , (2, Gen.string (Range.linear 0 30) Gen.unicode)
-        , (2, Gen.string (Range.linear 0 30) (Gen.element ("_-.$#@! \n\t\"\\\\" :: String)))
+        , (2, Gen.string (Range.linear 0 30) (Gen.element ("_-.$#@! \n\t\"\\" :: String)))
         ]
 
 genRawName :: Gen String
@@ -107,8 +111,8 @@ scalaKeywords =
 isValidScalaIdent :: String -> Bool
 isValidScalaIdent s =
     not (null s)
-        && startsOk s
-        && all okChar s
+      && startsOk s
+      && all okChar s
   where
     startsOk (c : _) = isLetter c || c == '_'
     startsOk [] = False
@@ -117,70 +121,67 @@ isValidScalaIdent s =
 isScalaKeyword :: String -> Bool
 isScalaKeyword s = Set.member s scalaKeywords
 
+allocMany :: [String] -> (NameEnv, [String])
+allocMany = mapAccumL step emptyNameEnv
+  where
+    step ne raw = let (ne', name) = allocFreshLocal ne raw in (ne', name)
+
 -- ===== Properties ============================================================
 
 prop_sanitize_nonEmpty :: Property
 prop_sanitize_nonEmpty = property $ do
     raw <- forAll genRawName
-    let s = sanitizeScalaIdent raw
-    assert (not (null s))
+    let name = sanitizeScalaIdent raw
+    assert (not (null name))
 
 prop_sanitize_validScalaIdentChars :: Property
 prop_sanitize_validScalaIdentChars = property $ do
     raw <- forAll genRawName
-    let s = sanitizeScalaIdent raw
-    assert (isValidScalaIdent s)
+    let name = sanitizeScalaIdent raw
+    assert (isValidScalaIdent name)
 
 prop_sanitize_notKeyword :: Property
 prop_sanitize_notKeyword = property $ do
     raw <- forAll genRawName
-    let s = sanitizeScalaIdent raw
+    let name = sanitizeScalaIdent raw
     -- your sanitize adds "_" if keyword, so we should never land on a keyword
-    assert (Set.notMember s scalaKeywords)
-
-prop_allocFreshLocal_unique :: Property
-prop_allocFreshLocal_unique = property $ do
-    raws <- forAll genManyRawNames
-    let names = allocMany raws
-    length names === length (nub names)
-  where
-    allocMany :: [String] -> [String]
-    allocMany = go emptyNameEnv []
-      where
-        go _ acc [] = reverse acc
-        go ne acc (r : rs) =
-            let (ne', n) = allocFreshLocal ne r
-             in go ne' (n : acc) rs
-
-prop_allocFreshLocal_deterministic :: Property
-prop_allocFreshLocal_deterministic = property $ do
-    raws <- forAll genManyRawNames
-    let out1 = allocMany raws
-        out2 = allocMany raws
-    out1 === out2
-  where
-    allocMany :: [String] -> [String]
-    allocMany = go emptyNameEnv []
-      where
-        go _ acc [] = reverse acc
-        go ne acc (r : rs) =
-            let (ne', n) = allocFreshLocal ne r
-             in go ne' (n : acc) rs
+    assert (Set.notMember name scalaKeywords)
 
 prop_sanitize_idempotent :: Property
 prop_sanitize_idempotent = property $ do
-    s <- forAll genAnyString
-    sanitizeScalaIdent (sanitizeScalaIdent s) === sanitizeScalaIdent s
+    raw <- forAll genAnyString
+    sanitizeScalaIdent (sanitizeScalaIdent raw) === sanitizeScalaIdent raw
+
+prop_allocFreshLocal_unique :: Property
+prop_allocFreshLocal_unique = property $ do
+    rawNames <- forAll genManyRawNames
+    let (_, names) = allocMany rawNames
+    length names === length (nub names)
+
+prop_allocFreshLocal_deterministic :: Property
+prop_allocFreshLocal_deterministic = property $ do
+    rawNames <- forAll genManyRawNames
+    let (_, names1) = allocMany rawNames
+        (_, names2) = allocMany rawNames
+    names1 === names2
 
 {- HLINT ignore "Hoist not" -}
 -- allocFreshLocal never returns a keyword, never duplicates
 prop_allocFreshLocal_unique_nonKeyword :: Property
 prop_allocFreshLocal_unique_nonKeyword = property $ do
-    bases <- forAll (Gen.list (Range.linear 0 200) genAnyString)
-    let (_, outs) =
-            mapAccumL
-                (\ne b -> let (ne', n) = allocFreshLocal ne b in (ne', n))
-                emptyNameEnv
-                bases
-    assert (length outs == length (nub outs))
-    assert (all (not . isScalaKeyword) outs)
+    rawNames <- forAll (Gen.list (Range.linear 0 200) genAnyString)
+    let (_, names) = allocMany rawNames
+    assert (length names == length (nub names))
+    assert (all (not . isScalaKeyword) names)
+
+prop_allocFreshLocal_marksAllocatedNamesTaken :: Property
+prop_allocFreshLocal_marksAllocatedNamesTaken = property $ do
+    rawNames <- forAll genManyRawNames
+    let (nameEnv, names) = allocMany rawNames
+    assert (all (`HS.member` neTaken nameEnv) names)
+
+prop_allocFreshLocal_firstUsesSanitizedBase :: Property
+prop_allocFreshLocal_firstUsesSanitizedBase = property $ do
+    rawName <- forAll genRawName
+    let (_nameEnv, allocatedName) = allocFreshLocal emptyNameEnv rawName
+    allocatedName === sanitizeScalaIdent rawName

@@ -71,7 +71,7 @@ prop_ctorName_notKeyword = property $ do
     let scalaCtor = ctorName defaultNamePolicy agdaCtor
     assert (scalaCtor `notElem` scalaKeywords)
 
--- TODO consider more eneral property
+-- TODO consider more general property
 -- something like forall policyL (policyR + mappingM) then mappingM exists in merged result
 -- (maybe sth like optics laws put put == put)
 prop_namePolicy_overrides_are_right_biased :: Property

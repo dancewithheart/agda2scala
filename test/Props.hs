@@ -1,6 +1,10 @@
 module Main where
 
+import Control.Monad (unless)
+import System.Exit (exitFailure)
+
 import Hedgehog (Group, checkParallel)
+
 import CompileProps (compileProps)
 import Compile.TermsProps (termsProps)
 import Compile.TypesProps (typesProps)
@@ -11,14 +15,19 @@ import Render.PrintProps (printProps)
 
 main :: IO ()
 main = do
-    ok1 <- checkParallel nameEnvProps
-    ok2 <- checkParallel printProps
-    ok3 <- checkParallel compileProps
-    ok4 <- checkParallel iRToScalaProps
-    ok5 <- checkGroups namePolicyProps
-    ok6 <- checkParallel termsProps
-    ok7 <- checkParallel typesProps
-    if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 then pure () else fail "Hedgehog tests failed"
+    ok <- checkAllGroups allGroups
+    unless ok exitFailure
 
-checkGroups :: [Group] -> IO Bool
-checkGroups = fmap and . traverse checkParallel
+allGroups :: [Group]
+allGroups =
+    [ nameEnvProps
+    , printProps
+    , compileProps
+    , iRToScalaProps
+    , termsProps
+    , typesProps
+    ]
+        <> namePolicyProps
+
+checkAllGroups :: [Group] -> IO Bool
+checkAllGroups groups = and <$> traverse checkParallel groups
