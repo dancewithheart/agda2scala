@@ -136,7 +136,6 @@ test_printScala2Package =
             , ScalaCtor "Green" []
             , ScalaCtor "Blue" []
             ]
-
     colorAdt =
         SeSum
             "Color"
@@ -144,10 +143,8 @@ test_printScala2Package =
             [ ScalaCtor "Light" []
             , ScalaCtor "Dark" []
             ]
-
     blank = SeUnhandled "" ""
     moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
-
     expected =
         "object adts\n"
             <> "{\n"
@@ -225,9 +222,7 @@ test_polyDef =
             [SeVar "x1" (STyVar "A")]
             (ScalaTypeScheme ["A"] (STyVar "A"))
             (STeVar "x1")
-
-    expected =
-        "def id[A](x1: A): A = x1\n"
+    expected = "def id[A](x1: A): A = x1\n"
 
 test_printMatch :: IO ()
 test_printMatch =

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module CompileProps (tests) where
+module CompileProps (compileProps) where
 
 import qualified Data.Text as T
 import Hedgehog (
@@ -29,8 +29,8 @@ import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
 
-tests :: Group
-tests =
+compileProps :: Group
+compileProps =
     Group
         "CompileProps"
         [ ("prop_lookupVar_inRange", prop_lookupVar_inRange)

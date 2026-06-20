@@ -183,5 +183,4 @@ printCompanionObject name ctorLines =
         <> "}"
 
 indentBlock :: Int -> String -> String
-indentBlock n =
-    unlines . map (replicate n ' ' <>) . lines
+indentBlock n = unlines . map (replicate n ' ' <>) . lines

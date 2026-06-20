@@ -126,10 +126,10 @@ test-suite agda2scala-props
     CompileProps
     Compile.TermsProps
     Compile.TypesProps
+    Lower.IRToScalaProps
     Name.NameEnvProps
     Name.NamePolicyProps
     Render.PrintProps
-    IRToScalaProps
 
   build-depends:
     , Agda                  >=2.8.0  && <2.9.0

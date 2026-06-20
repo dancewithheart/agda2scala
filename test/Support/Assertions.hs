@@ -39,8 +39,7 @@ assertStringEqual label expected actual =
 assertLeft :: (Show a) => String -> Either e a -> Assertion
 assertLeft label actual =
     case actual of
-        Left _ ->
-            pure ()
+        Left _ -> pure ()
         Right value ->
             assertFailure $
                 unlines
@@ -56,8 +55,7 @@ assertLeft label actual =
 assertRight :: (Show e) => String -> Either e a -> Assertion
 assertRight label actual =
     case actual of
-        Right _ ->
-            pure ()
+        Right _ -> pure ()
         Left err ->
             assertFailure $
                 unlines
@@ -71,13 +69,7 @@ assertRight label actual =
                     ]
 
 indent :: String -> String
-indent =
-    unlines . fmap ("  " <>) . lines
+indent = unlines . fmap ("  " <>) . lines
 
 fence :: String -> String
-fence s =
-    unlines
-        [ "```"
-        , s
-        , "```"
-        ]
+fence s = unlines [ "```", s, "```" ]

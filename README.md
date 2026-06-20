@@ -132,7 +132,7 @@ cabal run -- agda2scala ./examples/adts.agda
 * Generate Scala2 output
 
 ```sh
-cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
 ```
 
 * Generate Scala3 (dotty) output

@@ -115,10 +115,8 @@ unrollPi :: Type -> Either CompileError ([(Dom Type, Abs Type)], Type)
 unrollPi = go []
   where
     go acc = \case
-        El _ (Pi dom absTy) ->
-            go ((dom, absTy) : acc) (absBody absTy)
-        ty ->
-            pure (reverse acc, ty)
+        El _ (Pi dom absTy) -> go ((dom, absTy) : acc) (absBody absTy)
+        ty                  -> pure (reverse acc, ty)
 
 -- ===== Type compilation ======================================================
 
@@ -128,7 +126,7 @@ compileDomTypeWith tyEnv = compileTypeWith tyEnv . unDom
 compileTypeWith :: TyEnv -> Type -> Either CompileError ScalaType
 compileTypeWith tyEnv = \case
   El _ t -> compileTypeTermWith tyEnv t
-  t      -> Left (UnsupportedType t)
+--  t      -> Left (UnsupportedType t)
 
 -- Agda.Syntax.Internal.Type:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Type
@@ -259,7 +257,7 @@ A higher-kinded parameter like "F : Type u -> Type u" appears as El _ (Pi _ -> S
 isTypeLike :: Type -> Bool
 isTypeLike = \case
     El _ t -> goTerm t
-    _      -> False
+--    _      -> False
   where
     goTerm = \case
         Sort _ -> True

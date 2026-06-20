@@ -47,8 +47,7 @@ genAnyString =
         ]
 
 genRawName :: Gen String
-genRawName =
-    Gen.string (Range.linear 0 40) genNameChar
+genRawName = Gen.string (Range.linear 0 40) genNameChar
   where
     -- include some "annoying" characters to stress sanitization
     genNameChar =
@@ -113,7 +112,6 @@ isValidScalaIdent s =
   where
     startsOk (c : _) = isLetter c || c == '_'
     startsOk [] = False
-
     okChar c = isAlphaNum c || c == '_'
 
 isScalaKeyword :: String -> Bool
@@ -179,12 +177,10 @@ prop_sanitize_idempotent = property $ do
 prop_allocFreshLocal_unique_nonKeyword :: Property
 prop_allocFreshLocal_unique_nonKeyword = property $ do
     bases <- forAll (Gen.list (Range.linear 0 200) genAnyString)
-
     let (_, outs) =
             mapAccumL
                 (\ne b -> let (ne', n) = allocFreshLocal ne b in (ne', n))
                 emptyNameEnv
                 bases
-
     assert (length outs == length (nub outs))
     assert (all (not . isScalaKeyword) outs)

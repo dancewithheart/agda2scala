@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Name.NamePolicyProps (tests) where
+module Name.NamePolicyProps (namePolicyProps) where
 
 import qualified Data.Char as Char
 import qualified Data.HashMap.Strict as HM
@@ -11,8 +11,8 @@ import qualified Hedgehog.Range as Range
 import Agda.Compiler.Scala.Name.NameEnv (scalaKeywords)
 import Agda.Compiler.Scala.Name.NamePolicy (NamePolicy (..), ctorName, defaultNamePolicy)
 
-tests :: [Group]
-tests =
+namePolicyProps :: [Group]
+namePolicyProps =
     [ namingGroup
     , mergeGroup
     ]
@@ -76,8 +76,7 @@ prop_ctorName_notKeyword = property $ do
 -- (maybe sth like optics laws put put == put)
 prop_namePolicy_overrides_are_right_biased :: Property
 prop_namePolicy_overrides_are_right_biased = property $ do
-    let userOverrides =
-            mempty{npCtorMap = HM.fromList [("[]", "EmptyList")]}
+    let userOverrides = mempty{npCtorMap = HM.fromList [("[]", "EmptyList")]}
         pol = defaultNamePolicy <> userOverrides
     ctorName pol "[]" === "EmptyList"
 

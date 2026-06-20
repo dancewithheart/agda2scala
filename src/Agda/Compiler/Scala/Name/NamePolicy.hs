@@ -66,8 +66,7 @@ stdlibNamePolicy =
         }
 
 defaultNamePolicy :: NamePolicy
-defaultNamePolicy =
-    stdlibNamePolicy
+defaultNamePolicy = stdlibNamePolicy
 
 -- override default policy when needed
 -- catsPolicy

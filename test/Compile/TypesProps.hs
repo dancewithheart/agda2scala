@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Compile.TypesProps (tests) where
+module Compile.TypesProps (typesProps) where
 
 import Hedgehog
   ( Group(..)
@@ -23,8 +23,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr (ScalaType (..))
 import Agda.Syntax.Common (Arg (..))
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 
-tests :: Group
-tests =
+typesProps :: Group
+typesProps =
     Group
         "Compile.Types properties"
         [ ("prop_lookupTyVar_resolves_named", prop_lookupTyVar_resolves_named)

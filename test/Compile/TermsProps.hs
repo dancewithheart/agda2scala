@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Compile.TermsProps (tests) where
+module Compile.TermsProps (termsProps) where
 
 import Data.Foldable (traverse_)
 import Hedgehog
@@ -29,8 +29,8 @@ import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
 import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..))
 
-tests :: Group
-tests =
+termsProps :: Group
+termsProps =
   Group "Terms / Env / application"
     [ ("Def with k Apply args compiles to application of arity k", prop_def_apply_arity)
     , ("pattern vars extend Env with newest binder at index 0", prop_extendEnv_patternVarsNewestFirst)
@@ -53,9 +53,7 @@ prop_def_apply_arity = property $ do
         Def
           dummyQName
           (replicate k (mkApply (Var 0 [])))
-
   tm <- evalEither (compileBodyTerm env t)
-
   case tm of
     STeVar _ -> k === 0
     STeApp _ args -> length args === k
