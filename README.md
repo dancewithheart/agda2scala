@@ -119,7 +119,7 @@ cabal build all
 ```sh
 cabal test all
 cabal test agda2scala-test
-cabal test agda2scala-hedgehog
+cabal test agda2scala-props
 ```
 
 * Simple way to run Scala backend
