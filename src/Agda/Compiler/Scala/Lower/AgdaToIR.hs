@@ -90,10 +90,8 @@ lowerField tyEnv (i, dom) = do
 -- Telescope is linked, not a normal Haskell list.
 teleToList :: Telescope -> [Dom Type]
 teleToList = \case
-  EmptyTel ->
-    []
-  ExtendTel dom rest ->
-    dom : teleToList (absBody rest)
+  EmptyTel           -> []
+  ExtendTel dom rest -> dom : teleToList (absBody rest)
 
 -- ===== Datatypes =============================================================
 

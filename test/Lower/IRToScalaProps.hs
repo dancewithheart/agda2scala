@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module IRToScalaProps (tests) where
+module Lower.IRToScalaProps (iRToScalaProps) where
 
 import Hedgehog
   ( Group(..)
@@ -28,8 +28,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , SeVar(..)
   )
 
-tests :: Group
-tests =
+iRToScalaProps :: Group
+iRToScalaProps =
   Group "IRToScala"
     [ ("data lowering preserves constructor arity", prop_dataCtorArityPreserved)
     , ("data lowering applies constructor NamePolicy", prop_dataCtorNamePolicy)
@@ -45,7 +45,6 @@ prop_dataCtorArityPreserved = property $ do
           { scName = "Mk"
           , scArgs = replicate arity (STyName "A")
           }
-
       decl =
         DData
           AgdaData
@@ -53,10 +52,8 @@ prop_dataCtorArityPreserved = property $ do
             , adTyParams = ["A"]
             , adCtors = [ctor]
             }
-
   case toScalaExpr defaultNamePolicy decl of
-    SeSum _ _ [ScalaCtor _ args] ->
-      length args === arity
+    SeSum _ _ [ScalaCtor _ args] -> length args === arity
     other -> do
       annotateShow other
       assert False
@@ -77,8 +74,7 @@ prop_dataCtorNamePolicy = property $ do
             }
 
   case toScalaExpr defaultNamePolicy decl of
-    SeSum _ _ [ScalaCtor ctorName _] ->
-      ctorName === "Nil"
+    SeSum _ _ [ScalaCtor ctorName _] -> ctorName === "Nil"
     other -> do
       annotateShow other
       assert False
@@ -86,12 +82,10 @@ prop_dataCtorNamePolicy = property $ do
 prop_recordFieldCountPreserved :: Property
 prop_recordFieldCountPreserved = property $ do
   fieldCount <- forAll (Gen.int (Range.linear 0 8))
-
   let fields =
         [ SeVar ("x" <> show i) (STyName "A")
         | i <- [0 .. fieldCount - 1]
         ]
-
       decl =
         DRecord
           AgdaRecord
@@ -101,8 +95,7 @@ prop_recordFieldCountPreserved = property $ do
             }
 
   case toScalaExpr defaultNamePolicy decl of
-    SeProd _ _ vars ->
-      length vars === fieldCount
+    SeProd _ _ vars -> length vars === fieldCount
     other -> do
       annotateShow other
       assert False

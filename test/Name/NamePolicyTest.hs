@@ -3,10 +3,7 @@ module Name.NamePolicyTest (tests) where
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, testCase)
 
-import Agda.Compiler.Scala.Name.NamePolicy
-    ( ctorName
-    , defaultNamePolicy
-    )
+import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
 
 tests :: TestTree
 tests =

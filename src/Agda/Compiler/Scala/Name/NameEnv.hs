@@ -75,28 +75,59 @@ emptyNameEnv =
         }
 
 sanitizeScalaIdent :: String -> String
-sanitizeScalaIdent s0 =
-    let s1 = map (\c -> if Char.isAlphaNum c then c else '_') s0
-        s2 = if null s1 then "x" else s1
-        s3 = if Char.isLetter (head s2) || head s2 == '_' then s2 else ('x' : s2)
-        s4 = if HS.member s3 scalaKeywords then s3 <> "_" else s3
-     in s4
+sanitizeScalaIdent = avoidScalaKeyword
+  . ensureValidStart
+  . defaultIfEmpty "x"
+  . map sanitizeIdentChar
+
+sanitizeIdentChar :: Char -> Char
+sanitizeIdentChar c
+    | Char.isAlphaNum c = c
+    | otherwise = '_'
+
+defaultIfEmpty :: String -> String -> String
+defaultIfEmpty fallback name =
+    case name of
+        [] -> fallback
+        _  -> name
+
+ensureValidStart :: String -> String
+ensureValidStart name =
+    case name of
+        [] -> "x"
+        c : _
+            | isValidScalaIdentStart c -> name
+        _ -> 'x' : name
+
+isValidScalaIdentStart :: Char -> Bool
+isValidScalaIdentStart c = Char.isLetter c || c == '_'
+
+avoidScalaKeyword :: String -> String
+avoidScalaKeyword name
+    | name `HS.member` scalaKeywords = name <> "_"
+    | otherwise = name
 
 freshen :: NameEnv -> ScalaName -> (NameEnv, ScalaName)
-freshen ne base0 =
-    let base = sanitizeScalaIdent base0
-        candidate k =
-            if k == 0 then base else base <> "_" <> show k
-
-        go k =
-            let c = candidate k
-             in if HS.member c (neTaken ne) || HS.member c scalaKeywords
-                    then go (k + 1)
-                    else c
-
-        name = go 0
+freshen ne rawBase =
+    let base = sanitizeScalaIdent rawBase
+        name = firstFreshName base (neTaken ne)
         ne' = ne{neTaken = HS.insert name (neTaken ne)}
      in (ne', name)
+
+firstFreshName :: ScalaName -> HS.HashSet ScalaName -> ScalaName
+firstFreshName base taken = go 0
+  where
+    go :: Int -> ScalaName
+    go index =
+        let name = freshCandidate base index
+         in if name `HS.member` taken || name `HS.member` scalaKeywords
+                then go (index + 1)
+                else name
+
+freshCandidate :: ScalaName -> Int -> ScalaName
+freshCandidate base index
+    | index == 0 = base
+    | otherwise = base <> "_" <> show index
 
 allocQName :: NameEnv -> QName -> String -> (NameEnv, ScalaName)
 allocQName ne qn suggestedBase =

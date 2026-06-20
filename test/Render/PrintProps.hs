@@ -5,7 +5,7 @@
 We test observable output properties rather than internal helper functions.
 This makes tests robust across refactors.
 -}
-module Render.PrintProps (tests) where
+module Render.PrintProps (printProps) where
 
 import Data.List (isInfixOf)
 
@@ -26,8 +26,8 @@ import Agda.Compiler.Scala.Render.Common (escapeScalaString)
 import Agda.Compiler.Scala.Render.PrintScala2 (printScala2, printType)
 import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 
-tests :: Group
-tests =
+printProps :: Group
+printProps =
     Group
         "Render.PrintProps"
         [ ("prop_scala2_stringEscapes_newline", prop_scala2_stringEscapes_newline)

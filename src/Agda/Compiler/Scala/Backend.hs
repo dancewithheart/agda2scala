@@ -160,8 +160,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                         ne <- liftIO $ readIORef modEnv
                         let body' = qualifyTermWithEnv ne body
                         pure (SeFun fName args scheme body')
-                    _ ->
-                        pure expr
+                    _ -> pure expr
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id

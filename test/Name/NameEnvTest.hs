@@ -33,20 +33,16 @@ test_emptyNameEnv = do
     assertEqual "counter" 0 (neCounter emptyNameEnv)
 
 test_sanitize_empty :: IO ()
-test_sanitize_empty =
-    assertEqual "sanitized name" "x" (sanitizeScalaIdent "")
+test_sanitize_empty = assertEqual "sanitized name" "x" (sanitizeScalaIdent "")
 
 test_sanitize_illegalChars :: IO ()
-test_sanitize_illegalChars =
-    assertEqual "sanitized name" "foo_bar_baz" (sanitizeScalaIdent "foo-bar.baz")
+test_sanitize_illegalChars = assertEqual "sanitized name" "foo_bar_baz" (sanitizeScalaIdent "foo-bar.baz")
 
 test_sanitize_leadingDigit :: IO ()
-test_sanitize_leadingDigit =
-    assertEqual "sanitized name" "x1abc" (sanitizeScalaIdent "1abc")
+test_sanitize_leadingDigit = assertEqual "sanitized name" "x1abc" (sanitizeScalaIdent "1abc")
 
 test_sanitize_keyword :: IO ()
-test_sanitize_keyword =
-    assertEqual "sanitized name" "match_" (sanitizeScalaIdent "match")
+test_sanitize_keyword = assertEqual "sanitized name" "match_" (sanitizeScalaIdent "match")
 
 test_allocFreshLocal_first :: IO ()
 test_allocFreshLocal_first = do

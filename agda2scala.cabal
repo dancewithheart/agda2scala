@@ -98,7 +98,7 @@ test-suite agda2scala-test
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
-  main-is:          Main.hs
+  main-is:          Tests.hs
   other-modules:
     Compile.TypesTest
     Name.NameEnvTest
@@ -116,20 +116,20 @@ test-suite agda2scala-test
     , tasty-hunit
     , unordered-containers  >=0.2.20  && <0.3
 
-test-suite agda2scala-hedgehog
+test-suite agda2scala-props
   import:           warnings
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
-  main-is:          HedgehogMain.hs
+  main-is:          Props.hs
   other-modules:
     CompileProps
     Compile.TermsProps
     Compile.TypesProps
+    Lower.IRToScalaProps
     Name.NameEnvProps
     Name.NamePolicyProps
     Render.PrintProps
-    IRToScalaProps
 
   build-depends:
     , Agda                  >=2.8.0  && <2.9.0

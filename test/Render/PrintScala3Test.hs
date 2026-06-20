@@ -103,7 +103,6 @@ test_printScala3Package =
             , ScalaCtor "Green" []
             , ScalaCtor "Blue" []
             ]
-
     colorAdt =
         SeSum
             "Color"
@@ -111,10 +110,8 @@ test_printScala3Package =
             [ ScalaCtor "Light" []
             , ScalaCtor "Dark" []
             ]
-
     blank = SeUnhandled "" ""
     moduleContent = [rgbAdt, blank, blank, blank, colorAdt, blank, blank]
-
     expected =
         "object adts:\n"
             <> "  enum Rgb:\n"
@@ -144,7 +141,6 @@ test_printMatch =
                 , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
                 ]
             )
-
     expected =
         "def not(x0: Answer): Answer = x0 match\n"
             <> "    case Answer.Yes => Answer.No\n"
@@ -168,7 +164,6 @@ test_printMatchWithAppRhs =
                 , (SPCtor "Answer.No" [], STeApp (STeVar "wrap") [STeVar "Answer.Yes"])
                 ]
             )
-
     expected =
         "def normalize(x0: Answer): Answer = x0 match\n"
             <> "    case Answer.Yes => wrap(Answer.No)\n"
