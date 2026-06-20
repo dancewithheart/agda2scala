@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module IRToScalaProps (tests) where
+module Lower.IRToScalaProps (iRToScalaProps) where
 
 import Hedgehog
   ( Group(..)
@@ -28,8 +28,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , SeVar(..)
   )
 
-tests :: Group
-tests =
+iRToScalaProps :: Group
+iRToScalaProps =
   Group "IRToScala"
     [ ("data lowering preserves constructor arity", prop_dataCtorArityPreserved)
     , ("data lowering applies constructor NamePolicy", prop_dataCtorNamePolicy)
