@@ -11,7 +11,12 @@ module Agda.Compiler.Scala.Compile.Terms (
 
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import qualified Data.Map as Map
-import Agda.Syntax.Common (Arg (..))
+import Agda.Syntax.Abstract.Name ( QName )
+import Agda.Syntax.Common
+  ( Arg(..)
+  , Hiding(..)
+  , getHiding
+  )
 import Agda.Syntax.Internal (ConHead (..), Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
 import Agda.TypeChecking.CompiledClause
@@ -26,7 +31,7 @@ import Agda.Compiler.Scala.Compile.Types
   ( CompileError (..)
   , CaseUnsupported (..)
   , fromQName)
-import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy)
+import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy, termName)
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
@@ -76,6 +81,8 @@ lookupVar (Env xs) i = case drop i xs of
 
 -- ===== Function bodies =======================================================
 
+-- Function bodies are read from `CompiledClauses`, not from surface syntax.
+-- Pattern matching therefore appears as Agda's compiled case tree.
 compileFunctionBody :: [ScalaName] -> Maybe CompiledClauses -> Either CompileError ScalaTerm
 compileFunctionBody _ Nothing       = Left UnsupportedCompiledClauses
 compileFunctionBody argNs (Just cc) = compileCompiledClauses (envFromArgs argNs) cc
@@ -101,6 +108,8 @@ compileBranches env branches = do
       rhs <- compileCompiledClauses env' cc
       pure (pat, rhs)
 
+-- Reject unsupported case-tree shapes explicitly.
+-- Silent branch dropping would generate partial Scala matches.
 validateCaseShape :: Case CompiledClauses -> Either CompileError ()
 validateCaseShape branches
     | projPatterns branches                  = Left $ UnsupportedCaseShape HasProjectionPatterns
@@ -116,12 +125,43 @@ compileBodyTerm env = \case
     Var i elims -> do
         f <- STeVar <$> lookupVar env i
         applyElims env f elims
-    Def qn elims -> do
-        let f = STeVar (fromQName qn)
-        applyElims env f elims
+    Def qn elims
+      | fromQName qn == "if_then_else_" ->compileIfThenElse env qn elims
+      | fromQName qn == "_<ᵇ_" -> compileBinaryOp env qn "<" elims
+      | fromQName qn == "_<_" -> compileBinaryOp env qn "<" elims
+      | otherwise -> do
+          let f = STeVar (termName defaultNamePolicy (fromQName qn))
+          applyElims env f elims
     Con ch _ es -> compileConApp env ch es
     Lit lit -> compileLiteral lit
     t -> Left (UnsupportedTerm t)
+
+compileIfThenElse :: Env -> QName -> [Elim' Term] -> Either CompileError ScalaTerm
+compileIfThenElse env qn elims =
+  case visibleApplyTerms elims of
+    [cond, thenBranch, elseBranch] ->
+      STeIf
+        <$> compileBodyTerm env cond
+        <*> compileBodyTerm env thenBranch
+        <*> compileBodyTerm env elseBranch
+    _ -> Left (UnsupportedTerm (Def qn elims))
+
+compileBinaryOp :: Env -> QName -> ScalaName -> [Elim' Term] -> Either CompileError ScalaTerm
+compileBinaryOp env qn op elims =
+  case visibleApplyTerms elims of
+    [lhs, rhs] ->
+      STeBinOp
+        <$> compileBodyTerm env lhs
+        <*> pure op
+        <*> compileBodyTerm env rhs
+    _ -> Left (UnsupportedTerm (Def qn elims))
+
+visibleApplyTerms :: [Elim' Term] -> [Term]
+visibleApplyTerms elims =
+  [ unArg arg
+  | Apply arg <- elims
+  , getHiding arg == NotHidden
+  ]
 
 compileConApp :: Env -> ConHead -> [Elim' Term] -> Either CompileError ScalaTerm
 compileConApp env conHead elims = do
@@ -133,20 +173,24 @@ compileConApp env conHead elims = do
 
 applyElims :: Env -> ScalaTerm -> [Elim' Term] -> Either CompileError ScalaTerm
 applyElims env f elims = do
-    args <- fmap catMaybes (traverse (compileElimMaybe env) elims)
-    pure $ case args of
-        [] -> f
-        _  -> STeApp f args
+  args <- fmap catMaybes (traverse (compileElimMaybe env) elims)
+  pure $ case args of
+    [] -> f
+    _  -> STeApp f args
 
 compileElimMaybe :: Env -> Elim' Term -> Either CompileError (Maybe ScalaTerm)
-compileElimMaybe env = \case
-    Apply a ->
-        case unArg a of
-            -- erase universe-level artifacts at term level
-            Level _ -> pure Nothing
-            Sort _  -> pure Nothing
-            t       -> Just <$> compileBodyTerm env t
-    _ -> Left (UnsupportedTerm (Var 0 [])) -- Proj/IApply later
+compileElimMaybe env elim = case elim of
+    Apply arg
+      | getHiding arg /= NotHidden -> Right Nothing
+      | isErasedTypeArgument (unArg arg) -> Right Nothing
+      | otherwise -> Just <$> compileBodyTerm env (unArg arg)
+    _ -> Right Nothing
+
+isErasedTypeArgument :: Term -> Bool
+isErasedTypeArgument term = case term of
+  Level{} -> True
+  Sort{}  -> True
+  _       -> False
 
 compileLiteral :: Literal -> Either CompileError ScalaTerm
 compileLiteral = \case

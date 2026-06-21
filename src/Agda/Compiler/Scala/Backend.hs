@@ -112,7 +112,7 @@ scalaCmdLineFlags =
         ['b']
         ["scala-dialect"]
         (ReqArg scalaDialectOpt "scalaDialect")
-        "Write output files using Scala2 or Scala3 dialect. (default: Scala2)"
+        "Write output files using Scala2 or Scala3 dialect. (default: Scala3)"
     ]
 
 outDirOpt :: (Monad m) => FilePath -> Options -> m Options
@@ -173,6 +173,10 @@ qualifyTermWithEnv ne = go
       Nothing -> STeVar n
     go (STeApp f xs)    = STeApp (go f) (map go xs)
     go (STeLam ns body) = STeLam ns (go body)
+    go (STeIf cond thenBranch elseBranch) =
+      STeIf (go cond) (go thenBranch) (go elseBranch)
+    go (STeBinOp lhs op rhs) =
+      STeBinOp (go lhs) op (go rhs)
     go (STeLitInt i)    = STeLitInt i
     go (STeLitBool b)   = STeLitBool b
     go (STeLitString s) = STeLitString s

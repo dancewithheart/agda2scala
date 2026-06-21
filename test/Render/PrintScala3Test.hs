@@ -46,6 +46,10 @@ tests =
             [ testCase "prints flat constructor match" test_printMatch
             , testCase "prints flat constructor match with application on the right-hand side" test_printMatchWithAppRhs
             ]
+         , testGroup
+            "it then else"
+            [ testCase "prints if then else" test_print_if_then_else
+            ]
         ]
 
 test_printCaseObject :: IO ()
@@ -168,3 +172,23 @@ test_printMatchWithAppRhs =
         "def normalize(x0: Answer): Answer = x0 match\n"
             <> "    case Answer.Yes => wrap(Answer.No)\n"
             <> "    case Answer.No => wrap(Answer.Yes)\n"
+
+test_print_if_then_else :: IO ()
+test_print_if_then_else =
+  assertStringEqual "printScala3 if then else"
+    expected
+    (printScala3 expr)
+  where
+    expr =
+      SeFun
+        "choose"
+        [ SeVar "x" (STyName "Long")
+        , SeVar "y" (STyName "Long")
+        ]
+        (scalaTypeScheme (STyName "Long"))
+        ( STeIf
+            (STeBinOp (STeVar "x") "<" (STeVar "y"))
+            (STeVar "x")
+            (STeVar "y")
+        )
+    expected = "def choose(x: Long, y: Long): Long = if (x < y) x else y\n"

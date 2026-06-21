@@ -103,6 +103,13 @@ printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\""
 printTerm (STeMatch scrut alts) =
   printTerm scrut <> " match" <> defsSeparator
     <> combineLinesWithIndent (indent <> indent) (map printCase alts)
+printTerm (STeIf cond thenBranch elseBranch) =
+  "if" <> exprSeparator <> "(" <> printTerm cond <> ")" <> exprSeparator
+    <> printTerm thenBranch
+    <> exprSeparator <> "else" <> exprSeparator
+    <> printTerm elseBranch
+printTerm (STeBinOp lhs op rhs) =
+  printTerm lhs <> exprSeparator <> op <> exprSeparator <> printTerm rhs
 
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =

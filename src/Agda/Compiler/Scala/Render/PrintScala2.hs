@@ -122,6 +122,12 @@ printTerm x = case x of
         printTerm f <> "(" <> intercalate ", " (map printTerm xs) <> ")"
     STeLam names body ->
         "(" <> intercalate ", " names <> ")" <> sp <> "=>" <> sp <> printTerm body
+    STeIf cond thenBranch elseBranch ->
+      "if" <> sp <> "(" <> printTerm cond <> ")" <> sp
+        <> printTerm thenBranch
+        <> sp <> "else" <> sp
+        <> printTerm elseBranch
+    STeBinOp lhs op rhs -> printTerm lhs <> sp <> op <> sp <> printTerm rhs
     STeLitInt n -> show n
     STeLitBool b -> if b then "true" else "false" -- Scala lowercase
     STeLitString s -> "\"" <> escapeScalaString s <> "\""
