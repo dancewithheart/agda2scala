@@ -101,6 +101,8 @@ See [Agda.Compiler.Scala.Name.NamePolicy](./src/Agda/Compiler/Scala/NamePolicy.h
 
 ```shell
 find -name '*.hs' | entr cabal test all
+find . -name '*.hs' | entr cabal test agda2scala-test
+find . -name '*.hs' | entr cabal test agda2scala-props
 ```
 
 or using [ghcid](https://hackage.haskell.org/package/ghcid)
@@ -179,7 +181,8 @@ Those tests are [run on CI - Github Actions](/.github/workflows/haskell.yml).
 
 Generate Scala 2 code from Agda examples and running tests:
 ```shell
-cabal run -- agda2scala --compile --no-main --out-dir=scala2/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/rbt.agda
 cd scala2
 sbt ~test
 ```
@@ -187,6 +190,7 @@ sbt ~test
 generate Scala 3 code:
 ```shell
 cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
+cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/rbt.agda
 cd scala3
 sbt ~test
 ```
