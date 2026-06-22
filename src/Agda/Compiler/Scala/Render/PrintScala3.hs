@@ -4,14 +4,17 @@ module Agda.Compiler.Scala.Render.PrintScala3 (
     printSealedTrait,
     printPackageAndObject,
     printCaseClass,
-    combineLines,
 ) where
 
 import Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
+  , asBottom
+  , colonSeparator
+  , nl
   , printPat
   , printType
   , printTyParams
+  , strip
   )
 import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
@@ -30,7 +33,7 @@ printScala3 def = case def of
     (SePackage pNames defs) ->
         printPackageAndObject pNames
             <> bracket (map printScala3 defs)
-            <> blankLine -- EOF
+            <> nl -- EOF
     (SeSum name tyParams ctors) ->
         printSum name tyParams ctors
             <> defsSeparator
@@ -42,7 +45,7 @@ printScala3 def = case def of
             <> "("
             <> combineThem (map printVar args)
             <> ")"
-            <> ":"
+            <> colonSeparator
             <> exprSeparator
             <> printType (ssType resType)
             <> exprSeparator
@@ -52,7 +55,12 @@ printScala3 def = case def of
             <> defsSeparator
     (SeProd name _tyParams args) -> printCaseClass name args <> defsSeparator
     (SeUnhandled "" _payload) -> ""
-    (SeUnhandled name payload) -> "TODO In printScala3 got SeUnhandled " ++ show name ++ " " ++ show payload
+    (SeUnhandled name payload) -> "/* TODO In printScala3 got SeUnhandled "
+      <> show name
+      <> " "
+      <> show payload
+      <> "*/"
+      <> defsSeparator
 
 -- ===== Sum types ============================================================
 
@@ -77,9 +85,6 @@ printEnumCtor name tyParams (ScalaCtor cName argTys) =
         <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys)
         <> ")"
         <> printExtends name tyParams
-
-asBottom :: [ScalaName] -> [ScalaName]
-asBottom ps = replicate (length ps) "Nothing"
 
 printExtends :: ScalaName -> [ScalaName] -> String
 printExtends _ [] = ""
@@ -162,26 +167,14 @@ bracketWithIndent str i =
 defsSeparator :: String
 defsSeparator = "\n"
 
-blankLine :: String
-blankLine = "\n"
-
 exprSeparator :: String
 exprSeparator = " "
-
-colonSeparator :: String
-colonSeparator = ":"
 
 indent :: String
 indent = "  "
 
 times :: Int -> [a] -> [a]
 times i s = concat $ replicate i s
-
-strip :: String -> String
-strip xs = reverse $ dropWhile (== '\n') (reverse xs)
-
-combineLines :: [String] -> String
-combineLines xs = strip $ unlines (filter (not . null) xs)
 
 combineLinesWithIndent :: String -> [String] -> String
 combineLinesWithIndent indent' xs = strip $ unlines (fmap (indent' ++) (filter (not . null) xs))

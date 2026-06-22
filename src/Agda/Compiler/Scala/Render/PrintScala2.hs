@@ -9,10 +9,15 @@ module Agda.Compiler.Scala.Render.PrintScala2 (
     combineLines
 ) where
 
-import Data.List (dropWhileEnd, intercalate)
+import Data.List (intercalate)
 
 import Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
+  , asBottom
+  , multiLineCommentBeg
+  , multiLineCommentEnd
+  , nl
+  , combineLines
   , printPat
   , printType
   , printTyParams
@@ -60,7 +65,14 @@ printScala2 def = case def of
     SeUnhandled "" _payload ->
         "" -- filtered out
     SeUnhandled name payload ->
-        "/* TODO In printScala2 got SeUnhandled " <> show name <> " " <> show payload <> " */" <> nl
+        multiLineCommentBeg
+        <> " TODO In printScala2 got SeUnhandled "
+        <> show name
+        <> " "
+        <> show payload
+        <> " "
+        <> multiLineCommentEnd
+        <> nl
 
 -- ===== Sum types ============================================================
 
@@ -87,9 +99,6 @@ printCtor superName tyParams (ScalaCtor name argTys) =
         <> sp
         <> superName
         <> printTyParams tyParams
-
-asBottom :: [ScalaName] -> [ScalaName]
-asBottom ps = replicate (length ps) "Nothing"
 
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> ":" <> sp <> printType ty
@@ -167,15 +176,8 @@ printObject pName = "object" <> sp <> pName
 bracket :: String -> String
 bracket str = "{\n" <> str <> "\n}"
 
-sp, nl :: String
+sp :: String
 sp = " "
-nl = "\n"
-
-combineLines :: [String] -> String
-combineLines xs = strip (unlines (filter (not . null) xs))
-
-strip :: String -> String
-strip = dropWhileEnd (== '\n')
 
 printCompanionObject :: ScalaName -> [String] -> String
 printCompanionObject name ctorLines =
@@ -183,10 +185,8 @@ printCompanionObject name ctorLines =
         <> sp
         <> name
         <> sp
-        <> "{\n"
-        <> indentBlock 2 (combineLines ctorLines)
-        <> "\n"
-        <> "}"
+        <> bracket (indentBlock 2 (combineLines ctorLines))
+
 
 indentBlock :: Int -> String -> String
 indentBlock n = unlines . map (replicate n ' ' <>) . lines

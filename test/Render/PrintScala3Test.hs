@@ -13,8 +13,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , scalaTypeScheme
     )
 import Agda.Compiler.Scala.Render.PrintScala3
-    ( combineLines
-    , printCaseClass
+    ( printCaseClass
     , printCaseObject
     , printPackageAndObject
     , printScala3
@@ -38,8 +37,7 @@ tests =
             ]
         , testGroup
             "layout"
-            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
-            , testCase "prints package with two enum declarations and skips empty unhandled declarations" test_printScala3Package
+            [ testCase "prints package with two enum declarations and skips empty unhandled declarations" test_printScala3Package
             ]
         , testGroup
             "pattern matching"
@@ -72,13 +70,6 @@ test_printPackage =
         "Scala 3 object"
         "object adts"
         (printPackageAndObject ["adts"])
-
-test_combineLines :: IO ()
-test_combineLines =
-    assertEqual
-        "combined lines"
-        "a\nb"
-        (combineLines ["", "a", "", "", "b", "", "", ""])
 
 test_printCaseClass :: IO ()
 test_printCaseClass =

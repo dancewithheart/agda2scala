@@ -1,11 +1,18 @@
 module Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
+  , asBottom
+  , colonSeparator
+  , multiLineCommentBeg
+  , multiLineCommentEnd
+  , nl
+  , combineLines
   , printPat
   , printType
   , printTyParams
+  , strip
   ) where
 
-import Data.List (intercalate)
+import Data.List (dropWhileEnd, intercalate)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
@@ -58,3 +65,22 @@ printPat pat =
     SPLitInt n       -> show n
     SPLitBool b      -> if b then "true" else "false"
     SPLitString s    -> "\"" <> escapeScalaString s <> "\""
+
+colonSeparator :: String
+colonSeparator = ":"
+
+multiLineCommentBeg, multiLineCommentEnd :: String
+multiLineCommentBeg = "/*"
+multiLineCommentEnd = "*/"
+
+strip :: String -> String
+strip = dropWhileEnd (== '\n')
+
+nl :: String
+nl = "\n"
+
+combineLines :: [String] -> String
+combineLines xs = strip (unlines (filter (not . null) xs))
+
+asBottom :: [ScalaName] -> [ScalaName]
+asBottom ps = replicate (length ps) "Nothing"

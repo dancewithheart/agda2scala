@@ -103,6 +103,7 @@ test-suite agda2scala-test
     Compile.TypesTest
     Name.NameEnvTest
     Name.NamePolicyTest
+    Render.CommonTest
     Render.PrintScala2Test
     Render.PrintScala3Test
     ScalaBackendTest
