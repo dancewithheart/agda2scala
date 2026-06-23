@@ -54,6 +54,7 @@ import Agda.Compiler.Scala.IR.AgdaIR
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaName
+  , ScalaTypeScheme(..)
   , SeVar(..)
   )
 
@@ -144,7 +145,7 @@ lowerFun
   -> Either CompileError AgdaFun
 lowerFun qn defTy mcc = do
   (args, scheme) <- funSchemeFromType defTy
-  body <- compileFunctionBody (argNames args) mcc
+  body <- compileFunctionBody (ssTyParams scheme) (argNames args) mcc
   pure
     AgdaFun
       { afName = fromQName qn

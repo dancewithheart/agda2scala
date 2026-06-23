@@ -59,6 +59,7 @@ data CompileError
   | UnsupportedCompiledClauses
   | UnsupportedCaseShape CaseUnsupported
   | VarOutOfRange Int Int
+  | ErasedVarReferenced Int
   deriving (Eq, Show)
 
 data CaseUnsupported

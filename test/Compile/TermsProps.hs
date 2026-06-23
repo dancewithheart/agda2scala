@@ -22,8 +22,11 @@ import Agda.Syntax.TopLevelModuleName.Boot ( noModuleNameHash )
 import Agda.Compiler.Scala.Compile.Terms
   ( Env(..)
   , envFromArgs
+  , envFromFunction
   , extendEnv
+  , lookupCaseArg
   , lookupVar
+  , removeCaseArg
   )
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
@@ -36,6 +39,11 @@ termsProps =
     , ("pattern vars extend Env with newest binder at index 0", prop_extendEnv_patternVarsNewestFirst)
     , ("function args enter Env with last arg at index 0", prop_envFromArgs_functionArgsNewestFirst)
     , ("lookupVar reports index and Env size when out of range", prop_lookupVar_outOfRange)
+    , ("function type params stay in Env as erased de Bruijn slots",
+       prop_envFromFunction_keepsTypeParamsForDeBruijnAlignment)
+    , ("case arguments use source-order positions including erased binders", prop_lookupCaseArg_usesSourceOrder)
+    , ("case branch environment removes the scrutinized argument", prop_removeCaseArg_dropsScrutinee)
+    , ("constructor branch binders are added after dropping the case scrutinee", prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -47,8 +55,7 @@ mkApply t = Apply (defaultArg t)
 prop_def_apply_arity :: Property
 prop_def_apply_arity = property $ do
   k <- forAll (Gen.int (Range.linear 0 8))
-
-  let env = Env ["x"]
+  let env = Env [Just "x"]
       t =
         Def
           dummyQName
@@ -105,7 +112,58 @@ prop_lookupVar_outOfRange :: Property
 prop_lookupVar_outOfRange = property $ do
   size <- forAll (Gen.int (Range.linear 0 12))
   extra <- forAll (Gen.int (Range.linear 0 12))
-  let vars = [ "x" <> show i | i <- [0 .. size - 1] ]
+  let vars = [ Just ("x" <> show i) | i <- [0 .. size - 1] ]
       env  = Env vars
       ix   = size + extra
   lookupVar env ix === Left (VarOutOfRange ix size)
+
+-- Type parameters are erased at runtime, but preserved as empty slots in the de Bruijn environment:
+-- Term Env preserves Agda de Bruijn indexing.
+-- Visible term binders are stored as Just ScalaName.
+-- Erased type-level binders are stored as Nothing.
+-- This lets us erase type arguments from generated Scala while keeping Agda variable indices correct.
+prop_envFromFunction_keepsTypeParamsForDeBruijnAlignment :: Property
+prop_envFromFunction_keepsTypeParamsForDeBruijnAlignment = property $ do
+  tyCount <- forAll (Gen.int (Range.linear 1 5))
+  argCount <- forAll (Gen.int (Range.linear 1 8))
+
+  let tyParams = [ "A" <> show i | i <- [0 .. tyCount - 1] ]
+      args = [ "x" <> show i | i <- [0 .. argCount - 1] ]
+      env = envFromFunction tyParams args
+
+  traverse_
+    (\(i, expected) -> lookupVar env i === Right expected)
+    (zip [0 ..] (reverse args))
+
+  lookupVar env argCount === Left (ErasedVarReferenced argCount)
+
+prop_lookupCaseArg_usesSourceOrder :: Property
+prop_lookupCaseArg_usesSourceOrder = property $ do
+    let env = Env [Just "tree", Just "key", Just "defaultVal", Nothing]
+
+    lookupCaseArg env 1 === Right "defaultVal"
+    lookupCaseArg env 2 === Right "key"
+    lookupCaseArg env 3 === Right "tree"
+
+prop_removeCaseArg_dropsScrutinee :: Property
+prop_removeCaseArg_dropsScrutinee = property $ do
+    let env = Env [Just "tree", Just "key", Just "defaultVal", Nothing]
+
+    branchEnv <- evalEither (removeCaseArg env 3)
+
+    lookupVar branchEnv 0 === Right "key"
+    lookupVar branchEnv 1 === Right "defaultVal"
+    lookupVar branchEnv 2 === Left (ErasedVarReferenced 2)
+
+prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee :: Property
+prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee = property $ do
+    let env = Env [Just "tree", Just "key", Just "defaultVal", Nothing]
+        patVars = ["p0", "p1", "p2", "p3", "p4"]
+
+    branchEnv <- evalEither (removeCaseArg env 3)
+    let ctorEnv = extendEnv patVars branchEnv
+
+    lookupVar ctorEnv 0 === Right "p4"
+    lookupVar ctorEnv 3 === Right "p1"
+    lookupVar ctorEnv 5 === Right "key"
+    lookupVar ctorEnv 6 === Right "defaultVal"
