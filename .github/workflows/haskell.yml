@@ -49,6 +49,15 @@ jobs:
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: cabal build all --only-dependencies
 
+      - name: Install Agda standard library
+        run: |
+          git clone --depth 1 --branch v2.4 https://github.com/agda/agda-stdlib.git "$HOME/agda-stdlib"
+          mkdir -p "$HOME/.config/agda"
+          echo "$HOME/agda-stdlib/standard-library.agda-lib" > "$HOME/.config/agda/libraries"
+          echo "standard-library" > "$HOME/.config/agda/defaults"
+          cat "$HOME/.config/agda/libraries"
+          cat "$HOME/.config/agda/defaults"
+
       # Cache dependencies already here, so that we do not have to rebuild them should the subsequent steps fail.
       - name: Save cached dependencies
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -65,10 +74,14 @@ jobs:
         run: cabal test all
 
       - name: Compile example Agda code to Scala 2
-        run: cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
+        run: |
+          cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
+          cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/rbt.agda
 
       - name: Compile example Agda code to Scala 3
-        run: cabal run -- agda2scala --out-dir=scala3/src/main/scala ./examples/adts.agda
+        run: |
+          cabal run -- agda2scala --out-dir=scala3/src/main/scala ./examples/adts.agda
+          cabal run -- agda2scala --out-dir=scala3/src/main/scala ./examples/rbt.agda
 
       - name: Set up JVM
         uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5

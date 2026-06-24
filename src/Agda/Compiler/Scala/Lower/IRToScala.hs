@@ -65,6 +65,17 @@ lowerTerm policy term = case term of
     STeLitBool b        -> STeLitBool b
     STeLitString s      -> STeLitString s
     STeError err        -> STeError err
+    STeIf cond thenBranch elseBranch ->
+      STeIf
+        (lowerTerm policy cond)
+        (lowerTerm policy thenBranch)
+        (lowerTerm policy elseBranch)
+
+    STeBinOp lhs op rhs ->
+      STeBinOp
+        (lowerTerm policy lhs)
+        op
+        (lowerTerm policy rhs)
     STeMatch scrut alts ->
       STeMatch
         (lowerTerm policy scrut)

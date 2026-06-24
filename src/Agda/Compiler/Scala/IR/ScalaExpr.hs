@@ -39,15 +39,17 @@ data ScalaPat
     deriving (Eq, Show)
 
 data ScalaTerm
-    = STeVar ScalaName
-    | STeApp ScalaTerm [ScalaTerm]
-    | STeLam [ScalaName] ScalaTerm
-    | STeMatch ScalaTerm [(ScalaPat, ScalaTerm)]
-    | STeLitInt Int
-    | STeLitBool Bool
-    | STeLitString String
-    | STeError String
-    deriving (Eq, Show)
+  = STeVar ScalaName
+  | STeApp ScalaTerm [ScalaTerm]
+  | STeLam [ScalaName] ScalaTerm
+  | STeMatch ScalaTerm [(ScalaPat, ScalaTerm)]
+  | STeIf ScalaTerm ScalaTerm ScalaTerm
+  | STeBinOp ScalaTerm ScalaName ScalaTerm
+  | STeLitInt Int
+  | STeLitBool Bool
+  | STeLitString String
+  | STeError String
+  deriving (Eq, Show)
 
 data SeVar = SeVar ScalaName ScalaType
     deriving (Eq, Show)

@@ -52,7 +52,7 @@ genEnv = do
     -- env[0] = last binder, so store in the actual runtime order already
     n <- Gen.int (Range.linear 0 30)
     xs <- Gen.list (Range.singleton n) genName
-    pure (Env xs)
+    pure (Env (map Just xs))
 
 genName :: Gen String
 genName = Gen.string (Range.linear 1 12) Gen.alphaNum
@@ -81,7 +81,9 @@ prop_lookupVar_inRange :: Property
 prop_lookupVar_inRange = property $ do
     env@(Env xs) <- forAll genEnv
     i <- forAll (genIndexInRange env)
-    lookupVar env i === Right (xs !! i)
+    case xs !! i of
+        Just name -> lookupVar env i === Right name
+        Nothing -> failure
 
 prop_lookupVar_outOfRange :: Property
 prop_lookupVar_outOfRange = property $ do
@@ -112,9 +114,10 @@ prop_compileBodyTerm_varResolves :: Property
 prop_compileBodyTerm_varResolves = property $ do
     env@(Env xs) <- forAll genEnv
     i <- forAll (genIndexInRange env)
-
     -- Term-level Var i should resolve to env[i]
-    compileBodyTerm env (Var i []) === Right (STeVar (xs !! i))
+    case xs !! i of
+        Just name -> compileBodyTerm env (Var i []) === Right (STeVar name)
+        Nothing -> failure
 
 -- smoke property for compileTypeTerm on a generated subset
 prop_compileTypeTerm_total_onSubset :: Property
@@ -135,7 +138,8 @@ prop_compileBodyTerm_varLaw :: Property
 prop_compileBodyTerm_varLaw = property $ do
     xs <- forAll (Gen.list (Range.linear 1 50) genName)
     i <- forAll (Gen.int (Range.linear 0 (length xs - 1)))
-    compileBodyTerm (Env xs) (Var i []) === Right (STeVar (xs !! i))
+    let env = Env (map Just xs)
+    compileBodyTerm env (Var i []) === Right (STeVar (xs !! i))
 
 prop_compileBodyTerm_literals :: Property
 prop_compileBodyTerm_literals = property $ do

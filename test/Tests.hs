@@ -4,6 +4,7 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 
 import qualified Name.NameEnvTest
 import qualified Name.NamePolicyTest
+import qualified Render.CommonTest
 import qualified Render.PrintScala2Test
 import qualified Render.PrintScala3Test
 import qualified ScalaBackendTest
@@ -19,6 +20,7 @@ tests =
         "agda2scala unit tests"
         [ Name.NameEnvTest.tests
         , Name.NamePolicyTest.tests
+        , Render.CommonTest.tests
         , Render.PrintScala2Test.tests
         , Render.PrintScala3Test.tests
         , ScalaBackendTest.tests

@@ -1,7 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
--- handle interactions with Agda internals
+-- Handle interactions with Agda internals.
+--
+-- Agda backend boundary.
+--
+-- At this point Agda has already parsed, scope-checked, and type-checked
+-- the source module. We inspect checked `Definition`s and lower only the
+-- subset currently supported by agda2scala.
+
 module Agda.Compiler.Scala.Lower.AgdaToIR
   ( toAgdaExpr
   ) where
@@ -47,9 +54,11 @@ import Agda.Compiler.Scala.IR.AgdaIR
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaName
+  , ScalaTypeScheme(..)
   , SeVar(..)
   )
 
+-- `Definition` is Agda's checked top-level definition
 toAgdaExpr :: Definition -> CompilerPragma -> TCM (Either CompileError AgdaDecl)
 toAgdaExpr def _pragma = case def of
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Datatype
@@ -87,7 +96,7 @@ lowerField tyEnv (i, dom) = do
 -- Agda.Syntax.Internal.Tele / Telescope:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Tele
 --
--- Telescope is linked, not a normal Haskell list.
+-- Telescopes are linked through `ExtendTel`, not a normal Haskell list.
 teleToList :: Telescope -> [Dom Type]
 teleToList = \case
   EmptyTel           -> []
@@ -136,7 +145,7 @@ lowerFun
   -> Either CompileError AgdaFun
 lowerFun qn defTy mcc = do
   (args, scheme) <- funSchemeFromType defTy
-  body <- compileFunctionBody (argNames args) mcc
+  body <- compileFunctionBody (ssTyParams scheme) (argNames args) mcc
   pure
     AgdaFun
       { afName = fromQName qn

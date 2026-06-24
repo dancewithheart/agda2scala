@@ -1,7 +1,7 @@
 module Render.PrintScala3Test (tests) where
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (testCase)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
@@ -13,8 +13,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , scalaTypeScheme
     )
 import Agda.Compiler.Scala.Render.PrintScala3
-    ( combineLines
-    , printCaseClass
+    ( printCaseClass
     , printCaseObject
     , printPackageAndObject
     , printScala3
@@ -38,47 +37,43 @@ tests =
             ]
         , testGroup
             "layout"
-            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
-            , testCase "prints package with two enum declarations and skips empty unhandled declarations" test_printScala3Package
+            [ testCase "prints package with two enum declarations and skips empty unhandled declarations" test_printScala3Package
             ]
         , testGroup
             "pattern matching"
             [ testCase "prints flat constructor match" test_printMatch
             , testCase "prints flat constructor match with application on the right-hand side" test_printMatchWithAppRhs
             ]
+         , testGroup
+            "it then else"
+            [ testCase "prints if then else" test_print_if_then_else
+            ]
         ]
 
 test_printCaseObject :: IO ()
 test_printCaseObject =
-    assertEqual
+    assertStringEqual
         "Scala 3 case object"
         "case object Light extends Color"
         (printCaseObject "Color" "Light")
 
 test_printSealedTrait :: IO ()
 test_printSealedTrait =
-    assertEqual
+    assertStringEqual
         "Scala 3 sealed trait"
         "sealed trait Color"
         (printSealedTrait "Color")
 
 test_printPackage :: IO ()
 test_printPackage =
-    assertEqual
+    assertStringEqual
         "Scala 3 object"
         "object adts"
         (printPackageAndObject ["adts"])
 
-test_combineLines :: IO ()
-test_combineLines =
-    assertEqual
-        "combined lines"
-        "a\nb"
-        (combineLines ["", "a", "", "", "b", "", "", ""])
-
 test_printCaseClass :: IO ()
 test_printCaseClass =
-    assertEqual
+    assertStringEqual
         "Scala 3 case class"
         "final case class RgbPair(snd: Bool, fst: Rgb)"
         ( printCaseClass
@@ -143,8 +138,10 @@ test_printMatch =
             )
     expected =
         "def not(x0: Answer): Answer = x0 match\n"
-            <> "    case Answer.Yes => Answer.No\n"
-            <> "    case Answer.No => Answer.Yes\n"
+            <> "  case Answer.Yes =>\n"
+            <> "    Answer.No\n"
+            <> "  case Answer.No =>\n"
+            <> "    Answer.Yes\n"
 
 test_printMatchWithAppRhs :: IO ()
 test_printMatchWithAppRhs =
@@ -166,5 +163,31 @@ test_printMatchWithAppRhs =
             )
     expected =
         "def normalize(x0: Answer): Answer = x0 match\n"
-            <> "    case Answer.Yes => wrap(Answer.No)\n"
-            <> "    case Answer.No => wrap(Answer.Yes)\n"
+            <> "  case Answer.Yes =>\n"
+            <> "    wrap(Answer.No)\n"
+            <> "  case Answer.No =>\n"
+            <> "    wrap(Answer.Yes)\n"
+
+test_print_if_then_else :: IO ()
+test_print_if_then_else =
+  assertStringEqual "printScala3 if then else"
+    expected
+    (printScala3 expr)
+  where
+    expr =
+      SeFun
+        "choose"
+        [ SeVar "x" (STyName "Long")
+        , SeVar "y" (STyName "Long")
+        ]
+        (scalaTypeScheme (STyName "Long"))
+        ( STeIf
+            (STeBinOp (STeVar "x") "<" (STeVar "y"))
+            (STeVar "x")
+            (STeVar "y")
+        )
+    expected = ""
+     <> "def choose(x: Long, y: Long): Long = if x < y then\n"
+     <> "  x\n"
+     <> "else\n"
+     <> "  y\n"

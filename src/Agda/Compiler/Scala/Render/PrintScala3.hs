@@ -4,14 +4,18 @@ module Agda.Compiler.Scala.Render.PrintScala3 (
     printSealedTrait,
     printPackageAndObject,
     printCaseClass,
-    combineLines,
 ) where
 
 import Agda.Compiler.Scala.Render.Common
   ( escapeScalaString
+  , asBottom
+  , colonSeparator
+  , nl
   , printPat
   , printType
   , printTyParams
+  , strip
+  , sp
   )
 import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
@@ -30,7 +34,7 @@ printScala3 def = case def of
     (SePackage pNames defs) ->
         printPackageAndObject pNames
             <> bracket (map printScala3 defs)
-            <> blankLine -- EOF
+            <> nl -- EOF
     (SeSum name tyParams ctors) ->
         printSum name tyParams ctors
             <> defsSeparator
@@ -42,7 +46,7 @@ printScala3 def = case def of
             <> "("
             <> combineThem (map printVar args)
             <> ")"
-            <> ":"
+            <> colonSeparator
             <> exprSeparator
             <> printType (ssType resType)
             <> exprSeparator
@@ -52,7 +56,12 @@ printScala3 def = case def of
             <> defsSeparator
     (SeProd name _tyParams args) -> printCaseClass name args <> defsSeparator
     (SeUnhandled "" _payload) -> ""
-    (SeUnhandled name payload) -> "TODO In printScala3 got SeUnhandled " ++ show name ++ " " ++ show payload
+    (SeUnhandled name payload) -> "/* TODO In printScala3 got SeUnhandled "
+      <> show name
+      <> " "
+      <> show payload
+      <> "*/"
+      <> defsSeparator
 
 -- ===== Sum types ============================================================
 
@@ -78,9 +87,6 @@ printEnumCtor name tyParams (ScalaCtor cName argTys) =
         <> ")"
         <> printExtends name tyParams
 
-asBottom :: [ScalaName] -> [ScalaName]
-asBottom ps = replicate (length ps) "Nothing"
-
 printExtends :: ScalaName -> [ScalaName] -> String
 printExtends _ [] = ""
 printExtends name tyParams = " extends " <> name <> printTyParams tyParams
@@ -92,22 +98,49 @@ printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"
 
 printTerm :: ScalaTerm -> String
-printTerm (STeVar scalaName) = scalaName
-printTerm (STeApp st sts) =
-    printTerm st <> "(" <> intercalate ", " (map printTerm sts) <> ")"
-printTerm (STeLam sns st) = "(" <> intercalate ", " sns <> ")" <> exprSeparator <> "=>" <> exprSeparator <> printTerm st
-printTerm (STeLitInt n) = show n
-printTerm (STeLitBool b) = if b then "true" else "false"
-printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
-printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
-printTerm (STeMatch scrut alts) =
-  printTerm scrut <> " match" <> defsSeparator
-    <> combineLinesWithIndent (indent <> indent) (map printCase alts)
+printTerm = printTermBlock
+
+printTermInline :: ScalaTerm -> String
+printTermInline term =
+    case term of
+        STeIf{} -> "(" <> printTermBlock term <> ")"
+        STeMatch{} -> "(" <> printTermBlock term <> ")"
+        _ -> printTermBlock term
+
+printTermBlock :: ScalaTerm -> String
+printTermBlock term =
+    case term of
+        STeVar scalaName -> scalaName
+        STeApp st sts -> printTermInline st <> "(" <> intercalate ", " (map printTermInline sts) <> ")"
+        STeLam sns st -> "(" <> intercalate ", " sns <> ")" <> exprSeparator <> "=>" <> exprSeparator <> printTermInline st
+        STeLitInt n -> show n
+        STeLitBool b -> if b then "true" else "false"
+        STeLitString s -> "\"" <> escapeScalaString s <> "\""
+        STeIf cond thenBranch elseBranch -> printIf cond thenBranch elseBranch
+        STeBinOp lhs op rhs -> printTermInline lhs <> exprSeparator <> op <> exprSeparator <> printTermInline rhs
+        STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+        STeMatch scrut alts ->
+            printTermInline scrut <> sp <> "match" <> nl
+                <> indentBlock 2 (intercalate "\n" (map printCase alts))
+
+printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
+printIf cond thenBranch elseBranch =
+    "if" <> sp <> printTermInline cond <> sp <> "then" <> nl
+        <> indentBlock 2 (printTermBlock thenBranch)
+        <> nl
+        <> "else"
+        <> printElseBranch elseBranch
+
+printElseBranch :: ScalaTerm -> String
+printElseBranch elseBranch =
+    case elseBranch of
+        STeIf{} -> sp <> printTermBlock elseBranch
+        _ -> nl <> indentBlock 2 (printTermBlock elseBranch)
 
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
-  "case" <> exprSeparator <> printPat pat
-    <> exprSeparator <> "=>" <> exprSeparator <> printTerm rhs
+    "case" <> sp <> printPat pat <> sp <> "=>" <> nl
+        <> indentBlock 2 (printTermBlock rhs)
 
 printVar :: SeVar -> String
 printVar (SeVar sName sType) = sName <> colonSeparator <> exprSeparator <> (printType sType)
@@ -144,37 +177,37 @@ printPackage pNames = "package" <> exprSeparator <> intercalate "." pNames
 printObject :: ScalaName -> String
 printObject pName = "object" <> exprSeparator <> pName
 
-bracket :: [String] -> String
-bracket str = colonSeparator <> defsSeparator <> combineLinesWithIndent indent str
-
--- -- TODO Scala3 indents
-bracketWithIndent :: [String] -> Int -> String
-bracketWithIndent str i =
-    colonSeparator <> defsSeparator <> combineLinesWithIndent (times i indent) str
-
 defsSeparator :: String
 defsSeparator = "\n"
-
-blankLine :: String
-blankLine = "\n"
 
 exprSeparator :: String
 exprSeparator = " "
 
-colonSeparator :: String
-colonSeparator = ":"
+-- -- TODO Scala3 indents
+bracket :: [String] -> String
+bracket blocks =
+    colonSeparator <> defsSeparator <> combineMemberBlocksWithIndent 2 blocks
 
-indent :: String
-indent = "  "
+bracketWithIndent :: [String] -> Int -> String
+bracketWithIndent blocks i =
+    colonSeparator <> defsSeparator <> combineBlocksWithIndent i blocks
 
-times :: Int -> [a] -> [a]
-times i s = concat $ replicate i s
+combineMemberBlocksWithIndent :: Int -> [String] -> String
+combineMemberBlocksWithIndent n blocks =
+    intercalate (defsSeparator <> defsSeparator) $
+        map (indentBlock n) $
+            nonEmptyBlocks blocks
 
-strip :: String -> String
-strip xs = reverse $ dropWhile (== '\n') (reverse xs)
+combineBlocksWithIndent :: Int -> [String] -> String
+combineBlocksWithIndent n blocks =
+    intercalate defsSeparator $
+        map (indentBlock n) $
+            nonEmptyBlocks blocks
 
-combineLines :: [String] -> String
-combineLines xs = strip $ unlines (filter (not . null) xs)
+nonEmptyBlocks :: [String] -> [String]
+nonEmptyBlocks =
+    filter (not . null) . map strip
 
-combineLinesWithIndent :: String -> [String] -> String
-combineLinesWithIndent indent' xs = strip $ unlines (fmap (indent' ++) (filter (not . null) xs))
+indentBlock :: Int -> String -> String
+indentBlock n =
+    intercalate "\n" . map (replicate n ' ' <>) . lines

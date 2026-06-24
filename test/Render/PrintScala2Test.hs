@@ -1,7 +1,7 @@
 module Render.PrintScala2Test (tests) where
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (testCase)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
@@ -14,7 +14,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , scalaTypeScheme
     )
 import Agda.Compiler.Scala.Render.PrintScala2
-    ( combineLines
+    ( combineDecls
     , printCaseClass
     , printCaseObject
     , printPackageAndObject
@@ -32,7 +32,8 @@ tests =
             "module headers"
             [ testCase "prints object when module has one name part" test_objectWhenNoPackage
             , testCase "prints package and object for two-part module name" test_packageAndObject
-            , testCase "prints dotted package and object for multi-part module name" test_multiplePartPackageAndObject
+            , testCase "prints dotted package and object for multi-part module name"
+                       test_multiplePartPackageAndObject
             ]
         , testGroup
             "declarations"
@@ -46,60 +47,59 @@ tests =
             ]
         , testGroup
             "layout"
-            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
-            , testCase "prints package with handled declarations and skips empty unhandled declarations" test_printScala2Package
+            [ testCase "prints package with handled declarations and skips empty unhandled declarations"
+                       test_printScala2Package
+              , testCase "combineDecls strips trailing newlines before joining declarations" test_combineDecls_strips_newlines
             ]
         , testGroup
             "pattern matching"
             [ testCase "prints flat constructor match" test_printMatch
             ]
+         , testGroup
+            "it then else"
+            [ testCase "prints if then else" test_print_if_then_else
+            , testCase "printer breaks if/else branches" test_print_if_breaks_branches
+            ]
         ]
 
 test_printCaseObject :: IO ()
 test_printCaseObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 case object"
         "case object Light extends Color"
         (printCaseObject "Color" "Light")
 
 test_printSealedTrait :: IO ()
 test_printSealedTrait =
-    assertEqual
+    assertStringEqual
         "Scala 2 sealed trait"
         "sealed trait Color"
         (printSealedTrait "Color")
 
 test_objectWhenNoPackage :: IO ()
 test_objectWhenNoPackage =
-    assertEqual
+    assertStringEqual
         "Scala 2 object"
         "object adts"
         (printPackageAndObject ["adts"])
 
 test_packageAndObject :: IO ()
 test_packageAndObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 package and object"
         "package example\n\nobject adts"
         (printPackageAndObject ["example", "adts"])
 
 test_multiplePartPackageAndObject :: IO ()
 test_multiplePartPackageAndObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 dotted package and object"
         "package org.example\n\nobject adts"
         (printPackageAndObject ["org", "example", "adts"])
 
-test_combineLines :: IO ()
-test_combineLines =
-    assertEqual
-        "combined lines"
-        "a\nb"
-        (combineLines ["", "a", "", "", "b", "", "", ""])
-
 test_printCaseClass :: IO ()
 test_printCaseClass =
-    assertEqual
+    assertStringEqual
         "Scala 2 case class"
         "final case class RgbPair(snd: Bool, fst: Rgb)"
         ( printCaseClass
@@ -112,7 +112,7 @@ test_printCaseClass =
 
 test_printCaseClassPoly :: IO ()
 test_printCaseClassPoly =
-    assertEqual
+    assertStringEqual
         "Scala 2 polymorphic case class"
         "final case class Box[A](unbox: A)"
         ( printCaseClass
@@ -154,14 +154,12 @@ test_printScala2Package =
             <> "  case object Red extends Rgb\n"
             <> "  case object Green extends Rgb\n"
             <> "  case object Blue extends Rgb\n"
-            <> "\n"
             <> "}\n"
             <> "\n"
             <> "sealed trait Color\n"
             <> "object Color {\n"
             <> "  case object Light extends Color\n"
             <> "  case object Dark extends Color\n"
-            <> "\n"
             <> "}\n"
             <> "}\n"
 
@@ -185,7 +183,6 @@ test_printSum =
             <> "  case object Red extends Rgb\n"
             <> "  case object Green extends Rgb\n"
             <> "  case object Blue extends Rgb\n"
-            <> "\n"
             <> "}"
 
 test_printSumPoly :: IO ()
@@ -206,7 +203,6 @@ test_printSumPoly =
             <> "object Maybe {\n"
             <> "  case object None extends Maybe[Nothing]\n"
             <> "  final case class Just[A](x0: A) extends Maybe[A]\n"
-            <> "\n"
             <> "}"
 
 test_polyDef :: IO ()
@@ -242,9 +238,73 @@ test_printMatch =
                 , (SPCtor "Answer.No" [], STeVar "Answer.Yes")
                 ]
             )
-
     expected =
         "def not(x0: Answer): Answer = x0 match {\n"
-            <> "  case Answer.Yes => Answer.No\n"
-            <> "  case Answer.No => Answer.Yes\n"
+            <> "  case Answer.Yes =>\n"
+            <> "    Answer.No\n"
+            <> "  case Answer.No =>\n"
+            <> "    Answer.Yes\n"
             <> "}\n"
+
+test_print_if_then_else :: IO ()
+test_print_if_then_else =
+  assertStringEqual "printScala2 if then else"
+    expected
+    (printScala2 expr)
+  where
+    expr =
+      SeFun
+        "choose"
+        [ SeVar "x" (STyName "Long")
+        , SeVar "y" (STyName "Long")
+        ]
+        (scalaTypeScheme (STyName "Long"))
+        ( STeIf
+            (STeBinOp (STeVar "x") "<" (STeVar "y"))
+            (STeVar "x")
+            (STeVar "y")
+        )
+    expected =
+       ""
+       <> "def choose(x: Long, y: Long): Long = if (x < y)\n"
+       <> "  x\n"
+       <> "else\n"
+       <> "  y\n"
+
+test_print_if_breaks_branches :: IO ()
+test_print_if_breaks_branches =
+    assertStringEqual
+            "multiline if"
+            expected
+            (printScala2 expr)
+  where
+    expr =
+        SeFun
+            "lookup"
+            [ SeVar "x1" (STyVar "V")
+            , SeVar "x2" (STyName "Long")
+            ]
+            (ScalaTypeScheme ["V"] (STyVar "V"))
+            ( STeIf
+                (STeBinOp (STeVar "x2") "<" (STeVar "p2"))
+                (STeApp (STeVar "lookup") [STeVar "x1", STeVar "x2", STeVar "p1"])
+                ( STeIf
+                    (STeBinOp (STeVar "p2") "<" (STeVar "x2"))
+                    (STeApp (STeVar "lookup") [STeVar "x1", STeVar "x2", STeVar "p4"])
+                    (STeVar "p3")
+                )
+            )
+    expected =
+        "def lookup[V](x1: V, x2: Long): V = if (x2 < p2)\n"
+            <> "  lookup(x1, x2, p1)\n"
+            <> "else if (p2 < x2)\n"
+            <> "  lookup(x1, x2, p4)\n"
+            <> "else\n"
+            <> "  p3\n"
+
+test_combineDecls_strips_newlines :: IO ()
+test_combineDecls_strips_newlines =
+    assertStringEqual
+        "combineDecls strips trailing newlines before joining declarations"
+        "a\n\nb"
+        (combineDecls ["a\n", "", "b\n"])
