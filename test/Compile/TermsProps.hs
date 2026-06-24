@@ -16,7 +16,7 @@ import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Agda.Syntax.Abstract.Name ( QName, mkName_ , qualify_ )
-import Agda.Syntax.Common ( NameId(..), defaultArg)
+import Agda.Syntax.Common ( Arg, Hiding(..), NameId(..), defaultArg, setHiding )
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 import Agda.Syntax.TopLevelModuleName.Boot ( noModuleNameHash )
 import Agda.Compiler.Scala.Compile.Terms
@@ -39,6 +39,7 @@ termsProps =
     , ("pattern vars extend Env with newest binder at index 0", prop_extendEnv_patternVarsNewestFirst)
     , ("function args enter Env with last arg at index 0", prop_envFromArgs_functionArgsNewestFirst)
     , ("lookupVar reports index and Env size when out of range", prop_lookupVar_outOfRange)
+    , ("hidden application arguments do not become runtime Scala arguments", prop_hiddenApplyArgs_areErased)
     , ("function type params stay in Env as erased de Bruijn slots",
        prop_envFromFunction_keepsTypeParamsForDeBruijnAlignment)
     , ("case arguments use source-order positions including erased binders", prop_lookupCaseArg_usesSourceOrder)
@@ -167,3 +168,23 @@ prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee = property $ do
     lookupVar ctorEnv 3 === Right "p1"
     lookupVar ctorEnv 5 === Right "key"
     lookupVar ctorEnv 6 === Right "defaultVal"
+
+prop_hiddenApplyArgs_areErased :: Property
+prop_hiddenApplyArgs_areErased = property $ do
+    let env = envFromFunction ["A"] ["x"]
+        term = Def
+          dummyQName
+          [ Apply (hiddenArg (Var 1 []))
+          , Apply (visibleArg (Var 0 []))
+          ]
+        expected =
+            STeApp
+                (STeVar "f")
+                [STeVar "x"]
+    compileBodyTerm env term === Right expected
+
+visibleArg :: Term -> Arg Term
+visibleArg = defaultArg
+
+hiddenArg :: Term -> Arg Term
+hiddenArg = setHiding Hidden . defaultArg
