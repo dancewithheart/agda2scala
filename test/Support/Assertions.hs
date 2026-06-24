@@ -6,37 +6,36 @@ module Support.Assertions
   ) where
 
 import Control.Monad (unless)
+import GHC.Stack
+  ( HasCallStack
+  )
 import Test.Tasty.HUnit (Assertion, assertFailure)
 
-assertEqualPretty :: (Eq a, Show a) => String -> a -> a -> Assertion
+assertEqualPretty :: (HasCallStack, Eq a, Show a) => String -> a -> a -> Assertion
 assertEqualPretty label expected actual =
     unless (expected == actual) $
         assertFailure $
             unlines
                 [ label
-                , ""
                 , "Expected:"
                 , indent (show expected)
-                , ""
                 , "Actual:"
                 , indent (show actual)
                 ]
 
-assertStringEqual :: String -> String -> String -> Assertion
+assertStringEqual :: HasCallStack => String -> String -> String -> Assertion
 assertStringEqual label expected actual =
     unless (expected == actual) $
         assertFailure $
             unlines
                 [ label
-                , ""
                 , "Expected:"
                 , fence expected
-                , ""
                 , "Actual:"
                 , fence actual
                 ]
 
-assertLeft :: (Show a) => String -> Either e a -> Assertion
+assertLeft :: (HasCallStack, Show a) => String -> Either e a -> Assertion
 assertLeft label actual =
     case actual of
         Left _ -> pure ()
@@ -44,15 +43,13 @@ assertLeft label actual =
             assertFailure $
                 unlines
                     [ label
-                    , ""
                     , "Expected:"
                     , "  Left _"
-                    , ""
                     , "Actual:"
                     , indent (show value)
                     ]
 
-assertRight :: (Show e) => String -> Either e a -> Assertion
+assertRight :: (HasCallStack, Show e) => String -> Either e a -> Assertion
 assertRight label actual =
     case actual of
         Right _ -> pure ()
@@ -60,10 +57,8 @@ assertRight label actual =
             assertFailure $
                 unlines
                     [ label
-                    , ""
                     , "Expected:"
                     , "  Right _"
-                    , ""
                     , "Actual:"
                     , indent (show err)
                     ]
