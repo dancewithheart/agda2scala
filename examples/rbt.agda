@@ -15,7 +15,6 @@ data RedBlackTree (V : Set) : Set where
 lookup : {V : Set} -> V -> ℕ -> RedBlackTree V -> V
 lookup defaultVal key EmptyRBT =
   defaultVal
-
 lookup defaultVal key (RBT c left currKey x right) =
   if key <ᵇ currKey then
     lookup defaultVal key left
@@ -24,5 +23,4 @@ lookup defaultVal key (RBT c left currKey x right) =
       lookup defaultVal key right
     else
       x
-
 {-# COMPILE AGDA2SCALA lookup #-}

@@ -9,6 +9,7 @@ module Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , sp
   , strip
   ) where
 
@@ -78,6 +79,9 @@ strip = dropWhileEnd (== '\n')
 
 nl :: String
 nl = "\n"
+
+sp :: String
+sp = " "
 
 combineLines :: [String] -> String
 combineLines xs = strip (unlines (filter (not . null) xs))

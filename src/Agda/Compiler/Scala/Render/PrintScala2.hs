@@ -21,6 +21,7 @@ import Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , sp
   )
 import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
@@ -125,30 +126,50 @@ printCaseClass name tyParams args =
 -- ===== Terms ================================================================
 
 printTerm :: ScalaTerm -> String
-printTerm x = case x of
+printTerm = printTermBlock
+
+printTermInline :: ScalaTerm -> String
+printTermInline term =
+    case term of
+        STeIf{} -> "(" <> printTermBlock term <> ")"
+        STeMatch{} -> "(" <> printTermBlock term <> ")"
+        _ -> printTermBlock term
+
+printTermBlock :: ScalaTerm -> String
+printTermBlock x = case x of
     STeVar n -> n
-    STeApp f xs ->
-        printTerm f <> "(" <> intercalate ", " (map printTerm xs) <> ")"
-    STeLam names body ->
-        "(" <> intercalate ", " names <> ")" <> sp <> "=>" <> sp <> printTerm body
-    STeIf cond thenBranch elseBranch ->
-      "if" <> sp <> "(" <> printTerm cond <> ")" <> sp
-        <> printTerm thenBranch
-        <> sp <> "else" <> sp
-        <> printTerm elseBranch
-    STeBinOp lhs op rhs -> printTerm lhs <> sp <> op <> sp <> printTerm rhs
+    STeApp f xs -> printTermInline f <> "(" <> intercalate ", " (map printTermInline xs) <> ")"
+    STeLam names body -> "(" <> intercalate ", " names <> ")" <> sp <> "=>" <> sp <> printTermInline body
     STeLitInt n -> show n
-    STeLitBool b -> if b then "true" else "false" -- Scala lowercase
+    STeLitBool b -> if b then "true" else "false"
     STeLitString s -> "\"" <> escapeScalaString s <> "\""
+    STeIf cond thenBranch elseBranch -> printIf cond thenBranch elseBranch
+    STeBinOp lhs op rhs -> printTermInline lhs <> sp <> op <> sp <> printTermInline rhs
     STeMatch scrut alts ->
-      printTerm scrut <> sp <> "match" <> sp <> "{\n"
-          <> concatMap (indentBlock 2 . printCase) alts
-          <> "}"
+      printTermInline scrut <> sp <> "match" <> sp <> "{\n"
+        <> intercalate "\n" (map (indentBlock 2 . printCase) alts)
+        <> "\n}"
     STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+
+printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
+printIf cond thenBranch elseBranch =
+    "if" <> sp <> "(" <> printTermInline cond <> ")" <> nl
+        <> indentBlock 2 (printTermBlock thenBranch)
+        <> nl
+        <> "else"
+        <> printElseBranch elseBranch
+
+printElseBranch :: ScalaTerm -> String
+printElseBranch elseBranch =
+    case elseBranch of
+        STeIf{} -> sp <> printTermBlock elseBranch
+        _ -> nl <> indentBlock 2 (printTermBlock elseBranch)
 
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
-  "case" <> sp <> printPat pat <> sp <> "=>" <> sp <> printTerm rhs
+  "case" <> sp <> printPat pat <> sp <> "=>"
+      <> nl
+      <> indentBlock 2 (printTermBlock rhs)
 
 -- ===== Vars / packages ======================================================
 
@@ -176,9 +197,6 @@ printObject pName = "object" <> sp <> pName
 bracket :: String -> String
 bracket str = "{\n" <> str <> "\n}"
 
-sp :: String
-sp = " "
-
 printCompanionObject :: ScalaName -> [String] -> String
 printCompanionObject name ctorLines =
     "object"
@@ -189,4 +207,4 @@ printCompanionObject name ctorLines =
 
 
 indentBlock :: Int -> String -> String
-indentBlock n = unlines . map (replicate n ' ' <>) . lines
+indentBlock n = intercalate "\n" . map (replicate n ' ' <>) . lines

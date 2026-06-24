@@ -11,7 +11,7 @@ import examples.adts.Answer.{Yes, No}
 
 object RgbSpec extends JUnitRunnableSpec {
 
-  def spec = suite("Examples test")(
+  def spec = suite("RGB")(
     test("identity on Rgb") {
       assert(idRgb(Red))(equalTo(Red)) &&
       assert(idRgb(Green))(equalTo(Green)) &&
