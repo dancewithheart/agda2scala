@@ -15,6 +15,7 @@ import Agda.Compiler.Scala.Render.Common
   , printType
   , printTyParams
   , strip
+  , sp
   )
 import Agda.Compiler.Scala.IR.ScalaExpr (
     ScalaCtor (..),
@@ -97,29 +98,49 @@ printCaseClass :: ScalaName -> [SeVar] -> String
 printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"
 
 printTerm :: ScalaTerm -> String
-printTerm (STeVar scalaName) = scalaName
-printTerm (STeApp st sts) =
-    printTerm st <> "(" <> intercalate ", " (map printTerm sts) <> ")"
-printTerm (STeLam sns st) = "(" <> intercalate ", " sns <> ")" <> exprSeparator <> "=>" <> exprSeparator <> printTerm st
-printTerm (STeLitInt n) = show n
-printTerm (STeLitBool b) = if b then "true" else "false"
-printTerm (STeLitString s) = "\"" <> escapeScalaString s <> "\""
-printTerm (STeError err) = "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
-printTerm (STeMatch scrut alts) =
-  printTerm scrut <> " match" <> defsSeparator
-    <> combineLinesWithIndent (indent <> indent) (map printCase alts)
-printTerm (STeIf cond thenBranch elseBranch) =
-  "if" <> exprSeparator <> "(" <> printTerm cond <> ")" <> exprSeparator
-    <> printTerm thenBranch
-    <> exprSeparator <> "else" <> exprSeparator
-    <> printTerm elseBranch
-printTerm (STeBinOp lhs op rhs) =
-  printTerm lhs <> exprSeparator <> op <> exprSeparator <> printTerm rhs
+printTerm = printTermBlock
+
+printTermInline :: ScalaTerm -> String
+printTermInline term =
+    case term of
+        STeIf{} -> "(" <> printTermBlock term <> ")"
+        STeMatch{} -> "(" <> printTermBlock term <> ")"
+        _ -> printTermBlock term
+
+printTermBlock :: ScalaTerm -> String
+printTermBlock term =
+    case term of
+        STeVar scalaName -> scalaName
+        STeApp st sts -> printTermInline st <> "(" <> intercalate ", " (map printTermInline sts) <> ")"
+        STeLam sns st -> "(" <> intercalate ", " sns <> ")" <> exprSeparator <> "=>" <> exprSeparator <> printTermInline st
+        STeLitInt n -> show n
+        STeLitBool b -> if b then "true" else "false"
+        STeLitString s -> "\"" <> escapeScalaString s <> "\""
+        STeIf cond thenBranch elseBranch -> printIf cond thenBranch elseBranch
+        STeBinOp lhs op rhs -> printTermInline lhs <> exprSeparator <> op <> exprSeparator <> printTermInline rhs
+        STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+        STeMatch scrut alts ->
+            printTermInline scrut <> sp <> "match" <> nl
+                <> indentBlock 2 (intercalate "\n" (map printCase alts))
+
+printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
+printIf cond thenBranch elseBranch =
+    "if" <> sp <> printTermInline cond <> sp <> "then" <> nl
+        <> indentBlock 2 (printTermBlock thenBranch)
+        <> nl
+        <> "else"
+        <> printElseBranch elseBranch
+
+printElseBranch :: ScalaTerm -> String
+printElseBranch elseBranch =
+    case elseBranch of
+        STeIf{} -> sp <> printTermBlock elseBranch
+        _ -> nl <> indentBlock 2 (printTermBlock elseBranch)
 
 printCase :: (ScalaPat, ScalaTerm) -> String
 printCase (pat, rhs) =
-  "case" <> exprSeparator <> printPat pat
-    <> exprSeparator <> "=>" <> exprSeparator <> printTerm rhs
+    "case" <> sp <> printPat pat <> sp <> "=>" <> nl
+        <> indentBlock 2 (printTermBlock rhs)
 
 printVar :: SeVar -> String
 printVar (SeVar sName sType) = sName <> colonSeparator <> exprSeparator <> (printType sType)
@@ -156,25 +177,37 @@ printPackage pNames = "package" <> exprSeparator <> intercalate "." pNames
 printObject :: ScalaName -> String
 printObject pName = "object" <> exprSeparator <> pName
 
-bracket :: [String] -> String
-bracket str = colonSeparator <> defsSeparator <> combineLinesWithIndent indent str
-
--- -- TODO Scala3 indents
-bracketWithIndent :: [String] -> Int -> String
-bracketWithIndent str i =
-    colonSeparator <> defsSeparator <> combineLinesWithIndent (times i indent) str
-
 defsSeparator :: String
 defsSeparator = "\n"
 
 exprSeparator :: String
 exprSeparator = " "
 
-indent :: String
-indent = "  "
+-- -- TODO Scala3 indents
+bracket :: [String] -> String
+bracket blocks =
+    colonSeparator <> defsSeparator <> combineMemberBlocksWithIndent 2 blocks
 
-times :: Int -> [a] -> [a]
-times i s = concat $ replicate i s
+bracketWithIndent :: [String] -> Int -> String
+bracketWithIndent blocks i =
+    colonSeparator <> defsSeparator <> combineBlocksWithIndent i blocks
 
-combineLinesWithIndent :: String -> [String] -> String
-combineLinesWithIndent indent' xs = strip $ unlines (fmap (indent' ++) (filter (not . null) xs))
+combineMemberBlocksWithIndent :: Int -> [String] -> String
+combineMemberBlocksWithIndent n blocks =
+    intercalate (defsSeparator <> defsSeparator) $
+        map (indentBlock n) $
+            nonEmptyBlocks blocks
+
+combineBlocksWithIndent :: Int -> [String] -> String
+combineBlocksWithIndent n blocks =
+    intercalate defsSeparator $
+        map (indentBlock n) $
+            nonEmptyBlocks blocks
+
+nonEmptyBlocks :: [String] -> [String]
+nonEmptyBlocks =
+    filter (not . null) . map strip
+
+indentBlock :: Int -> String -> String
+indentBlock n =
+    intercalate "\n" . map (replicate n ' ' <>) . lines
