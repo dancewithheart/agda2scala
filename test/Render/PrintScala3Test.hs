@@ -1,7 +1,7 @@
 module Render.PrintScala3Test (tests) where
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (testCase)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
@@ -52,28 +52,28 @@ tests =
 
 test_printCaseObject :: IO ()
 test_printCaseObject =
-    assertEqual
+    assertStringEqual
         "Scala 3 case object"
         "case object Light extends Color"
         (printCaseObject "Color" "Light")
 
 test_printSealedTrait :: IO ()
 test_printSealedTrait =
-    assertEqual
+    assertStringEqual
         "Scala 3 sealed trait"
         "sealed trait Color"
         (printSealedTrait "Color")
 
 test_printPackage :: IO ()
 test_printPackage =
-    assertEqual
+    assertStringEqual
         "Scala 3 object"
         "object adts"
         (printPackageAndObject ["adts"])
 
 test_printCaseClass :: IO ()
 test_printCaseClass =
-    assertEqual
+    assertStringEqual
         "Scala 3 case class"
         "final case class RgbPair(snd: Bool, fst: Rgb)"
         ( printCaseClass

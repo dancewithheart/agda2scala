@@ -84,7 +84,7 @@ sp :: String
 sp = " "
 
 combineLines :: [String] -> String
-combineLines xs = strip (unlines (filter (not . null) xs))
+combineLines = intercalate nl . filter (not . null)
 
 asBottom :: [ScalaName] -> [ScalaName]
 asBottom ps = replicate (length ps) "Nothing"

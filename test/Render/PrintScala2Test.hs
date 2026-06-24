@@ -1,7 +1,7 @@
 module Render.PrintScala2Test (tests) where
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase)
+import Test.Tasty.HUnit (testCase)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
@@ -14,7 +14,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , scalaTypeScheme
     )
 import Agda.Compiler.Scala.Render.PrintScala2
-    ( combineLines
+    ( combineDecls
     , printCaseClass
     , printCaseObject
     , printPackageAndObject
@@ -47,9 +47,9 @@ tests =
             ]
         , testGroup
             "layout"
-            [ testCase "combineLines removes empty lines and joins non-empty lines" test_combineLines
-            , testCase "prints package with handled declarations and skips empty unhandled declarations"
+            [ testCase "prints package with handled declarations and skips empty unhandled declarations"
                        test_printScala2Package
+              , testCase "combineDecls strips trailing newlines before joining declarations" test_combineDecls_strips_newlines
             ]
         , testGroup
             "pattern matching"
@@ -64,49 +64,42 @@ tests =
 
 test_printCaseObject :: IO ()
 test_printCaseObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 case object"
         "case object Light extends Color"
         (printCaseObject "Color" "Light")
 
 test_printSealedTrait :: IO ()
 test_printSealedTrait =
-    assertEqual
+    assertStringEqual
         "Scala 2 sealed trait"
         "sealed trait Color"
         (printSealedTrait "Color")
 
 test_objectWhenNoPackage :: IO ()
 test_objectWhenNoPackage =
-    assertEqual
+    assertStringEqual
         "Scala 2 object"
         "object adts"
         (printPackageAndObject ["adts"])
 
 test_packageAndObject :: IO ()
 test_packageAndObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 package and object"
         "package example\n\nobject adts"
         (printPackageAndObject ["example", "adts"])
 
 test_multiplePartPackageAndObject :: IO ()
 test_multiplePartPackageAndObject =
-    assertEqual
+    assertStringEqual
         "Scala 2 dotted package and object"
         "package org.example\n\nobject adts"
         (printPackageAndObject ["org", "example", "adts"])
 
-test_combineLines :: IO ()
-test_combineLines =
-    assertEqual
-        "combined lines"
-        "a\nb"
-        (combineLines ["", "a", "", "", "b", "", "", ""])
-
 test_printCaseClass :: IO ()
 test_printCaseClass =
-    assertEqual
+    assertStringEqual
         "Scala 2 case class"
         "final case class RgbPair(snd: Bool, fst: Rgb)"
         ( printCaseClass
@@ -119,7 +112,7 @@ test_printCaseClass =
 
 test_printCaseClassPoly :: IO ()
 test_printCaseClassPoly =
-    assertEqual
+    assertStringEqual
         "Scala 2 polymorphic case class"
         "final case class Box[A](unbox: A)"
         ( printCaseClass
@@ -308,3 +301,10 @@ test_print_if_breaks_branches =
             <> "  lookup(x1, x2, p4)\n"
             <> "else\n"
             <> "  p3\n"
+
+test_combineDecls_strips_newlines :: IO ()
+test_combineDecls_strips_newlines =
+    assertStringEqual
+        "combineDecls strips trailing newlines before joining declarations"
+        "a\n\nb"
+        (combineDecls ["a\n", "", "b\n"])

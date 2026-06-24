@@ -13,7 +13,7 @@ module Agda.Compiler.Scala.Compile.Terms
 ) where
 
 import Data.Maybe (catMaybes, fromMaybe, isJust)
-import Debug.Trace (trace)
+--import Debug.Trace (trace) -- TODO #72
 import qualified Data.Map as Map
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common
@@ -80,15 +80,18 @@ extendEnv :: [ScalaName] -> Env -> Env
 extendEnv names (Env xs) = Env (map Just (reverse names) <> xs)
 
 lookupVar :: Env -> Int -> Either CompileError ScalaName
-lookupVar env@(Env xs) i = case drop i xs of
+-- lookupVar env@(Env xs) i = case drop i xs of -- #72
+lookupVar (Env xs) i = case drop i xs of
   Just name : _ -> Right name
-  Nothing : _ -> trace
-     ( "ErasedVarReferenced "
-       <> show i
-       <> " in env "
-       <> show env
-     )
-     (Left (ErasedVarReferenced i))
+  Nothing : _ -> Left (ErasedVarReferenced i)
+-- -- TODO restore and hide behing a flag https://github.com/dancewithheart/agda2scala/issues/72
+--    trace
+--     ( "ErasedVarReferenced "
+--       <> show i
+--       <> " in env "
+--       <> show env
+--     )
+--     (Left (ErasedVarReferenced i))
   [] -> Left (VarOutOfRange i (length xs))
 
 -- Agda uses two index conventions here.
@@ -211,7 +214,7 @@ compileVisibleElim env elim = case elim of
 
 compileConApp :: Env -> ConHead -> [Elim' Term] -> Either CompileError ScalaTerm
 compileConApp env conHead elims = do
-    args <- fmap catMaybes (traverse (compileElimMaybe env) elims)
+    args <- compileVisibleApplyTerms env elims
     let f = STeVar (ctorName defaultNamePolicy (fromQName (conName conHead)))
     pure $ case args of
         [] -> f
@@ -223,14 +226,6 @@ applyElims env f elims = do
   pure $ case args of
     [] -> f
     _  -> STeApp f args
-
-compileElimMaybe :: Env -> Elim' Term -> Either CompileError (Maybe ScalaTerm)
-compileElimMaybe env elim = case elim of
-    Apply arg
-      | getHiding arg /= NotHidden -> Right Nothing
-      | isErasedTypeArgument (unArg arg) -> Right Nothing
-      | otherwise -> Just <$> compileBodyTerm env (unArg arg)
-    _ -> Right Nothing
 
 isErasedTypeArgument :: Term -> Bool
 isErasedTypeArgument term = case term of
@@ -245,24 +240,25 @@ compileLiteral = \case
     LitString s -> pure (STeLitString (T.unpack s))
     l -> Left (UnsupportedTerm (Lit l))
 
-debugElims :: String -> [Elim' Term] -> Either CompileError ()
-debugElims label elims =
-    trace
-        ( unlines
-            [ "===== AGDA2SCALA TERMS DEBUG: " <> label <> " ====="
-            , "elim count: " <> show (length elims)
-            , unlines (zipWith showElim [0 :: Int ..] elims)
-            , "===== END TERMS DEBUG ====="
-            ]
-        )
-        (Right ())
-  where
-    showElim i elim =
-        case elim of
-            Apply arg ->
-                show i
-                    <> ": Apply hiding="
-                    <> show (getHiding arg)
-                    <> " term="
-                    <> show (unArg arg)
-            _ -> show i <> ": non-Apply " <> show elim
+-- TODO restore and hide behing a flag #72
+--debugElims :: String -> [Elim' Term] -> Either CompileError ()
+--debugElims label elims =
+--    trace
+--        ( unlines
+--            [ "===== AGDA2SCALA TERMS DEBUG: " <> label <> " ====="
+--            , "elim count: " <> show (length elims)
+--            , unlines (zipWith showElim [0 :: Int ..] elims)
+--            , "===== END TERMS DEBUG ====="
+--            ]
+--        )
+--        (Right ())
+--  where
+--    showElim i elim =
+--        case elim of
+--            Apply arg ->
+--                show i
+--                    <> ": Apply hiding="
+--                    <> show (getHiding arg)
+--                    <> " term="
+--                    <> show (unArg arg)
+--            _ -> show i <> ": non-Apply " <> show elim

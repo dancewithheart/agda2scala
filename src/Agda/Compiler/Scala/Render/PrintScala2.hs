@@ -6,7 +6,7 @@ module Agda.Compiler.Scala.Render.PrintScala2 (
     printCaseClass,
     printSum,
     printType,
-    combineLines
+    combineDecls
 ) where
 
 import Data.List (intercalate)
@@ -40,7 +40,7 @@ printScala2 def = case def of
         printPackageAndObject pNames
             <> nl
             <> bracket
-                (nl <> combineLines (map printScala2 defs))
+                (nl <> combineDecls (map printScala2 defs))
             <> nl
     SeSum name tyParams ctors ->
         printSum name tyParams ctors
@@ -208,3 +208,11 @@ printCompanionObject name ctorLines =
 
 indentBlock :: Int -> String -> String
 indentBlock n = intercalate "\n" . map (replicate n ' ' <>) . lines
+
+combineDecls :: [String] -> String
+combineDecls =
+    intercalate (nl <> nl) . filter (not . null) . map stripTrailingNewlines
+
+stripTrailingNewlines :: String -> String
+stripTrailingNewlines =
+    reverse . dropWhile (== '\n') . reverse
