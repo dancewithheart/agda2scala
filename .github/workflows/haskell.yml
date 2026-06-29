@@ -1,5 +1,10 @@
 on: [push]
 name: build
+
+concurrency:
+  group: security-code-scanning-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   runhaskell:
     name: agda2scala
