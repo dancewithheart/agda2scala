@@ -137,14 +137,14 @@ jobs:
             > ../deprecated-packages.sarif
 
       - name: Upload enriched cabal-audit SARIF
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4
         with:
           sarif_file: cabal-audit.enriched.sarif
           category: cabal-audit-enriched
           checkout_path: project
 
       - name: Upload deprecated-package SARIF
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4
         with:
           sarif_file: deprecated-packages.sarif
           category: hackage-deprecated-packages
