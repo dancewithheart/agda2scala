@@ -17,10 +17,12 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Agda.Syntax.Abstract.Name ( QName, mkName_ , qualify_ )
 import Agda.Syntax.Common ( Arg, Hiding(..), NameId(..), defaultArg, setHiding )
+import Agda.TypeChecking.CompiledClause( CompiledClauses'(..), catchall)
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 import Agda.Syntax.TopLevelModuleName.Boot ( noModuleNameHash )
 import Agda.Compiler.Scala.Compile.Terms
   ( Env(..)
+  , compileFunctionBody
   , envFromArgs
   , envFromFunction
   , extendEnv
@@ -30,7 +32,7 @@ import Agda.Compiler.Scala.Compile.Terms
   )
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
-import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..))
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..), ScalaPat(..))
 
 termsProps :: Group
 termsProps =
@@ -45,6 +47,7 @@ termsProps =
     , ("case arguments use source-order positions including erased binders", prop_lookupCaseArg_usesSourceOrder)
     , ("case branch environment removes the scrutinized argument", prop_removeCaseArg_dropsScrutinee)
     , ("constructor branch binders are added after dropping the case scrutinee", prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee)
+    , ("catch-all branches retain the scrutinized runtime argument", prop_catchallBranch_retainsScrutinee)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -188,3 +191,32 @@ visibleArg = defaultArg
 
 hiddenArg :: Term -> Arg Term
 hiddenArg = setHiding Hidden . defaultArg
+
+{-
+Checks:
+- case uses source-order indexing
+- the wildcard RHS still resolves the scrutinized variable
+- hidden type parameters do not disturb either index
+-}
+prop_catchallBranch_retainsScrutinee :: Property
+prop_catchallBranch_retainsScrutinee = property $ do
+    tyCount <- forAll (Gen.int (Range.linear 0 3))
+    argCount <- forAll (Gen.int (Range.linear 1 8))
+    runtimeIndex <- forAll (Gen.int (Range.linear 0 (argCount - 1)))
+
+    let tyParams = [ "A" <> show i | i <- [0 .. tyCount - 1] ]
+        args = [ "x" <> show i | i <- [0 .. argCount - 1] ]
+        caseIndex = tyCount + runtimeIndex
+        deBruijnIndex = argCount - runtimeIndex - 1
+        scrutinizedName = args !! runtimeIndex
+        clauses =
+          Case
+            (defaultArg caseIndex)
+            (catchall (Done [] (Var deBruijnIndex [])))
+        expected =
+          STeMatch
+            (STeVar scrutinizedName)
+            [(SPWild, STeVar scrutinizedName)]
+
+    compileFunctionBody tyParams args (Just clauses) === Right expected
+

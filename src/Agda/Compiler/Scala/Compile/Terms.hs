@@ -12,7 +12,7 @@ module Agda.Compiler.Scala.Compile.Terms
   , compileBodyTerm
 ) where
 
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 --import Debug.Trace (trace) -- TODO #72
 import qualified Data.Map as Map
 import Agda.Syntax.Abstract.Name ( QName )
@@ -133,24 +133,37 @@ compileCompiledClauses :: Env -> CompiledClauses -> Either CompileError ScalaTer
 compileCompiledClauses env = \case
     Done _ term -> compileBodyTerm env term
     Case arg branches -> do
-      let n = (unArg arg)
+      let n = unArg arg
       scrut <- STeVar <$> lookupCaseArg env n
-      branchEnv <- removeCaseArg env n
-      alts <- compileBranches branchEnv branches
+      constructorEnv <- removeCaseArg env n
+      alts <- compileBranches env constructorEnv branches
       pure (STeMatch scrut alts)
     _ -> Left UnsupportedCompiledClauses
 
-compileBranches :: Env -> Case CompiledClauses -> Either CompileError [(ScalaPat, ScalaTerm)]
-compileBranches env branches = do
+-- Constructor branches replace the scrutinized argument with constructor
+-- fields, so they use constructorEnv.
+--
+-- A catch-all branch does not destructure the argument and its RHS can still
+-- reference that value, so it must use catchallEnv.
+compileBranches :: Env
+ -> Env
+ -> Case CompiledClauses
+ -> Either CompileError [(ScalaPat, ScalaTerm)]
+compileBranches catchallEnv constructorEnv branches = do
     validateCaseShape branches
-    traverse compileConBranch (Map.toList (conBranches branches))
+    constructorAlts <- traverse compileConBranch (Map.toList (conBranches branches))
+    catchallAlt <- traverse compileCatchallBranch (catchallBranch branches)
+    pure (constructorAlts <> maybeToList catchallAlt)
   where
     compileConBranch (conQName, WithArity arityN cc) = do
       let patVars = freshPatVars arityN
           pat     = SPCtor (fromQName conQName) (map SPVar patVars)
-          env'    = extendEnv patVars env
-      rhs <- compileCompiledClauses env' cc
+          env     = extendEnv patVars constructorEnv
+      rhs <- compileCompiledClauses env cc
       pure (pat, rhs)
+    compileCatchallBranch cc = do
+      rhs <- compileCompiledClauses catchallEnv cc
+      pure (SPWild, rhs)
 
 freshPatVars :: Int -> [ScalaName]
 freshPatVars arityN = [ "p" <> show i | i <- [0 .. arityN - 1] ]
@@ -161,7 +174,6 @@ validateCaseShape :: Case CompiledClauses -> Either CompileError ()
 validateCaseShape branches
     | projPatterns branches                  = Left $ UnsupportedCaseShape HasProjectionPatterns
     | not (Map.null (litBranches branches))  = Left $ UnsupportedCaseShape HasLiteralBranches
-    | isJust (catchallBranch branches)       = Left $ UnsupportedCaseShape HasCatchAllBranch
     | fromMaybe False (fallThrough branches) = Left $ UnsupportedCaseShape HasFallThrough
     | otherwise                              = Right ()
 

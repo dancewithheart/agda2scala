@@ -64,7 +64,6 @@ data CompileError
 
 data CaseUnsupported
   = HasLiteralBranches
-  | HasCatchAllBranch
   | HasFallThrough
   | HasProjectionPatterns
   deriving (Eq, Show)
