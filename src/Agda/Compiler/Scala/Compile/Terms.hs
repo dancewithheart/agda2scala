@@ -6,6 +6,7 @@ module Agda.Compiler.Scala.Compile.Terms
   , compileFunctionBody
   , envFromArgs
   , envFromFunction
+  , envNames
   , extendEnv
   , freshPatVars
   , lookupVar
@@ -14,11 +15,15 @@ module Agda.Compiler.Scala.Compile.Terms
   , replaceCaseArg
 ) where
 
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State.Strict
+  ( StateT
+  , evalStateT
+  , state
+  )
 import Data.Maybe (catMaybes)
 --import Debug.Trace (trace) -- TODO #72
 import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.HashSet as HS
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common
   ( Arg(..)
@@ -39,13 +44,22 @@ import Agda.Compiler.Scala.Compile.Types
   ( CompileError (..)
   , CaseUnsupported (..)
   , fromQName)
-import Agda.Compiler.Scala.Name.NameEnv ( freshNumberedNamesAvoiding  )
+import Agda.Compiler.Scala.Name.NameEnv
+  ( FreshNameSupply
+  , freshNameSupplyFrom
+  , takeFreshNumberedNames
+  )
 import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy, termName)
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
   , ScalaTerm(..)
   )
+
+type CompileCaseM = StateT FreshNameSupply (Either CompileError)
+
+liftCompile :: Either CompileError a -> CompileCaseM a
+liftCompile = lift
 
 -- ===== Environment ===========================================================
 --
@@ -140,57 +154,70 @@ compileFunctionBody
   -> Maybe CompiledClauses
   -> Either CompileError ScalaTerm
 compileFunctionBody _tyParams _argNames Nothing = Left UnsupportedCompiledClauses
-compileFunctionBody tyParams argNames (Just cc) = compileCompiledClauses Nothing (envFromFunction tyParams argNames) cc
+compileFunctionBody tyParams argNames (Just clauses) =
+  evalStateT
+    (compileCompiledClauses Nothing env clauses)
+    (freshNameSupplyFrom (envNames env))
+  where
+    env = envFromFunction tyParams argNames
 
 -- The optional ScalaTerm is the catch-all inherited from an enclosing case.
 compileCompiledClauses
   :: Maybe ScalaTerm
   -> Env
   -> CompiledClauses
-  -> Either CompileError ScalaTerm
-compileCompiledClauses inheritedFallback env = \case
-  Done _ term -> compileBodyTerm env term
-  Fail _ ->
-    case inheritedFallback of
-      Just fallback -> Right fallback
-      Nothing       -> Left UnsupportedCompiledClauses
-  Case arg branches -> do
-    validateCaseShape branches
-    let caseIndex = unArg arg
-    scrut <- STeVar <$> lookupCaseArg env caseIndex
-    caseFallback <-
-      case catchallBranch branches of
-        Nothing ->
-          Right inheritedFallback
-        Just catchallClauses ->
-          Just <$> compileCompiledClauses inheritedFallback env catchallClauses
-    constructorAlts <-
-      traverse
-        (compileConBranch caseFallback)
-        (Map.toList (conBranches branches))
-    let fallbackAlts =
-          case caseFallback of
-            Nothing       -> []
-            Just fallback -> [(SPWild, fallback)]
-    pure (STeMatch scrut (constructorAlts <> fallbackAlts))
-    where
-      compileConBranch
-        :: Maybe ScalaTerm
-        -> (QName, WithArity CompiledClauses)
-        -> Either CompileError (ScalaPat, ScalaTerm)
-      compileConBranch fallback (conQName, WithArity arityN cc) = do
-        let patVars = freshPatVars env arityN
-            pat = SPCtor (fromQName conQName) (map SPVar patVars)
-        branchEnv <- replaceCaseArg env (unArg arg) patVars
-        rhs <- compileCompiledClauses fallback branchEnv cc
-        pure (pat, rhs)
+  -> CompileCaseM ScalaTerm
+compileCompiledClauses inheritedFallback env clauses =
+  case clauses of
+    Done _ term -> liftCompile (compileBodyTerm env term)
+    Fail _ ->
+      case inheritedFallback of
+        Just fallback -> pure fallback
+        Nothing -> liftCompile (Left UnsupportedCompiledClauses)
+    Case arg branches -> do
+      liftCompile (validateCaseShape branches)
+      let caseIndex = unArg arg
+      scrutinee <- STeVar <$> liftCompile (lookupCaseArg env caseIndex)
+      caseFallback <-
+        case catchallBranch branches of
+          Nothing -> pure inheritedFallback
+          Just catchallClauses ->
+            Just
+              <$> compileCompiledClauses
+                    inheritedFallback
+                    env
+                    catchallClauses
+      constructorAlternatives <-
+        traverse
+          (compileConstructorBranch caseIndex caseFallback env)
+          (Map.toList (conBranches branches))
+      let fallbackAlternatives =
+            case caseFallback of
+              Nothing -> []
+              Just fallback -> [(SPWild, fallback)]
+      pure (STeMatch scrutinee (constructorAlternatives <> fallbackAlternatives))
+--    _ -> liftCompile (Left UnsupportedCompiledClauses)
 
-envNames :: Env -> HS.HashSet ScalaName
-envNames (Env slots) = HS.fromList (catMaybes slots)
+
+compileConstructorBranch
+  :: Int
+  -> Maybe ScalaTerm
+  -> Env
+  -> (QName, WithArity CompiledClauses)
+  -> CompileCaseM (ScalaPat, ScalaTerm)
+compileConstructorBranch caseIndex fallback env
+  (conQName, WithArity arityN clauses) = do
+    patVars <- freshPatVars arityN
+    branchEnv <- liftCompile (replaceCaseArg env caseIndex patVars)
+    rhs <- compileCompiledClauses fallback branchEnv clauses
+    pure (SPCtor (fromQName conQName) (map SPVar patVars), rhs)
+
+envNames :: Env -> [ScalaName]
+envNames (Env slots) = catMaybes slots
 
 -- constructor fields use prefix p
-freshPatVars :: Env -> Int -> [ScalaName]
-freshPatVars env = freshNumberedNamesAvoiding (envNames env) "p"
+freshPatVars :: Int -> CompileCaseM [ScalaName]
+freshPatVars arityN = state (takeFreshNumberedNames "p" arityN)
 
 -- Reject unsupported case-tree shapes explicitly.
 -- Silent branch dropping would generate partial Scala matches.

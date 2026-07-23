@@ -1,13 +1,16 @@
 module Agda.Compiler.Scala.Name.NameEnv
-    ( NameEnv (..)
+    ( FreshNameSupply
+    , NameEnv (..)
     , allocFreshLocal
     , allocQName
     , emptyNameEnv
+    , freshNameSupplyFrom
     , freshNumberedNamesAvoiding
     , lookupCtorOwner
     , registerCtors
     , sanitizeScalaIdent
     , scalaKeywords
+    , takeFreshNumberedNames
 ) where
 
 import qualified Data.Char as Char
@@ -130,6 +133,39 @@ freshCandidate base index
     | index == 0 = base
     | otherwise = base <> "_" <> show index
 
+data FreshNameSupply = FreshNameSupply
+  { fnsTaken :: HashSet ScalaName
+  , fnsNextIndex :: Int
+  }
+  deriving (Eq, Show)
+
+freshNameSupplyFrom :: [ScalaName] -> FreshNameSupply
+freshNameSupplyFrom names =
+  FreshNameSupply
+    { fnsTaken = HS.fromList names
+    , fnsNextIndex = 0
+    }
+
+takeFreshNumberedNames
+  :: ScalaName
+  -> Int
+  -> FreshNameSupply
+  -> ([ScalaName], FreshNameSupply)
+takeFreshNumberedNames prefix count supply0 =
+  go count supply0 []
+  where
+    go remaining supply acc
+      | remaining <= 0 = (reverse acc, supply)
+      | otherwise =
+          let index = fnsNextIndex supply
+              candidate = sanitizeScalaIdent (prefix <> show index)
+              advanced = supply { fnsNextIndex = index + 1 }
+           in if candidate `HS.member` fnsTaken supply
+                then go remaining advanced acc
+                else
+                  let allocated = advanced { fnsTaken = HS.insert candidate (fnsTaken advanced) }
+                   in go (remaining - 1) allocated (candidate : acc)
+
 freshNumberedNamesAvoiding
   :: HashSet ScalaName
   -> ScalaName
@@ -137,11 +173,11 @@ freshNumberedNamesAvoiding
   -> [ScalaName]
 freshNumberedNamesAvoiding taken prefix count =
   take count
-    [ candidate | i <- [0 :: Int ..]
+    [ candidate
+    | i <- [0 :: Int ..]
     , let candidate = sanitizeScalaIdent (prefix <> show i)
-    , candidate `notMember` taken ]
-
-notMember a xs = not (a `HS.member` xs)
+    , not (candidate `HS.member` taken)
+    ]
 
 allocQName :: NameEnv -> QName -> String -> (NameEnv, ScalaName)
 allocQName ne qn suggestedBase =

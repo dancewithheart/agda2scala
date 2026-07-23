@@ -2,6 +2,8 @@
 
 module Compile.TermsProps (termsProps) where
 
+import Control.Monad.Trans.State.Strict ( evalStateT )
+import qualified Data.Set as Set
 import Data.Foldable (traverse_)
 import Hedgehog
   ( Group(..)
@@ -9,6 +11,7 @@ import Hedgehog
   , PropertyT
   , annotateShow
   , failure
+  , footnoteShow
   , forAll
   , property
   , (===)
@@ -25,6 +28,7 @@ import Agda.Compiler.Scala.Compile.Terms
   , compileFunctionBody
   , envFromArgs
   , envFromFunction
+  , envNames
   , extendEnv
   , freshPatVars
   , lookupCaseArg
@@ -35,6 +39,7 @@ import Agda.Compiler.Scala.Compile.Terms
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
 import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..), ScalaPat(..))
+import Agda.Compiler.Scala.Name.NameEnv ( freshNumberedNamesAvoiding, freshNameSupplyFrom )
 
 termsProps :: Group
 termsProps =
@@ -52,7 +57,6 @@ termsProps =
     , ("catch-all branches retain the scrutinized runtime argument", prop_catchallBranch_retainsScrutinee)
     , ("constructor fields replace the scrutinized argument at its source position", prop_replaceCaseArg_preservesSourcePosition)
     , ("constructor fields replace the scrutinized slot in source order", prop_replaceCaseArg_matchesSourceOrderModel)
-    , ("fresh pattern variables are unique and avoid names already in scope", prop_freshPatVars_avoidsNestedShadowing)
     , ("replaceCaseArg makes fields addressable in source order", prop_replaceCaseArg_makesFieldsAddressableInSourceOrder)
     ]
 
@@ -231,18 +235,6 @@ prop_replaceCaseArg_preservesSourcePosition = property $ do
   let env      = Env [ Just "d", Just "c", Just "b", Just "a" ]
       expected = Env [ Just "d", Just "f", Just "e", Just "b", Just "a" ]
   replaceCaseArg env 2 ["e", "f"] === Right expected
-
-prop_freshPatVars_avoidsNestedShadowing :: Property
-prop_freshPatVars_avoidsNestedShadowing = property $ do
-  let env =
-        Env
-          [ Just "p4"
-          , Just "p3"
-          , Just "p2"
-          , Just "p1"
-          , Just "p0"
-          ]
-  freshPatVars env 3 === ["p5", "p6", "p7"]
 
 -- replaceCaseArg xs i ys == take i xs <> ys <> drop (i + 1) xs
 -- source order <-- reverse -> de Bruijn order

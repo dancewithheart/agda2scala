@@ -3,13 +3,15 @@ module Name.NameEnvTest (tests) where
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertBool, assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
 
 import Agda.Compiler.Scala.Name.NameEnv
     ( NameEnv (..)
     , allocFreshLocal
     , emptyNameEnv
+    , freshNameSupplyFrom
     , sanitizeScalaIdent
+    , takeFreshNumberedNames
     )
 
 tests :: TestTree
@@ -24,6 +26,7 @@ tests =
         , testCase "allocFreshLocal uses the sanitized base name when it is free" test_allocFreshLocal_first
         , testCase "allocFreshLocal appends numeric suffixes on collisions" test_allocFreshLocal_collision
         , testCase "allocFreshLocal freshens names after keyword sanitization" test_allocFreshLocal_keywordCollision
+        , testCase "numbered fresh names skip candidates already reserved" test_freshNumberedNames_skipsTakenCandidates
         ]
 
 test_emptyNameEnv :: IO ()
@@ -73,3 +76,12 @@ test_allocFreshLocal_keywordCollision = do
     assertBool
         "both allocated names are marked taken"
         (all (`HS.member` neTaken ne2) ["match_", "match__1"])
+
+test_freshNumberedNames_skipsTakenCandidates :: Assertion
+test_freshNumberedNames_skipsTakenCandidates = do
+    let supply0 = freshNameSupplyFrom ["p0", "p2"]
+        (names, _supply1) = takeFreshNumberedNames "p" 3 supply0
+    assertEqual
+        "skips names already reserved"
+        ["p1", "p3", "p4"]
+        names
