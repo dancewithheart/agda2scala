@@ -18,6 +18,7 @@ import Data.Maybe (catMaybes)
 --import Debug.Trace (trace) -- TODO #72
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.HashSet as HS
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common
   ( Arg(..)
@@ -38,6 +39,7 @@ import Agda.Compiler.Scala.Compile.Types
   ( CompileError (..)
   , CaseUnsupported (..)
   , fromQName)
+import Agda.Compiler.Scala.Name.NameEnv ( freshNumberedNamesAvoiding  )
 import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy, termName)
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
@@ -183,11 +185,12 @@ compileCompiledClauses inheritedFallback env = \case
         rhs <- compileCompiledClauses fallback branchEnv cc
         pure (pat, rhs)
 
+envNames :: Env -> HS.HashSet ScalaName
+envNames (Env slots) = HS.fromList (catMaybes slots)
+
+-- constructor fields use prefix p
 freshPatVars :: Env -> Int -> [ScalaName]
-freshPatVars (Env xs) arityN =
-  take arityN [name | i <- [0 :: Int ..], let name = "p" <> show i, name `Set.notMember` used]
-  where
-    used = Set.fromList (catMaybes xs)
+freshPatVars env = freshNumberedNamesAvoiding (envNames env) "p"
 
 -- Reject unsupported case-tree shapes explicitly.
 -- Silent branch dropping would generate partial Scala matches.

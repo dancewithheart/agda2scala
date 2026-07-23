@@ -26,9 +26,11 @@ import Agda.Compiler.Scala.Compile.Terms
   , envFromArgs
   , envFromFunction
   , extendEnv
+  , freshPatVars
   , lookupCaseArg
   , lookupVar
   , removeCaseArg
+  , replaceCaseArg
   )
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
@@ -48,6 +50,10 @@ termsProps =
     , ("case branch environment removes the scrutinized argument", prop_removeCaseArg_dropsScrutinee)
     , ("constructor branch binders are added after dropping the case scrutinee", prop_caseBranchEnv_addsPatternBindersAfterDroppingScrutinee)
     , ("catch-all branches retain the scrutinized runtime argument", prop_catchallBranch_retainsScrutinee)
+    , ("constructor fields replace the scrutinized argument at its source position", prop_replaceCaseArg_preservesSourcePosition)
+    , ("constructor fields replace the scrutinized slot in source order", prop_replaceCaseArg_matchesSourceOrderModel)
+    , ("fresh pattern variables are unique and avoid names already in scope", prop_freshPatVars_avoidsNestedShadowing)
+    , ("replaceCaseArg makes fields addressable in source order", prop_replaceCaseArg_makesFieldsAddressableInSourceOrder)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -220,3 +226,64 @@ prop_catchallBranch_retainsScrutinee = property $ do
 
     compileFunctionBody tyParams args (Just clauses) === Right expected
 
+prop_replaceCaseArg_preservesSourcePosition :: Property
+prop_replaceCaseArg_preservesSourcePosition = property $ do
+  let env      = Env [ Just "d", Just "c", Just "b", Just "a" ]
+      expected = Env [ Just "d", Just "f", Just "e", Just "b", Just "a" ]
+  replaceCaseArg env 2 ["e", "f"] === Right expected
+
+prop_freshPatVars_avoidsNestedShadowing :: Property
+prop_freshPatVars_avoidsNestedShadowing = property $ do
+  let env =
+        Env
+          [ Just "p4"
+          , Just "p3"
+          , Just "p2"
+          , Just "p1"
+          , Just "p0"
+          ]
+  freshPatVars env 3 === ["p5", "p6", "p7"]
+
+-- replaceCaseArg xs i ys == take i xs <> ys <> drop (i + 1) xs
+-- source order <-- reverse -> de Bruijn order
+prop_replaceCaseArg_matchesSourceOrderModel :: Property
+prop_replaceCaseArg_matchesSourceOrderModel = property $ do
+  slotCount <- forAll (Gen.int (Range.linear 1 30))
+  caseIndex <- forAll (Gen.int (Range.linear 0 (slotCount - 1)))
+  replacementCount <- forAll (Gen.int (Range.linear 0 8))
+  erasedFlags <- forAll (Gen.list (Range.singleton slotCount) Gen.bool)
+  let sourceSlots =
+        [ if i == caseIndex || not erased
+            then Just ("x" <> show i)
+            else Nothing
+        | (i, erased) <- zip [0 :: Int ..] erasedFlags
+        ]
+      replacements = ["p" <> show i | i <- [0 .. replacementCount - 1]]
+      env = Env (reverse sourceSlots)
+      expectedSourceSlots =
+        take caseIndex sourceSlots
+          <> map Just replacements
+          <> drop (caseIndex + 1) sourceSlots
+      expected = Env (reverse expectedSourceSlots)
+  replaceCaseArg env caseIndex replacements === Right expected
+
+
+-- after replacing argument i with fields,
+-- field j is addressable as Case (i + j)
+prop_replaceCaseArg_makesFieldsAddressableInSourceOrder :: Property
+prop_replaceCaseArg_makesFieldsAddressableInSourceOrder = property $ do
+  beforeCount <- forAll (Gen.int (Range.linear 0 15))
+  afterCount <- forAll (Gen.int (Range.linear 0 15))
+  fieldCount <- forAll (Gen.int (Range.linear 0 8))
+  let before = ["before" <> show i | i <- [0 .. beforeCount - 1]]
+      after = ["after" <> show i | i <- [0 .. afterCount - 1]]
+      fields = ["field" <> show i | i <- [0 .. fieldCount - 1]]
+      sourceNames = before <> ["scrutinee"] <> after
+      env = Env (map Just (reverse sourceNames))
+      caseIndex = beforeCount
+  replaced <- evalEither (replaceCaseArg env caseIndex fields)
+  traverse_
+    (\(offset, field) ->
+      lookupCaseArg replaced (caseIndex + offset) === Right field
+    )
+    (zip [0 :: Int ..] fields)

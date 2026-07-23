@@ -1,12 +1,13 @@
-module Agda.Compiler.Scala.Name.NameEnv (
-    NameEnv (..),
-    emptyNameEnv,
-    sanitizeScalaIdent,
-    scalaKeywords,
-    allocFreshLocal,
-    allocQName,
-    registerCtors,
-    lookupCtorOwner,
+module Agda.Compiler.Scala.Name.NameEnv
+    ( NameEnv (..)
+    , allocFreshLocal
+    , allocQName
+    , emptyNameEnv
+    , freshNumberedNamesAvoiding
+    , lookupCtorOwner
+    , registerCtors
+    , sanitizeScalaIdent
+    , scalaKeywords
 ) where
 
 import qualified Data.Char as Char
@@ -128,6 +129,19 @@ freshCandidate :: ScalaName -> Int -> ScalaName
 freshCandidate base index
     | index == 0 = base
     | otherwise = base <> "_" <> show index
+
+freshNumberedNamesAvoiding
+  :: HashSet ScalaName
+  -> ScalaName
+  -> Int
+  -> [ScalaName]
+freshNumberedNamesAvoiding taken prefix count =
+  take count
+    [ candidate | i <- [0 :: Int ..]
+    , let candidate = sanitizeScalaIdent (prefix <> show i)
+    , candidate `notMember` taken ]
+
+notMember a xs = not (a `HS.member` xs)
 
 allocQName :: NameEnv -> QName -> String -> (NameEnv, ScalaName)
 allocQName ne qn suggestedBase =
