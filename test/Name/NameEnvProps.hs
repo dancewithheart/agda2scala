@@ -22,7 +22,10 @@ import Agda.Compiler.Scala.Name.NameEnv
     ( NameEnv (..)
     , allocFreshLocal
     , emptyNameEnv
+    , freshNameSupplyFrom
+    , freshNumberedNamesAvoiding
     , sanitizeScalaIdent
+    , takeFreshNumberedNames
     )
 
 nameEnvProps :: Group
@@ -38,6 +41,9 @@ nameEnvProps =
         , ("fresh local allocation never returns a Scala keyword", prop_allocFreshLocal_unique_nonKeyword)
         , ("fresh local allocation marks every returned name as taken", prop_allocFreshLocal_marksAllocatedNamesTaken)
         , ("first allocation returns the sanitized base name when it is available", prop_allocFreshLocal_firstUsesSanitizedBase)
+        , ("numbered fresh names have the requested count and avoid reserved names", prop_freshNumberedNames_areFresh)
+        , ( "numbered fresh names are never reused across successive allocations", prop_freshNumberedNames_areNeverReused
+          )
         ]
 
 -- ===== Generators ============================================================
@@ -185,3 +191,34 @@ prop_allocFreshLocal_firstUsesSanitizedBase = property $ do
     rawName <- forAll genRawName
     let (_nameEnv, allocatedName) = allocFreshLocal emptyNameEnv rawName
     allocatedName === sanitizeScalaIdent rawName
+
+prop_freshNumberedNames_areFresh :: Property
+prop_freshNumberedNames_areFresh = property $ do
+  count <- forAll (Gen.int (Range.linear 0 50))
+  takenIndices <- forAll (Gen.list (Range.linear 0 80) (Gen.int (Range.linear 0 100)))
+  let taken = HS.fromList [ "p" <> show i | i <- takenIndices ]
+      generated = freshNumberedNamesAvoiding taken "p" count
+  length generated === count
+  length (nub generated) === count
+  assert (all (\name -> not (name `HS.member` taken)) generated)
+
+-- for arbitrary initial names and arbitrary allocation sizes,
+-- all generated names remain globally unique
+prop_freshNumberedNames_areNeverReused :: Property
+prop_freshNumberedNames_areNeverReused =
+  property $ do
+    initiallyTakenCount <- forAll (Gen.int (Range.linear 0 20))
+    outerCount <- forAll (Gen.int (Range.linear 0 20))
+    innerCount <- forAll (Gen.int (Range.linear 0 20))
+    let initiallyTaken = [ "p" <> show i | i <- [0 .. initiallyTakenCount - 1] ]
+        supply0 = freshNameSupplyFrom initiallyTaken
+        (outerNames, supply1) = takeFreshNumberedNames "p" outerCount supply0
+        -- At this point outerNames may no longer occur in the Agda Env.
+        -- The supply must nevertheless keep them permanently reserved.
+        (innerNames, _supply2) = takeFreshNumberedNames "p" innerCount supply1
+        allGenerated = outerNames <> innerNames
+    length outerNames === outerCount
+    length innerNames === innerCount
+    length (nub allGenerated) === length allGenerated
+    assert (all (\name -> name `notElem` initiallyTaken) allGenerated )
+    assert (null (Set.intersection (Set.fromList outerNames) (Set.fromList innerNames) ))
