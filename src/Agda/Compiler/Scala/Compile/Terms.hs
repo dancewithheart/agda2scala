@@ -2,19 +2,22 @@
 
 module Agda.Compiler.Scala.Compile.Terms
   ( Env (..)
+  , compileBodyTerm
+  , compileFunctionBody
   , envFromArgs
   , envFromFunction
   , extendEnv
+  , freshPatVars
   , lookupVar
   , lookupCaseArg
   , removeCaseArg
-  , compileFunctionBody
-  , compileBodyTerm
+  , replaceCaseArg
 ) where
 
-import Data.Maybe (catMaybes, fromMaybe, maybeToList)
+import Data.Maybe (catMaybes)
 --import Debug.Trace (trace) -- TODO #72
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common
   ( Arg(..)
@@ -96,9 +99,11 @@ lookupVar (Env xs) i = case drop i xs of
 
 -- Agda uses two index conventions here.
 --
---  Var i   uses de Bruijn order: newest binder first.
---  Case i  uses function-argument order: left-to-right, including erased binders.
---  Case branch bodies are compiled after removing the scrutinized argument.
+--   Var i  uses de Bruijn order: newest binder first.
+--   Case i identifies an argument in the current source-order context.
+--
+-- A constructor branch replaces the scrutinized argument with constructor
+-- fields at the same source-order position. A catch-all retains the argument.
 lookupCaseArg :: Env -> Int -> Either CompileError ScalaName
 lookupCaseArg (Env xs) i =
     case drop i (reverse xs) of
@@ -106,76 +111,91 @@ lookupCaseArg (Env xs) i =
         Nothing : _   -> Left (ErasedVarReferenced i)
         []            -> Left (VarOutOfRange i (length xs))
 
--- removes by Case/source-order index, not by de Bruijn index
+-- Replace the scrutinized argument, identified in source-order Case indexing,
+-- with constructor fields in their source order.
+replaceCaseArg
+  :: Env
+  -> Int
+  -> [ScalaName]
+  -> Either CompileError Env
+replaceCaseArg (Env xs) i names =
+  case splitAt i (reverse xs) of
+    (before, Just _ : after) ->
+      Right (Env (reverse (before <> map Just names <> after)))
+    (_before, Nothing : _after) ->
+      Left (ErasedVarReferenced i)
+    _ ->
+      Left (VarOutOfRange i (length xs))
+
 removeCaseArg :: Env -> Int -> Either CompileError Env
-removeCaseArg (Env xs) i =
-    case splitAt i (reverse xs) of
-        (before, Just _ : after) ->
-            Right (Env (reverse (before <> after)))
-        (_before, Nothing : _after) ->
-            Left (ErasedVarReferenced i)
-        _ ->
-            Left (VarOutOfRange i (length xs))
+removeCaseArg env i = replaceCaseArg env i []
 
 -- ===== Function bodies =======================================================
 
--- Function bodies are read from `CompiledClauses`, not from surface syntax.
--- Pattern matching therefore appears as Agda's compiled case tree.
 compileFunctionBody
-  :: [ScalaName] -- erased type parameters
-  -> [ScalaName] -- runtime term parameters
+  :: [ScalaName]
+  -> [ScalaName]
   -> Maybe CompiledClauses
   -> Either CompileError ScalaTerm
 compileFunctionBody _tyParams _argNames Nothing = Left UnsupportedCompiledClauses
-compileFunctionBody tyParams argNames (Just cc) = compileCompiledClauses (envFromFunction tyParams argNames) cc
+compileFunctionBody tyParams argNames (Just cc) = compileCompiledClauses Nothing (envFromFunction tyParams argNames) cc
 
-compileCompiledClauses :: Env -> CompiledClauses -> Either CompileError ScalaTerm
-compileCompiledClauses env = \case
-    Done _ term -> compileBodyTerm env term
-    Case arg branches -> do
-      let n = unArg arg
-      scrut <- STeVar <$> lookupCaseArg env n
-      constructorEnv <- removeCaseArg env n
-      alts <- compileBranches env constructorEnv branches
-      pure (STeMatch scrut alts)
-    _ -> Left UnsupportedCompiledClauses
-
--- Constructor branches replace the scrutinized argument with constructor
--- fields, so they use constructorEnv.
---
--- A catch-all branch does not destructure the argument and its RHS can still
--- reference that value, so it must use catchallEnv.
-compileBranches :: Env
- -> Env
- -> Case CompiledClauses
- -> Either CompileError [(ScalaPat, ScalaTerm)]
-compileBranches catchallEnv constructorEnv branches = do
+-- The optional ScalaTerm is the catch-all inherited from an enclosing case.
+compileCompiledClauses
+  :: Maybe ScalaTerm
+  -> Env
+  -> CompiledClauses
+  -> Either CompileError ScalaTerm
+compileCompiledClauses inheritedFallback env = \case
+  Done _ term -> compileBodyTerm env term
+  Fail _ ->
+    case inheritedFallback of
+      Just fallback -> Right fallback
+      Nothing       -> Left UnsupportedCompiledClauses
+  Case arg branches -> do
     validateCaseShape branches
-    constructorAlts <- traverse compileConBranch (Map.toList (conBranches branches))
-    catchallAlt <- traverse compileCatchallBranch (catchallBranch branches)
-    pure (constructorAlts <> maybeToList catchallAlt)
-  where
-    compileConBranch (conQName, WithArity arityN cc) = do
-      let patVars = freshPatVars arityN
-          pat     = SPCtor (fromQName conQName) (map SPVar patVars)
-          env     = extendEnv patVars constructorEnv
-      rhs <- compileCompiledClauses env cc
-      pure (pat, rhs)
-    compileCatchallBranch cc = do
-      rhs <- compileCompiledClauses catchallEnv cc
-      pure (SPWild, rhs)
+    let caseIndex = unArg arg
+    scrut <- STeVar <$> lookupCaseArg env caseIndex
+    caseFallback <-
+      case catchallBranch branches of
+        Nothing ->
+          Right inheritedFallback
+        Just catchallClauses ->
+          Just <$> compileCompiledClauses inheritedFallback env catchallClauses
+    constructorAlts <-
+      traverse
+        (compileConBranch caseFallback)
+        (Map.toList (conBranches branches))
+    let fallbackAlts =
+          case caseFallback of
+            Nothing       -> []
+            Just fallback -> [(SPWild, fallback)]
+    pure (STeMatch scrut (constructorAlts <> fallbackAlts))
+    where
+      compileConBranch
+        :: Maybe ScalaTerm
+        -> (QName, WithArity CompiledClauses)
+        -> Either CompileError (ScalaPat, ScalaTerm)
+      compileConBranch fallback (conQName, WithArity arityN cc) = do
+        let patVars = freshPatVars env arityN
+            pat = SPCtor (fromQName conQName) (map SPVar patVars)
+        branchEnv <- replaceCaseArg env (unArg arg) patVars
+        rhs <- compileCompiledClauses fallback branchEnv cc
+        pure (pat, rhs)
 
-freshPatVars :: Int -> [ScalaName]
-freshPatVars arityN = [ "p" <> show i | i <- [0 .. arityN - 1] ]
+freshPatVars :: Env -> Int -> [ScalaName]
+freshPatVars (Env xs) arityN =
+  take arityN [name | i <- [0 :: Int ..], let name = "p" <> show i, name `Set.notMember` used]
+  where
+    used = Set.fromList (catMaybes xs)
 
 -- Reject unsupported case-tree shapes explicitly.
 -- Silent branch dropping would generate partial Scala matches.
 validateCaseShape :: Case CompiledClauses -> Either CompileError ()
 validateCaseShape branches
-    | projPatterns branches                  = Left $ UnsupportedCaseShape HasProjectionPatterns
-    | not (Map.null (litBranches branches))  = Left $ UnsupportedCaseShape HasLiteralBranches
-    | fromMaybe False (fallThrough branches) = Left $ UnsupportedCaseShape HasFallThrough
-    | otherwise                              = Right ()
+  | projPatterns branches                 = Left (UnsupportedCaseShape HasProjectionPatterns)
+  | not (Map.null (litBranches branches)) = Left (UnsupportedCaseShape HasLiteralBranches)
+  | otherwise                             = Right ()
 
 -- ===== Terms ================================================================
 

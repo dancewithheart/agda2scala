@@ -34,26 +34,40 @@ def checkR[V](x1: Long, x2: RedBlackTree[V], x3: V, x4: RedBlackTree[V]): RedBla
         p1 match {
           case RedBlackTree.EmptyRBT =>
             p4 match {
-              case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
+              case RedBlackTree.RBT(p0, p1, p5, p6, p7) =>
                 p0 match {
                   case Color.Red =>
-                    RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, RedBlackTree.EmptyRBT), p2, p3, RedBlackTree.RBT(Color.Black, p1, p2, p3, p4))
+                    RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, RedBlackTree.EmptyRBT), p2, p3, RedBlackTree.RBT(Color.Black, p1, p5, p6, p7))
+                  case _ =>
+                    RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
                 }
+              case _ =>
+                RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
             }
-          case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
-            p2 match {
+          case RedBlackTree.RBT(p0, p5, p6, p7, p8) =>
+            p0 match {
               case Color.Red =>
-                RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, p3), p4, p0, RedBlackTree.RBT(Color.Black, p1, p2, p3, p4))
+                RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, p5), p6, p7, RedBlackTree.RBT(Color.Black, p8, p2, p3, p4))
               case Color.Black =>
                 p4 match {
-                  case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
+                  case RedBlackTree.RBT(p0, p1, p9, p10, p11) =>
                     p0 match {
                       case Color.Red =>
-                        RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, RedBlackTree.RBT(Color.Black, p3, p4, p0, p1)), p2, p3, RedBlackTree.RBT(Color.Black, p1, p2, p3, p4))
+                        RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, x2, x1, x3, RedBlackTree.RBT(Color.Black, p5, p6, p7, p8)), p2, p3, RedBlackTree.RBT(Color.Black, p1, p9, p10, p11))
+                      case _ =>
+                        RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
                     }
+                  case _ =>
+                    RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
                 }
+              case _ =>
+                RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
             }
+          case _ =>
+            RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
         }
+      case _ =>
+        RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
     }
   case _ =>
     RedBlackTree.RBT(Color.Black, x2, x1, x3, x4)
@@ -61,31 +75,45 @@ def checkR[V](x1: Long, x2: RedBlackTree[V], x3: V, x4: RedBlackTree[V]): RedBla
 
 def checkL[V](x1: Long, x2: RedBlackTree[V], x3: V, x4: RedBlackTree[V]): RedBlackTree[V] = x2 match {
   case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
-    x3 match {
+    p0 match {
       case Color.Red =>
-        x4 match {
+        p1 match {
           case RedBlackTree.EmptyRBT =>
-            p2 match {
-              case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
-                p3 match {
+            p4 match {
+              case RedBlackTree.RBT(p0, p1, p5, p6, p7) =>
+                p0 match {
                   case Color.Red =>
-                    RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, RedBlackTree.EmptyRBT, p0, p1, p4), p0, p1, RedBlackTree.RBT(Color.Black, p2, x1, p3, p4))
+                    RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, RedBlackTree.EmptyRBT, p2, p3, p1), p5, p6, RedBlackTree.RBT(Color.Black, p7, x1, x3, x4))
+                  case _ =>
+                    checkR(x1, x2, x3, x4)
                 }
+              case _ =>
+                checkR(x1, x2, x3, x4)
             }
-          case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
+          case RedBlackTree.RBT(p0, p5, p6, p7, p8) =>
             p0 match {
               case Color.Red =>
-                RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, p1, p2, p3, p4), p0, p1, RedBlackTree.RBT(Color.Black, p2, x1, p3, p4))
+                RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, p5, p6, p7, p8), p2, p3, RedBlackTree.RBT(Color.Black, p4, x1, x3, x4))
               case Color.Black =>
-                p2 match {
-                  case RedBlackTree.RBT(p0, p1, p2, p3, p4) =>
-                    p3 match {
+                p4 match {
+                  case RedBlackTree.RBT(p0, p1, p9, p10, p11) =>
+                    p0 match {
                       case Color.Red =>
-                        RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, RedBlackTree.RBT(Color.Black, p1, p2, p3, p4), p0, p1, p4), p0, p1, RedBlackTree.RBT(Color.Black, p2, x1, p3, p4))
+                        RedBlackTree.RBT(Color.Red, RedBlackTree.RBT(Color.Black, RedBlackTree.RBT(Color.Black, p5, p6, p7, p8), p2, p3, p1), p9, p10, RedBlackTree.RBT(Color.Black, p11, x1, x3, x4))
+                      case _ =>
+                        checkR(x1, x2, x3, x4)
                     }
+                  case _ =>
+                    checkR(x1, x2, x3, x4)
                 }
+              case _ =>
+                checkR(x1, x2, x3, x4)
             }
+          case _ =>
+            checkR(x1, x2, x3, x4)
         }
+      case _ =>
+        checkR(x1, x2, x3, x4)
     }
   case _ =>
     checkR(x1, x2, x3, x4)

@@ -24,6 +24,8 @@ import Agda.Compiler.Scala.Name.NameEnv
     , emptyNameEnv
     , sanitizeScalaIdent
     )
+import Agda.Compiler.Scala.Compile.Terms ( freshPatVars, replaceCaseArg )
+import Agda.Compiler.Scala.Compile.Terms ( Env(..) )
 
 nameEnvProps :: Group
 nameEnvProps =
@@ -38,6 +40,8 @@ nameEnvProps =
         , ("fresh local allocation never returns a Scala keyword", prop_allocFreshLocal_unique_nonKeyword)
         , ("fresh local allocation marks every returned name as taken", prop_allocFreshLocal_marksAllocatedNamesTaken)
         , ("first allocation returns the sanitized base name when it is available", prop_allocFreshLocal_firstUsesSanitizedBase)
+        , ("constructor fields replace the scrutinized argument at its source position", prop_replaceCaseArg_preservesSourcePosition)
+        , ("constructor fields replace the scrutinized slot in source order", prop_freshPatVars_avoidsNestedShadowing)
         ]
 
 -- ===== Generators ============================================================
@@ -185,3 +189,21 @@ prop_allocFreshLocal_firstUsesSanitizedBase = property $ do
     rawName <- forAll genRawName
     let (_nameEnv, allocatedName) = allocFreshLocal emptyNameEnv rawName
     allocatedName === sanitizeScalaIdent rawName
+
+prop_replaceCaseArg_preservesSourcePosition :: Property
+prop_replaceCaseArg_preservesSourcePosition = property $ do
+  let env      = Env [ Just "d", Just "c", Just "b", Just "a" ]
+      expected = Env [ Just "d", Just "f", Just "e", Just "b", Just "a" ]
+  replaceCaseArg env 2 ["e", "f"] === Right expected
+
+prop_freshPatVars_avoidsNestedShadowing :: Property
+prop_freshPatVars_avoidsNestedShadowing = property $ do
+  let env =
+        Env
+          [ Just "p4"
+          , Just "p3"
+          , Just "p2"
+          , Just "p1"
+          , Just "p0"
+          ]
+  freshPatVars env 3 === ["p5", "p6", "p7"]
