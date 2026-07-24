@@ -220,5 +220,5 @@ prop_freshNumberedNames_areNeverReused =
     length outerNames === outerCount
     length innerNames === innerCount
     length (nub allGenerated) === length allGenerated
-    assert (all (\name -> name `notElem` initiallyTaken) allGenerated )
+    assert (all (`notElem` initiallyTaken) allGenerated )
     assert (null (Set.intersection (Set.fromList outerNames) (Set.fromList innerNames) ))

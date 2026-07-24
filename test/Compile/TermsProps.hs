@@ -2,8 +2,6 @@
 
 module Compile.TermsProps (termsProps) where
 
-import Control.Monad.Trans.State.Strict ( evalStateT )
-import qualified Data.Set as Set
 import Data.Foldable (traverse_)
 import Hedgehog
   ( Group(..)
@@ -11,7 +9,6 @@ import Hedgehog
   , PropertyT
   , annotateShow
   , failure
-  , footnoteShow
   , forAll
   , property
   , (===)
@@ -30,7 +27,6 @@ import Agda.Compiler.Scala.Compile.Terms
   , envFromFunction
   , envNames
   , extendEnv
-  , freshPatVars
   , lookupCaseArg
   , lookupVar
   , removeCaseArg
@@ -39,7 +35,6 @@ import Agda.Compiler.Scala.Compile.Terms
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
 import Agda.Compiler.Scala.Compile.Types (CompileError(..))
 import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..), ScalaPat(..))
-import Agda.Compiler.Scala.Name.NameEnv ( freshNumberedNamesAvoiding, freshNameSupplyFrom )
 
 termsProps :: Group
 termsProps =

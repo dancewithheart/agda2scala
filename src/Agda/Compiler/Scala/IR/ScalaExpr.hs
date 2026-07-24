@@ -1,14 +1,17 @@
-module Agda.Compiler.Scala.IR.ScalaExpr (
-    ScalaName,
-    ScalaType (..),
-    ScalaExpr (..),
-    SeVar (..),
-    ScalaPat (..),
-    ScalaTerm (..),
-    ScalaTypeScheme (..),
-    ScalaCtor (..),
-    scalaTypeScheme,
-    unHandled,
+module Agda.Compiler.Scala.IR.ScalaExpr
+  ( ScalaName
+  , ScalaType (..)
+  , ScalaExpr (..)
+  , SeVar (..)
+  , ScalaPat (..)
+  , ScalaTerm (..)
+  , ScalaTypeScheme (..)
+  , ScalaCtor (..)
+  , ScalaTyParam(..)
+  , ScalaVariance(..)
+  , scalaTypeScheme
+  , tyParamNames
+  , unHandled
 ) where
 
 type ScalaName = String
@@ -62,7 +65,7 @@ data ScalaCtor = ScalaCtor
 
 data ScalaExpr
     = SePackage [ScalaName] [ScalaExpr]
-    | SeSum ScalaName [ScalaName] [ScalaCtor] -- name, type params, ctors
+    | SeSum ScalaName [ScalaTyParam] [ScalaCtor] -- name, type params, ctors
     | SeProd ScalaName [ScalaName] [SeVar] -- name, type params, fields
     | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
     | SeUnhandled ScalaName String
@@ -71,3 +74,17 @@ data ScalaExpr
 unHandled :: ScalaExpr -> Bool
 unHandled (SeUnhandled _ _) = True
 unHandled _ = False
+
+data ScalaVariance
+  = Invariant
+  | Covariant
+  deriving (Eq, Show)
+
+data ScalaTyParam = ScalaTyParam
+  { stpName :: ScalaName
+  , stpVariance :: ScalaVariance
+  }
+  deriving (Eq, Show)
+
+tyParamNames :: [ScalaTyParam] -> [ScalaName]
+tyParamNames = map stpName

@@ -21,18 +21,21 @@ import Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printVariantTyParams
   , sp
   )
-import Agda.Compiler.Scala.IR.ScalaExpr (
-    ScalaCtor (..),
-    ScalaExpr (..),
-    ScalaName,
-    ScalaPat(..),
-    ScalaTerm (..),
-    ScalaType (..),
-    ScalaTypeScheme (..),
-    SeVar (..),
- )
+import Agda.Compiler.Scala.IR.ScalaExpr
+  ( ScalaCtor (..)
+  , ScalaExpr (..)
+  , ScalaName
+  , ScalaPat(..)
+  , ScalaTerm (..)
+  , ScalaType (..)
+  , ScalaTyParam
+  , ScalaTypeScheme (..)
+  , SeVar (..)
+  , tyParamNames
+  )
 
 printScala2 :: ScalaExpr -> String
 printScala2 def = case def of
@@ -77,29 +80,31 @@ printScala2 def = case def of
 
 -- ===== Sum types ============================================================
 
-printSum :: ScalaName -> [ScalaName] -> [ScalaCtor] -> String
+printSum :: ScalaName -> [ScalaTyParam] -> [ScalaCtor] -> String
 printSum name tyParams ctors =
-    printSealedTrait name
-        <> printTyParams tyParams
-        <> nl
-        <> printCompanionObject name (map (printCtor name tyParams) ctors)
+  printSealedTrait name
+    <> printVariantTyParams tyParams
+    <> nl
+    <> printCompanionObject name (map (printCtor name tyParams) ctors)
 
-printCtor :: ScalaName -> [ScalaName] -> ScalaCtor -> String
-printCtor superName tyParams (ScalaCtor cName []) =
-    printCaseObject (superName <> printTyParams (asBottom tyParams)) cName
-printCtor superName tyParams (ScalaCtor name argTys) =
-    "final case class"
-        <> sp
-        <> name
-        <> printTyParams tyParams
-        <> "("
-        <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys)
-        <> ")"
-        <> sp
-        <> "extends"
-        <> sp
-        <> superName
-        <> printTyParams tyParams
+printCtor :: ScalaName -> [ScalaTyParam] -> ScalaCtor -> String
+printCtor superName tyParams (ScalaCtor ctorName []) =
+  printCaseObject
+    (superName <> printTyParams (asBottom (tyParamNames tyParams)))
+    ctorName
+printCtor superName tyParams (ScalaCtor ctorName argTys) =
+  "final case class"
+    <> sp
+    <> ctorName
+    <> printVariantTyParams tyParams
+    <> "("
+    <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys)
+    <> ")"
+    <> sp
+    <> "extends"
+    <> sp
+    <> superName
+    <> printTyParams (tyParamNames tyParams)
 
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> ":" <> sp <> printType ty

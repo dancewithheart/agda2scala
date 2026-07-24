@@ -9,6 +9,7 @@ module Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printVariantTyParams
   , sp
   , strip
   ) where
@@ -19,6 +20,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
   , ScalaType (..)
+  , ScalaVariance (..)
+  , ScalaTyParam (..)
   )
 
 -- Escaping for Scala string literal content (no surrounding quotes).
@@ -88,3 +91,17 @@ combineLines = intercalate nl . filter (not . null)
 
 asBottom :: [ScalaName] -> [ScalaName]
 asBottom ps = replicate (length ps) "Nothing"
+
+printVariantTyParams :: [ScalaTyParam] -> String
+printVariantTyParams [] = ""
+printVariantTyParams params =
+  "[" <> intercalate ", " (map printVariantTyParam params) <> "]"
+
+printVariantTyParam :: ScalaTyParam -> String
+printVariantTyParam (ScalaTyParam name variance) = variancePrefix variance <> name
+
+variancePrefix :: ScalaVariance -> String
+variancePrefix variance =
+  case variance of
+    Invariant -> ""
+    Covariant -> "+"

@@ -36,16 +36,16 @@ def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
 
 def id[A](x1: A): A = x1
 
-sealed trait Maybe[A]
+sealed trait Maybe[+A]
 object Maybe {
-  final case class Just[A](x0: A) extends Maybe[A]
+  final case class Just[+A](x0: A) extends Maybe[A]
   case object None extends Maybe[Nothing]
 }
 
-sealed trait List[X]
+sealed trait List[+X]
 object List {
   case object Nil extends List[Nothing]
-  final case class Cons[X](x0: X, x1: List[X]) extends List[X]
+  final case class Cons[+X](x0: X, x1: List[X]) extends List[X]
 }
 
 def not(x0: Answer): Answer = x0 match {
@@ -58,7 +58,7 @@ def not(x0: Answer): Answer = x0 match {
 def unColor(x0: Color): Rgb = x0 match {
   case Color.Light(p0) =>
     p0
-  case Color.Dark(p0) =>
-    p0
+  case Color.Dark(p1) =>
+    p1
 }
 }

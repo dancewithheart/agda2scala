@@ -23,13 +23,14 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTerm(..)
   , SeVar(..)
   )
+import Agda.Compiler.Scala.Lower.Variance ( inferDataTyParams )
 
 toScalaExpr :: NamePolicy -> AgdaDecl -> ScalaExpr
 toScalaExpr policy decl = case decl of
   DData d ->
     SeSum
       (typeName policy (adName d))
-      (adTyParams d)
+      (inferDataTyParams (adName d) (adTyParams d) (adCtors d))
       (map (lowerCtor policy) (adCtors d))
   DRecord r ->
     SeProd
