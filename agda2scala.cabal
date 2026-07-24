@@ -132,6 +132,7 @@ test-suite agda2scala-props
     Compile.TermsProps
     Compile.TypesProps
     Lower.IRToScalaProps
+    Lower.VarianceProps
     Name.NameEnvProps
     Name.NamePolicyProps
     Render.PrintProps

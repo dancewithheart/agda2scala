@@ -12,6 +12,7 @@ import Lower.IRToScalaProps (iRToScalaProps)
 import Name.NameEnvProps (nameEnvProps)
 import Name.NamePolicyProps (namePolicyProps)
 import Render.PrintProps (printProps)
+import Lower.VarianceProps (varianceProps)
 
 main :: IO ()
 main = do
@@ -26,6 +27,7 @@ allGroups =
     , iRToScalaProps
     , termsProps
     , typesProps
+    , varianceProps
     ]
         <> namePolicyProps
 

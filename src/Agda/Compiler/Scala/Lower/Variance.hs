@@ -1,9 +1,8 @@
 module Agda.Compiler.Scala.Lower.Variance
   ( inferDataTyParams
   , inferParamVariance
+  , Occurrence
   ) where
-
-import Data.List (foldl')
 
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
@@ -23,7 +22,17 @@ data Occurrence
   | PositiveOnly
   | NegativeOnly
   | Mixed
-  deriving (Eq, Show)
+  deriving (Eq, Show, Enum, Bounded)
+
+instance Semigroup Occurrence where
+  Absent <> other = other
+  other <> Absent = other
+  PositiveOnly <> PositiveOnly = PositiveOnly
+  NegativeOnly <> NegativeOnly = NegativeOnly
+  _ <> _ = Mixed
+
+instance Monoid Occurrence where
+  mempty = Absent
 
 inferDataTyParams
   :: ScalaName
@@ -47,11 +56,8 @@ inferParamVariance dataName param ctors =
     NegativeOnly -> Invariant
     Mixed        -> Invariant
   where
-    evidence =
-      foldl'
-        combineOccurrence
-        Absent
-        [ occurrences dataName param Positive argTy | ctor <- ctors, argTy <- scArgs ctor ]
+    evidence = foldMap occurrencesInCtor ctors
+    occurrencesInCtor ctor = foldMap (occurrences dataName param Positive) (scArgs ctor)
 
 occurrences
   :: ScalaName
@@ -65,15 +71,12 @@ occurrences dataName param polarity scalaType =
     STyVar name
       | name == param -> occurrenceAt polarity
       | otherwise     -> Absent
-    STyFun input output -> combineOccurrence
-      (occurrences dataName param (flipPolarity polarity) input)
-      (occurrences dataName param polarity output)
+    STyFun input output ->
+      occurrences dataName param (flipPolarity polarity) input
+      <> occurrences dataName param polarity output
     STyApp typeName args
       | typeName == dataName ->
-          foldl'
-            combineOccurrence
-            Absent
-            (map (occurrences dataName param polarity) args)
+          foldMap (occurrences dataName param polarity) args
       | any (mentions param) args -> Mixed
       | otherwise -> Absent
 
@@ -96,12 +99,3 @@ flipPolarity polarity =
   case polarity of
     Positive -> Negative
     Negative -> Positive
-
-combineOccurrence :: Occurrence -> Occurrence -> Occurrence
-combineOccurrence left right =
-  case (left, right) of
-    (Absent, other) -> other
-    (other, Absent) -> other
-    (PositiveOnly, PositiveOnly) -> PositiveOnly
-    (NegativeOnly, NegativeOnly) -> NegativeOnly
-    _ -> Mixed
