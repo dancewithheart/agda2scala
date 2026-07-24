@@ -66,6 +66,7 @@ data CaseUnsupported
   = HasLiteralBranches
   | HasFallThrough
   | HasProjectionPatterns
+  | HasNoRuntimeAlternatives
   deriving (Eq, Show)
 
 -- ===== Type variable environment ============================================
