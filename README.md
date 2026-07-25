@@ -8,29 +8,83 @@ Currently supported:
   * ✅ simple ADTs
   * ✅ polymorphic ADTs, e.g. `Maybe[A]`, `List[A]`
   * ✅ constructors with arguments
+  * ✅ inferred covariance for generated ADTs where safe, e.g. `RedBlackTree[+V]`
+  * ✅ nullary polymorphic constructors lowered with `Nothing`, e.g. `EmptyRBT extends RedBlackTree[Nothing]`
 * ✅ Product types / records
   * ✅ simple records
   * ✅ records with polymorphic parameters
 * ✅ Simple and polymorphic functions, e.g. `id[A]`
-* ✅ Literals: `Int` / `Nat`, `Bool`, `String` (subset)
+* ✅ Literals
+  * ✅ `Int` / `Nat`
+  * ✅ `Bool`
+  * ✅ `String`
+  * 🚧 broader literal coverage
 * ✅ Function application
   * ✅ normal visible arguments
   * ✅ erased hidden/type-level Agda arguments
+  * ✅ constructor application
+  * ✅ recursive function calls
 * ✅ Pattern matching on constructors
   * ✅ zero-arity constructors
   * ✅ flat constructor patterns with arguments
   * ✅ constructor branch binders
-  * 🚧 nested constructor patterns
-  * 🚧 literal branches / catch-all branches
+  * ✅ nested constructor patterns
+  * ✅ catch-all branches
+  * ✅ inherited catch-all propagation through nested matches
+  * ✅ fresh pattern-variable generation without lexical shadowing
+  * ✅ correct replacement of scrutinized arguments in Agda case environments
+  * ✅ rejection of case splits with no runtime alternatives
+  * 🚧 literal branches
+  * 🚧 projection-pattern cases
+  * 🚧 exhaustive-match simplification and removal of unreachable wildcard branches
 * ✅ Basic conditionals and operators
   * ✅ Agda `if_then_else_` lowered to Scala `if ... then ... else ...`
   * ✅ selected binary operators
   * ✅ natural-number boolean comparison `_ <ᵇ _` lowered to Scala `<`
+  * 🚧 broader operator coverage
+* ✅ Generated Scala 2 and Scala 3
+  * ✅ Scala 2 sealed traits, case classes, and case objects
+  * ✅ Scala 3 enums and enum cases
+  * ✅ nested pattern matches in both dialects
+  * ✅ polymorphic ADTs with variance in both dialects
+  * ✅ generated Red-Black Tree `lookup`
+  * ✅ generated Red-Black Tree `insert` and balancing
+  * ✅ runtime tests for lookup after single and multiple inserts
 * ✅ 🚧 Mapping selected Agda stdlib names to Scala stdlib-like output
   * ✅ `Nat`
   * ✅ `List`
   * ✅ pairs / products
   * 🚧 broader stdlib coverage
+  * 🚧 principled mapping table with types, constructors, functions, and operators
+* 🚧 Variance inference
+  * ✅ positive occurrences
+  * ✅ negative occurrences through function inputs
+  * ✅ mixed occurrences lowered invariantly
+  * ✅ conservative treatment of unknown type constructors
+  * ✅ algebraic occurrence accumulation using a `Monoid`
+  * 🚧 variance propagation through known Scala and Agda type constructors
+  * 🚧 contravariant parameters
+  * 🚧 variance validation for records and other generated declarations
+* 🚧 Compiler robustness
+  * ✅ explicit errors for unsupported case-tree shapes
+  * ✅ property tests for de Bruijn environments and source-order case indices
+  * ✅ property tests for constructor-field replacement
+  * ✅ property tests for fresh-name supply
+  * ✅ algebraic-law tests for variance occurrence accumulation
+  * 🚧 structured diagnostics with source definition names and context
+  * 🚧 golden tests for generated Scala files
+  * 🚧 compile generated Scala automatically as part of Haskell integration tests
+* 🚧 Larger language features
+  * 🚧 local `let` bindings
+  * 🚧 lambda expressions
+  * 🚧 higher-order functions
+  * 🚧 mutually recursive functions
+  * 🚧 recursive and mutually recursive datatypes
+  * 🚧 dependent pairs and indexed datatypes
+  * 🚧 type classes / Agda instance arguments
+  * 🚧 modules, imports, and namespace mapping
+  * 🚧 termination and totality assumptions in generated Scala
+
 
 Roadmap is captured in milestones:
 * support polymorphic ADTs: List, Red Black Tree, ZIO: https://github.com/dancewithheart/agda2scala/issues/17
