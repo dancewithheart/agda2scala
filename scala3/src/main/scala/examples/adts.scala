@@ -28,13 +28,13 @@ object adts:
 
   def id[A](x1: A): A = x1
 
-  enum Maybe[A]:
-    case Just[A](x0: A) extends Maybe[A]
+  enum Maybe[+A]:
+    case Just(x0: A) extends Maybe[A]
     case None extends Maybe[Nothing]
 
-  enum List[X]:
+  enum List[+X]:
     case Nil extends List[Nothing]
-    case Cons[X](x0: X, x1: List[X]) extends List[X]
+    case Cons(x0: X, x1: List[X]) extends List[X]
 
   def not(x0: Answer): Answer = x0 match
     case Answer.Yes =>
@@ -45,5 +45,5 @@ object adts:
   def unColor(x0: Color): Rgb = x0 match
     case Color.Light(p0) =>
       p0
-    case Color.Dark(p0) =>
-      p0
+    case Color.Dark(p1) =>
+      p1

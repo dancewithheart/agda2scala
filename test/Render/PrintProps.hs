@@ -13,14 +13,14 @@ import Hedgehog (Gen, Group (..), Property, assert, forAll, property, success)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import Agda.Compiler.Scala.IR.ScalaExpr (
-    ScalaExpr (..),
-    ScalaTerm (..),
-    ScalaType (..),
-    ScalaTypeScheme (..),
-    SeVar (..),
-    scalaTypeScheme,
- )
+import Agda.Compiler.Scala.IR.ScalaExpr
+  ( ScalaExpr (..)
+  , ScalaTerm (..)
+  , ScalaType (..)
+  , ScalaTypeScheme (..)
+  , SeVar (..)
+  , scalaTypeScheme
+  )
 
 import Agda.Compiler.Scala.Render.Common (escapeScalaString)
 import Agda.Compiler.Scala.Render.PrintScala2 (printScala2, printType)

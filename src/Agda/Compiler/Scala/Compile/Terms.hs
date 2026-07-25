@@ -195,9 +195,10 @@ compileCompiledClauses inheritedFallback env clauses =
             case caseFallback of
               Nothing -> []
               Just fallback -> [(SPWild, fallback)]
-      pure (STeMatch scrutinee (constructorAlternatives <> fallbackAlternatives))
---    _ -> liftCompile (Left UnsupportedCompiledClauses)
-
+          alternatives = constructorAlternatives <> fallbackAlternatives
+      case alternatives of
+        [] -> liftCompile (Left (UnsupportedCaseShape HasNoRuntimeAlternatives))
+        _  -> pure (STeMatch scrutinee alternatives)
 
 compileConstructorBranch
   :: Int

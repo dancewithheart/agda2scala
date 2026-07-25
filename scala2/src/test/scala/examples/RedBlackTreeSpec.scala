@@ -6,18 +6,13 @@ import zio.test.assertTrue
 import examples.rbt.RedBlackTree
 import examples.rbt.Color
 import examples.rbt.RedBlackTree.EmptyRBT
-import examples.rbt.lookup
+import examples.rbt.{insert, lookup}
 
 object RedBlackTreeSpec extends JUnitRunnableSpec {
 
-  // temporary until generated RedBlackTree is covariant
-  // https://github.com/dancewithheart/agda2scala/issues/26
-  private def emptyRBT[V]: RedBlackTree[V] =
-    EmptyRBT.asInstanceOf[RedBlackTree[V]]
-
   def spec = suite("RedBlackTree")(
     test("lookup on empty rbt returns default value") {
-      val rbt = emptyRBT[String]
+      val rbt = EmptyRBT
       val defaultVal = "missing"
       val key = 42L
       assertTrue(defaultVal == lookup(defaultVal, key, rbt))
@@ -27,22 +22,22 @@ object RedBlackTreeSpec extends JUnitRunnableSpec {
       val rbt =
         RedBlackTree.RBT[String](
           Color.Black,
-          emptyRBT[String],
+          EmptyRBT,
           42L,
           "found",
-          emptyRBT[String]
+          EmptyRBT
         )
 
       assertTrue(lookup("missing", 42L, rbt) == "found")
     },
 
     test("lookup after single insert returns inserted value") {
-      val t1 = insert(42L, "found", emptyRBT[String])
+      val t1 = insert(42L, "found", EmptyRBT)
       assertTrue(lookup("missing", 42L, t1) == "found")
     },
 
     test("lookup after several inserts returns matching values") {
-      val t0 = emptyRBT[String]
+      val t0 = EmptyRBT
       val t1 = insert(10L, "a", t0)
       val t2 = insert(5L, "b", t1)
       val t3 = insert(20L, "c", t2)

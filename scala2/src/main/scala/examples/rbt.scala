@@ -9,10 +9,10 @@ object Color {
   case object Black extends Color
 }
 
-sealed trait RedBlackTree[V]
+sealed trait RedBlackTree[+V]
 object RedBlackTree {
   case object EmptyRBT extends RedBlackTree[Nothing]
-  final case class RBT[V](x0: Color, x1: RedBlackTree[V], x2: Long, x3: V, x4: RedBlackTree[V]) extends RedBlackTree[V]
+  final case class RBT[+V](x0: Color, x1: RedBlackTree[V], x2: Long, x3: V, x4: RedBlackTree[V]) extends RedBlackTree[V]
 }
 
 def lookup[V](x1: V, x2: Long, x3: RedBlackTree[V]): V = x3 match {

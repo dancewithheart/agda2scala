@@ -14,18 +14,21 @@ import Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printVariantTyParams
   , strip
   , sp
   )
-import Agda.Compiler.Scala.IR.ScalaExpr (
-    ScalaCtor (..),
-    ScalaExpr (..),
-    ScalaName,
-    ScalaPat(..),
-    ScalaTerm (..),
-    ScalaType (..),
-    ScalaTypeScheme (..),
-    SeVar (..),
+import Agda.Compiler.Scala.IR.ScalaExpr
+  ( ScalaCtor (..)
+  , ScalaExpr (..)
+  , ScalaName
+  , ScalaPat(..)
+  , ScalaTerm (..)
+  , ScalaType (..)
+  , ScalaTyParam (..)
+  , ScalaTypeScheme (..)
+  , SeVar (..)
+  , tyParamNames
  )
 import Data.List (intercalate)
 
@@ -65,27 +68,26 @@ printScala3 def = case def of
 
 -- ===== Sum types ============================================================
 
-printSum :: ScalaName -> [ScalaName] -> [ScalaCtor] -> String
+printSum :: ScalaName -> [ScalaTyParam] -> [ScalaCtor] -> String
 printSum name tyParams ctors =
-    printEnum name
-        <> printTyParams tyParams
-        <> bracketWithIndent (map (printEnumCtor name tyParams) ctors) 2
+  printEnum name
+    <> printVariantTyParams tyParams
+    <> bracketWithIndent (map (printEnumCtor name tyParams) ctors) 2
 
-printEnumCtor :: ScalaName -> [ScalaName] -> ScalaCtor -> String
-printEnumCtor name tyParams (ScalaCtor cName []) =
-    "case"
-        <> exprSeparator
-        <> cName
-        <> printExtends name (asBottom tyParams)
-printEnumCtor name tyParams (ScalaCtor cName argTys) =
-    "case"
-        <> exprSeparator
-        <> cName
-        <> printTyParams tyParams
-        <> "("
-        <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys)
-        <> ")"
-        <> printExtends name tyParams
+printEnumCtor :: ScalaName -> [ScalaTyParam] -> ScalaCtor -> String
+printEnumCtor name tyParams (ScalaCtor ctorName []) =
+  "case"
+    <> sp
+    <> ctorName
+    <> printExtends name (asBottom (tyParamNames tyParams))
+printEnumCtor name tyParams (ScalaCtor ctorName argTys) =
+  "case"
+    <> sp
+    <> ctorName
+    <> "("
+    <> intercalate ", " (zipWith ctorParam [0 :: Int ..] argTys)
+    <> ")"
+    <> printExtends name (tyParamNames tyParams)
 
 printExtends :: ScalaName -> [ScalaName] -> String
 printExtends _ [] = ""

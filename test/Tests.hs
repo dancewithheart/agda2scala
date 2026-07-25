@@ -9,6 +9,7 @@ import qualified Render.PrintScala2Test
 import qualified Render.PrintScala3Test
 import qualified ScalaBackendTest
 import qualified Compile.TypesTest
+import qualified Lower.VarianceTest
 
 main :: IO ()
 main =
@@ -25,4 +26,5 @@ tests =
         , Render.PrintScala3Test.tests
         , ScalaBackendTest.tests
         , Compile.TypesTest.tests
+        , Lower.VarianceTest.tests
         ]

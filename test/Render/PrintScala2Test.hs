@@ -9,6 +9,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , ScalaPat (..)
     , ScalaTerm (..)
     , ScalaType (..)
+    , ScalaTyParam (..)
+    , ScalaVariance (..)
     , ScalaTypeScheme (..)
     , SeVar (..)
     , scalaTypeScheme
@@ -192,17 +194,17 @@ test_printSumPoly =
         expected
         ( printSum
             "Maybe"
-            ["A"]
+            [ ScalaTyParam "A" Covariant ]
             [ ScalaCtor "None" []
             , ScalaCtor "Just" [STyVar "A"]
             ]
         )
   where
     expected =
-        "sealed trait Maybe[A]\n"
+        "sealed trait Maybe[+A]\n"
             <> "object Maybe {\n"
             <> "  case object None extends Maybe[Nothing]\n"
-            <> "  final case class Just[A](x0: A) extends Maybe[A]\n"
+            <> "  final case class Just[+A](x0: A) extends Maybe[A]\n"
             <> "}"
 
 test_polyDef :: IO ()

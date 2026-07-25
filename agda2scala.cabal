@@ -45,6 +45,7 @@ library
     Agda.Compiler.Scala.IR.ScalaIR
     Agda.Compiler.Scala.Lower.AgdaToIR
     Agda.Compiler.Scala.Lower.IRToScala
+    Agda.Compiler.Scala.Lower.Variance
     Agda.Compiler.Scala.Render.Common
     Agda.Compiler.Scala.Render.PrintScala3
     Agda.Compiler.Scala.Render.PrintScala2
@@ -102,6 +103,7 @@ test-suite agda2scala-test
   main-is:          Tests.hs
   other-modules:
     Compile.TypesTest
+    Lower.VarianceTest
     Name.NameEnvTest
     Name.NamePolicyTest
     Render.CommonTest
@@ -130,6 +132,7 @@ test-suite agda2scala-props
     Compile.TermsProps
     Compile.TypesProps
     Lower.IRToScalaProps
+    Lower.VarianceProps
     Name.NameEnvProps
     Name.NamePolicyProps
     Render.PrintProps

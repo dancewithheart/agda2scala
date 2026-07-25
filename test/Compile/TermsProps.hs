@@ -2,16 +2,14 @@
 
 module Compile.TermsProps (termsProps) where
 
-import Control.Monad.Trans.State.Strict ( evalStateT )
-import qualified Data.Set as Set
 import Data.Foldable (traverse_)
+import qualified Data.Map as Map
 import Hedgehog
   ( Group(..)
   , Property
   , PropertyT
   , annotateShow
   , failure
-  , footnoteShow
   , forAll
   , property
   , (===)
@@ -20,7 +18,12 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Agda.Syntax.Abstract.Name ( QName, mkName_ , qualify_ )
 import Agda.Syntax.Common ( Arg, Hiding(..), NameId(..), defaultArg, setHiding )
-import Agda.TypeChecking.CompiledClause( CompiledClauses'(..), catchall)
+import Agda.TypeChecking.CompiledClause
+  ( Case(..)
+  , CompiledClauses
+  , CompiledClauses'(..)
+  , catchall
+  )
 import Agda.Syntax.Internal (Elim' (..), Term (..))
 import Agda.Syntax.TopLevelModuleName.Boot ( noModuleNameHash )
 import Agda.Compiler.Scala.Compile.Terms
@@ -28,18 +31,15 @@ import Agda.Compiler.Scala.Compile.Terms
   , compileFunctionBody
   , envFromArgs
   , envFromFunction
-  , envNames
   , extendEnv
-  , freshPatVars
   , lookupCaseArg
   , lookupVar
   , removeCaseArg
   , replaceCaseArg
   )
 import Agda.Compiler.Scala.Compile (compileBodyTerm)
-import Agda.Compiler.Scala.Compile.Types (CompileError(..))
+import Agda.Compiler.Scala.Compile.Types (CompileError(..), CaseUnsupported(..) )
 import Agda.Compiler.Scala.IR.ScalaExpr (ScalaTerm(..), ScalaPat(..))
-import Agda.Compiler.Scala.Name.NameEnv ( freshNumberedNamesAvoiding, freshNameSupplyFrom )
 
 termsProps :: Group
 termsProps =
@@ -58,6 +58,7 @@ termsProps =
     , ("constructor fields replace the scrutinized argument at its source position", prop_replaceCaseArg_preservesSourcePosition)
     , ("constructor fields replace the scrutinized slot in source order", prop_replaceCaseArg_matchesSourceOrderModel)
     , ("replaceCaseArg makes fields addressable in source order", prop_replaceCaseArg_makesFieldsAddressableInSourceOrder)
+    , ( "case splits with no runtime alternatives are rejected", prop_caseSplitWithNoAlternatives_isRejected)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -279,3 +280,21 @@ prop_replaceCaseArg_makesFieldsAddressableInSourceOrder = property $ do
       lookupCaseArg replaced (caseIndex + offset) === Right field
     )
     (zip [0 :: Int ..] fields)
+
+emptyCaseBranches :: Case CompiledClauses
+emptyCaseBranches =
+  Branches
+    { projPatterns = False
+    , conBranches = Map.empty
+    , etaBranch = Nothing
+    , litBranches = Map.empty
+    , catchallBranch = Nothing
+    , fallThrough = Nothing
+    , lazyMatch = False
+    }
+
+prop_caseSplitWithNoAlternatives_isRejected :: Property
+prop_caseSplitWithNoAlternatives_isRejected = property $ do
+  let clauses = Case (defaultArg 0) emptyCaseBranches
+  compileFunctionBody [] ["x0"] (Just clauses)
+    === Left (UnsupportedCaseShape HasNoRuntimeAlternatives)
