@@ -56,6 +56,7 @@ data CompileError
   = UnsupportedDefinition QName
   | UnsupportedType Type
   | UnsupportedTerm Term
+  | UnsupportedElimination String
   | UnsupportedCompiledClauses
   | UnsupportedCaseShape CaseUnsupported
   | VarOutOfRange Int Int
@@ -141,11 +142,10 @@ compileTypeTermWith :: TyEnv -> Term -> Either CompileError ScalaType
 compileTypeTermWith tyEnv = \case
     Def qn elims -> do
         args <- compileTypeArgs tyEnv elims
-        let f0 = fromQName qn
-            f = mapBuiltinTypeName f0
+        let f = mapBuiltinTypeName qn
         pure $ case args of
             [] -> STyName f
-            _ -> STyApp f args
+            _  -> STyApp f args
     Var n elims -> do
         args <- compileTypeArgs tyEnv elims
         let f = lookupTyVar tyEnv n
@@ -177,10 +177,20 @@ dataTyParamsFromType ty0 = do
 
 compileTypeArgs :: TyEnv -> [Elim' Term] -> Either CompileError [ScalaType]
 compileTypeArgs tyEnv elims =
-    traverse fromApply [a | Apply a <- elims]
+    traverse fromApply
+        [ a
+        | Apply a <- elims
+        , not (isErasedUniverseArgument (unArg a))
+        ]
   where
     fromApply :: Arg Term -> Either CompileError ScalaType
     fromApply a = compileTypeTermWith tyEnv (unArg a)
+
+isErasedUniverseArgument :: Term -> Bool
+isErasedUniverseArgument term = case term of
+    Level{} -> True
+    Sort{}  -> True
+    _       -> False
 
 -- Agda.Syntax.Internal.Term:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Term
@@ -306,10 +316,11 @@ namedNameToStr n = rangedThing (woThing n)
 fromQName :: QName -> ScalaName
 fromQName = prettyShow . qnameName
 
-mapBuiltinTypeName :: ScalaName -> ScalaName
-mapBuiltinTypeName n = case n of
-    -- TODO String?
-    "Nat"  -> "Long"
-    "ℕ"    -> "Long"
-    "Bool" -> "Boolean"
-    _      -> n
+mapBuiltinTypeName :: QName -> ScalaName
+mapBuiltinTypeName qn =
+    case prettyShow qn of
+        "Agda.Builtin.Nat.Nat"     -> "Long"
+        "Agda.Builtin.Bool.Bool"   -> "Boolean"
+        "Agda.Builtin.List.List"   -> "List"
+        "Agda.Builtin.Maybe.Maybe" -> "Option"
+        _                          -> fromQName qn

@@ -36,6 +36,7 @@ data ScalaPat
     = SPWild
     | SPVar ScalaName
     | SPCtor ScalaName [ScalaPat]
+    | SPCons ScalaPat ScalaPat
     | SPLitInt Int
     | SPLitBool Bool
     | SPLitString String
@@ -44,6 +45,7 @@ data ScalaPat
 data ScalaTerm
   = STeVar ScalaName
   | STeApp ScalaTerm [ScalaTerm]
+  | STeSelect ScalaTerm ScalaName
   | STeLam [ScalaName] ScalaTerm
   | STeMatch ScalaTerm [(ScalaPat, ScalaTerm)]
   | STeIf ScalaTerm ScalaTerm ScalaTerm

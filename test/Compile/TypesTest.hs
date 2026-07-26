@@ -76,8 +76,7 @@ typeSort :: Type
 typeSort = El dummySort (Sort dummySort)
 
 dummySort :: Sort
-dummySort =
-    error "dummy Sort payload should not be forced"
+dummySort = error "dummy Sort payload should not be forced"
 
 -- F : Type u -> Type u  ==> El _ (Pi _ -> Sort _)
 --
@@ -98,55 +97,46 @@ dummyDom = defaultDom
 test_lookupTyVar_resolvesMostRecent :: Assertion
 test_lookupTyVar_resolvesMostRecent = do
     let env = pushTyParam "A" mempty
-
     lookupTyVar env 0 @?= "A"
 
 test_lookupTyVar_missingBinderFallback :: Assertion
 test_lookupTyVar_missingBinderFallback = do
     let env = mempty
-
     lookupTyVar env 0 @?= "t0"
     lookupTyVar env 3 @?= "t3"
 
 test_lookupTyVar_termBinderFallback :: Assertion
 test_lookupTyVar_termBinderFallback = do
     let env = pushTermBinder mempty
-
     lookupTyVar env 0 @?= "t0"
 
 test_compileTypeTermWith_typeVariable :: Assertion
 test_compileTypeTermWith_typeVariable = do
     let env = pushTyParam "A" mempty
         term = Var 0 []
-
     compileTypeTermWith env term @?= Right (STyVar "A")
 
 test_compileTypeTermWith_typeVariableApplication :: Assertion
 test_compileTypeTermWith_typeVariableApplication = do
     let env = pushTyParam "A" mempty
         term = Var 0 [mkApply (Var 0 [])]
-
     compileTypeTermWith env term @?= Right (STyApp "A" [STyVar "A"])
 
 test_compileTypeTermWith_rejectsLambda :: Assertion
 test_compileTypeTermWith_rejectsLambda = do
     let actual = compileTypeTermWith mempty unsupportedLambdaTerm
-
     assertLeft "lambda is not a supported type term" actual
 
 mkApply :: Term -> Elim' Term
-mkApply term =
-    Apply (Arg defaultArgInfo term)
+mkApply term = Apply (Arg defaultArgInfo term)
 
 unsupportedLambdaTerm :: Term
-unsupportedLambdaTerm =
-    Lam defaultArgInfo (Abs "x" (Var 0 []))
+unsupportedLambdaTerm = Lam defaultArgInfo (Abs "x" (Var 0 []))
 
 assertLeft :: (Show a) => String -> Either e a -> Assertion
 assertLeft label actual =
     case actual of
-        Left _ ->
-            pure ()
+        Left _ -> pure ()
         Right value ->
             assertFailure $
                 unlines

@@ -69,6 +69,8 @@ printPat pat =
     SPLitInt n       -> show n
     SPLitBool b      -> if b then "true" else "false"
     SPLitString s    -> "\"" <> escapeScalaString s <> "\""
+    SPCons headPat tailPat ->
+      printPat headPat <> " :: " <> printPat tailPat
 
 colonSeparator :: String
 colonSeparator = ":"
