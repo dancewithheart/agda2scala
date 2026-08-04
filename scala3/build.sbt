@@ -15,13 +15,11 @@ lazy val root = project
       "dev.zio" %% "zio"               % zioVersion,
       "dev.zio" %% "zio-test"          % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt"      % zioVersion % Test,
-      "dev.zio" %% "zio-test-junit"    % zioVersion % Test,
       "dev.zio" %% "zio-test-magnolia" % zioVersion % Test
     ),
     Compile / tpolecatScalacOptions ~= { opts =>
       // for simplicity in adts examples
       import org.typelevel.scalacoptions.ScalacOptions
       opts.filterNot(o => o == ScalacOptions.fatalWarnings || o == ScalacOptions.warnError)
-    },
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+    }
   )
