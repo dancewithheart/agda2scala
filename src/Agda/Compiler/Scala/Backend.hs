@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Agda.Compiler.Scala.Backend (
     runScalaBackend,
     scalaBackend,
@@ -22,17 +24,19 @@ import qualified Data.Text as T
 import Data.Version (showVersion)
 import Paths_agda2scala (version)
 import Agda.Compiler.Backend (
-    Backend'_boot(..),
     Backend,
     Backend',
+    Backend'_boot(..),
     CompilerPragma,
     Definition (..),
     Flag,
     IsMain,
     Recompile (..),
+    TCM,
     RecordData (..),
     Defn(..),
-    TCM
+    funWith,
+    pattern Function
  )
 import qualified Agda.Compiler.Backend.Base as BackendBase
 import Agda.Compiler.Common (compileDir)
@@ -146,7 +150,7 @@ scalaCompileDef ::
     TCM ScalaDefinition
 scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
     withCurrentModule (qnameModule qn) $ do
-        modulePragma <- lookupScalaPragma qn
+        modulePragma <- lookupScalaPragmaForDefinition def
         moduleDebugPragma <- lookupScalaDebugPragma qn
         case moduleDebugPragma of
             Nothing -> pure ()
@@ -191,6 +195,17 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                             _ -> pure ()
                         pure expr
                     _ -> pure expr
+
+lookupScalaPragmaForDefinition
+  :: Definition
+  -> TCM (Maybe CompilerPragma)
+lookupScalaPragmaForDefinition def@Defn{defName = qn} = do
+    directPragma <- lookupScalaPragma qn
+    case directPragma of
+        Just pragma -> pure (Just pragma)
+        Nothing -> case theDef def of
+          Function{funWith = Just parentFunction} -> lookupScalaPragma parentFunction
+          _ -> pure Nothing
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id

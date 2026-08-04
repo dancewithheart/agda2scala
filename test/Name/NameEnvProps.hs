@@ -24,6 +24,10 @@ import Agda.Compiler.Scala.Name.NameEnv
     , emptyNameEnv
     , freshNameSupplyFrom
     , freshNumberedNamesAvoiding
+    , isNullaryTerm
+    , lookupRecordCtor
+    , registerNullaryTerm
+    , registerRecordCtor
     , sanitizeScalaIdent
     , takeFreshNumberedNames
     )
@@ -42,8 +46,10 @@ nameEnvProps =
         , ("fresh local allocation marks every returned name as taken", prop_allocFreshLocal_marksAllocatedNamesTaken)
         , ("first allocation returns the sanitized base name when it is available", prop_allocFreshLocal_firstUsesSanitizedBase)
         , ("numbered fresh names have the requested count and avoid reserved names", prop_freshNumberedNames_areFresh)
-        , ( "numbered fresh names are never reused across successive allocations", prop_freshNumberedNames_areNeverReused
-          )
+        , ( "numbered fresh names are never reused across successive allocations", prop_freshNumberedNames_areNeverReused)
+        , ( "record constructor registration round-trips", prop_recordConstructor_roundTrips)
+        , ( "new record constructor registration replaces the old owner", prop_recordConstructor_latestOwnerWins)
+        , ( "registered nullary terms are recognized", prop_nullaryTerm_roundTrips)
         ]
 
 -- ===== Generators ============================================================
@@ -222,3 +228,36 @@ prop_freshNumberedNames_areNeverReused =
     length (nub allGenerated) === length allGenerated
     assert (all (`notElem` initiallyTaken) allGenerated )
     assert (null (Set.intersection (Set.fromList outerNames) (Set.fromList innerNames) ))
+
+prop_recordConstructor_roundTrips :: Property
+prop_recordConstructor_roundTrips = property $ do
+    rawParent <- forAll genNonEmptyRawName
+    rawConstructor <- forAll genNonEmptyRawName
+    let parent = sanitizeScalaIdent rawParent
+        constructor = sanitizeScalaIdent rawConstructor
+        nameEnv =
+            registerRecordCtor
+                parent
+                constructor
+                emptyNameEnv
+    lookupRecordCtor constructor nameEnv === Just parent
+
+prop_recordConstructor_latestOwnerWins :: Property
+prop_recordConstructor_latestOwnerWins = property $ do
+    rawFirstParent <- forAll genNonEmptyRawName
+    rawSecondParent <- forAll genNonEmptyRawName
+    rawConstructor <- forAll genNonEmptyRawName
+    let firstParent = sanitizeScalaIdent rawFirstParent
+        secondParent = sanitizeScalaIdent rawSecondParent
+        constructor = sanitizeScalaIdent rawConstructor
+        nameEnv =
+            registerRecordCtor secondParent constructor
+                (registerRecordCtor firstParent constructor emptyNameEnv)
+    lookupRecordCtor constructor nameEnv === Just secondParent
+
+prop_nullaryTerm_roundTrips :: Property
+prop_nullaryTerm_roundTrips = property $ do
+    rawName <- forAll genNonEmptyRawName
+    let name = sanitizeScalaIdent rawName
+        nameEnv = registerNullaryTerm name emptyNameEnv
+    assert (isNullaryTerm name nameEnv)

@@ -19,6 +19,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict ( StateT, evalStateT, state )
 import Data.Maybe (catMaybes)
 --import Debug.Trace (trace) -- TODO #72
+import Data.List (isPrefixOf, isSuffixOf)
 import qualified Data.Map as Map
 import Agda.Syntax.Abstract.Name ( QName )
 import Agda.Syntax.Common ( Arg(..), Hiding(..), getHiding )
@@ -275,10 +276,10 @@ compileConApp env conHead elims = do
     case compileBuiltinConstructor (conName conHead) args of
       Just builtinTerm -> pure builtinTerm
       Nothing -> do
-        let f = STeVar (ctorName defaultNamePolicy (fromQName (conName conHead)))
+        let constructor = STeVar (ctorName defaultNamePolicy (fromQName (conName conHead)))
         pure $ case args of
-            [] -> f
-            _  -> STeApp f args
+            [] -> constructor
+            _  -> STeApp constructor args
 
 applyElims :: Env -> ScalaTerm -> [Elim' Term] -> Either CompileError ScalaTerm
 applyElims env = go
@@ -297,27 +298,43 @@ applyElims env = go
     isApplyElim Apply{} = True
     isApplyElim _       = False
 
+isBuiltinQName :: String -> String -> QName -> Bool
+isBuiltinQName modulePrefix constructorName qn =
+    let qualifiedName = prettyShow qn
+     in (modulePrefix <> ".") `isPrefixOf` qualifiedName
+          && ("." <> constructorName) `isSuffixOf` qualifiedName
+
 compileBuiltinConstructor :: QName -> [ScalaTerm] -> Maybe ScalaTerm
-compileBuiltinConstructor qn args =
-  case (prettyShow qn, args) of
-    ("Agda.Builtin.Bool.false", []) -> Just (STeLitBool False)
-    ("Agda.Builtin.Bool.true", []) -> Just (STeLitBool True)
-    ("Agda.Builtin.List.[]", []) -> Just (STeVar "Nil")
-    ("Agda.Builtin.List._∷_", [headTerm, tailTerm]) -> Just (STeBinOp headTerm "::" tailTerm)
-    ("Agda.Builtin.Maybe.nothing", []) -> Just (STeVar "None")
-    ("Agda.Builtin.Maybe.just", [value]) -> Just (STeApp (STeVar "Some") [value])
-    _ -> Nothing
+compileBuiltinConstructor qn args
+    | isBuiltinQName "Agda.Builtin.Bool" "false" qn
+    , [] <- args = Just (STeLitBool False)
+    | isBuiltinQName "Agda.Builtin.Bool" "true" qn
+    , [] <- args = Just (STeLitBool True)
+    | isBuiltinQName "Agda.Builtin.List" "[]" qn
+    , [] <- args = Just (STeVar "Nil")
+    | isBuiltinQName "Agda.Builtin.List" "_∷_" qn
+    , [headTerm, tailTerm] <- args = Just (STeBinOp headTerm "::" tailTerm)
+    | isBuiltinQName "Agda.Builtin.Maybe" "nothing" qn
+    , [] <- args = Just (STeVar "None")
+    | isBuiltinQName "Agda.Builtin.Maybe" "just" qn
+    , [value] <- args = Just (STeApp (STeVar "Some") [value])
+    | otherwise = Nothing
 
 compileBuiltinPattern :: QName -> [ScalaPat] -> Maybe ScalaPat
-compileBuiltinPattern qn args =
-  case (prettyShow qn, args) of
-    ("Agda.Builtin.Bool.false", []) -> Just (SPLitBool False)
-    ("Agda.Builtin.Bool.true", []) -> Just (SPLitBool True)
-    ("Agda.Builtin.List.[]", []) -> Just (SPCtor "Nil" [])
-    ("Agda.Builtin.List._∷_", [headPat, tailPat]) -> Just (SPCons headPat tailPat)
-    ("Agda.Builtin.Maybe.nothing", []) -> Just (SPCtor "None" [])
-    ("Agda.Builtin.Maybe.just", [valuePat]) -> Just (SPCtor "Some" [valuePat])
-    _ -> Nothing
+compileBuiltinPattern qn args
+    | isBuiltinQName "Agda.Builtin.Bool" "false" qn
+    , [] <- args =  Just (SPLitBool False)
+    | isBuiltinQName "Agda.Builtin.Bool" "true" qn
+    , [] <- args = Just (SPLitBool True)
+    | isBuiltinQName "Agda.Builtin.List" "[]" qn
+    , [] <- args = Just (SPCtor "Nil" [])
+    | isBuiltinQName "Agda.Builtin.List" "_∷_" qn
+    , [headPattern, tailPattern] <- args = Just (SPCons headPattern tailPattern)
+    | isBuiltinQName "Agda.Builtin.Maybe" "nothing" qn
+    , [] <- args = Just (SPCtor "None" [])
+    | isBuiltinQName "Agda.Builtin.Maybe" "just" qn
+    , [valuePattern] <- args = Just (SPCtor "Some" [valuePattern])
+    | otherwise = Nothing
 
 isErasedTypeArgument :: Term -> Bool
 isErasedTypeArgument term = case term of

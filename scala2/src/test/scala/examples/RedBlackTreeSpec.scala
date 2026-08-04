@@ -1,6 +1,6 @@
 package examples
 
-import zio.test.junit.JUnitRunnableSpec
+import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
 
 import examples.rbt.RedBlackTree
@@ -8,7 +8,7 @@ import examples.rbt.Color
 import examples.rbt.RedBlackTree.EmptyRBT
 import examples.rbt.{insert, lookup}
 
-object RedBlackTreeSpec extends JUnitRunnableSpec {
+object RedBlackTreeSpec extends ZIOSpecDefault {
 
   def spec = suite("RedBlackTree")(
     test("lookup on empty rbt returns default value") {
