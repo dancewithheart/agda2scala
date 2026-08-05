@@ -1,16 +1,17 @@
 {-# LANGUAGE PatternSynonyms #-}
 
-module Agda.Compiler.Scala.Backend (
-    runScalaBackend,
-    scalaBackend,
-    scalaBackend',
-    defaultOptions,
-    outDirOpt,
-    scalaDialectOpt,
-    initModuleEnv,
-    Options (..),
-    selectPrinter,
-    shouldWriteModule,
+module Agda.Compiler.Scala.Backend
+  ( Options (..)
+  , defaultOptions
+  , initModuleEnv
+  , outDirOpt
+  , qualifyTermWithEnv
+  , runScalaBackend
+  , scalaBackend
+  , scalaBackend'
+  , scalaDialectOpt
+  , selectPrinter
+  , shouldWriteModule
 ) where
 
 import Control.DeepSeq (NFData (..))
@@ -234,11 +235,7 @@ qualifyTermWithEnv ne = go
         [ (goPat pat, go rhs) | (pat, rhs) <- alts ]
     goPat SPWild          = SPWild
     goPat (SPVar n)       = SPVar n
-    goPat (SPCtor n args) =
-      let n' = case lookupCtorOwner n ne of
-                 Just parent -> parent <> "." <> n
-                 Nothing     -> n
-      in SPCtor n' (map goPat args)
+    goPat (SPCtor n args) = SPCtor (qualifyCtor n) (map goPat args)
     goPat (SPLitInt n)    = SPLitInt n
     goPat (SPLitBool b)   = SPLitBool b
     goPat (SPLitString s) = SPLitString s

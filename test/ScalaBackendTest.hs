@@ -10,6 +10,7 @@ import Agda.Compiler.Scala.Backend
     , defaultOptions
     , initModuleEnv
     , outDirOpt
+    , qualifyTermWithEnv
     , scalaBackend'
     , scalaDialectOpt
     , selectPrinter
@@ -18,8 +19,10 @@ import Agda.Compiler.Scala.Backend
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
     , ScalaExpr (..)
+    , ScalaPat (..)
+    , ScalaTerm (..)
     )
-import Agda.Compiler.Scala.Name.NameEnv (emptyNameEnv)
+import Agda.Compiler.Scala.Name.NameEnv (emptyNameEnv, registerRecordCtor)
 import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 
 tests :: TestTree
@@ -34,6 +37,7 @@ tests =
         , testCase "selectPrinter chooses Scala3 when requested" test_selectPrinterScala3
         , testCase "shouldWriteModule skips modules with only empty SeUnhandled definitions" test_shouldWriteModule_allUnhandled
         , testCase "shouldWriteModule writes modules with at least one handled definition" test_shouldWriteModule_someHandled
+        , testCase "record constructor patterns use the generated record type" test_qualifyRecordConstructorPattern
         ]
 
 test_isEnabled :: IO ()
@@ -105,3 +109,18 @@ test_shouldWriteModule_someHandled =
             , SeSum "Rgb" [] [ScalaCtor{scName = "Red", scArgs = []}]
             ]
         )
+
+test_qualifyRecordConstructorPattern :: IO ()
+test_qualifyRecordConstructorPattern = do
+    let nameEnv = registerRecordCtor "Environment" "newEnv" emptyNameEnv
+        input = STeMatch
+                (STeVar "environment")
+                [ ( SPCtor "newEnv" [SPVar "p"], STeVar "p") ]
+        expected = STeMatch
+                (STeVar "environment")
+                [ ( SPCtor "Environment" [SPVar "p"], STeVar "p") ]
+    assertEqual
+        "qualified record constructor pattern"
+        expected
+        (qualifyTermWithEnv nameEnv input)
+
