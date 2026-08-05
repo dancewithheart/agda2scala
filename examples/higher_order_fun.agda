@@ -32,7 +32,7 @@ map f (x :: xs) = f x :: map f xs
 
 foldr : {A B : Set} ->  (A -> B -> B) -> B -> List A -> B
 foldr f init []        = init
-foldr f init (x :: xs) = f (foldr f init xs)
+foldr f init (x :: xs) = f x (foldr f init xs)
 {-# COMPILE AGDA2SCALA foldr #-}
 
 filter : {A : Set} -> (A -> Bool) -> List A -> List A

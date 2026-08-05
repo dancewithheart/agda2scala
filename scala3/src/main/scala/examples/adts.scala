@@ -26,15 +26,7 @@ object adts:
 
   def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
 
-  def id[A](x1: A): A = x1
-
-  enum Maybe[+A]:
-    case Just(x0: A) extends Maybe[A]
-    case None extends Maybe[Nothing]
-
-  enum List[+X]:
-    case Nil extends List[Nothing]
-    case Cons(x0: X, x1: List[X]) extends List[X]
+  def two(): Long = 2
 
   def not(x0: Answer): Answer = x0 match
     case Answer.Yes =>
