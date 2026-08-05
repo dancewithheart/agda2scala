@@ -155,6 +155,7 @@ printTermBlock x = case x of
         <> intercalate "\n" (map (indentBlock 2 . printCase) alts)
         <> "\n}"
     STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
+    STeSelect target field -> printTermInline target <> "." <> field
 
 printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
 printIf cond thenBranch elseBranch =

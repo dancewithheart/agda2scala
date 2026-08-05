@@ -6,8 +6,12 @@ module Agda.Compiler.Scala.Name.NameEnv
     , emptyNameEnv
     , freshNameSupplyFrom
     , freshNumberedNamesAvoiding
+    , isNullaryTerm
     , lookupCtorOwner
+    , lookupRecordCtor
     , registerCtors
+    , registerRecordCtor
+    , registerNullaryTerm
     , sanitizeScalaIdent
     , scalaKeywords
     , takeFreshNumberedNames
@@ -62,10 +66,12 @@ scalaKeywords =
         ]
 
 data NameEnv = NameEnv
-    { neQNameToScala :: HashMap QName ScalaName -- stable mapping for globals
-    , neTaken :: HashSet ScalaName -- names already used in this module
-    , neCounter :: Int -- for deterministic freshening
+    { neQNameToScala :: HashMap QName ScalaName  -- stable mapping for globals
+    , neTaken :: HashSet ScalaName               -- names already used in this module
+    , neCounter :: Int                           -- for deterministic freshening
     , neCtorOwner :: HashMap ScalaName ScalaName -- constructor name -> parent type
+    , neRecordCtor :: HashMap ScalaName ScalaName
+    , neNullaryTerms :: HashSet ScalaName
     }
     deriving (Eq, Show)
 
@@ -76,6 +82,8 @@ emptyNameEnv =
         , neTaken = HS.empty
         , neCounter = 0
         , neCtorOwner = HM.empty
+        , neRecordCtor = HM.empty
+        , neNullaryTerms = HS.empty
         }
 
 sanitizeScalaIdent :: String -> String
@@ -199,3 +207,17 @@ registerCtors parent ctors ne =
 
 lookupCtorOwner :: ScalaName -> NameEnv -> Maybe ScalaName
 lookupCtorOwner c ne = HM.lookup c (neCtorOwner ne)
+
+registerRecordCtor :: ScalaName -> ScalaName -> NameEnv -> NameEnv
+registerRecordCtor parent ctor ne =
+    ne{neRecordCtor = HM.insert ctor parent (neRecordCtor ne)}
+
+lookupRecordCtor :: ScalaName -> NameEnv -> Maybe ScalaName
+lookupRecordCtor ctor ne = HM.lookup ctor (neRecordCtor ne)
+
+registerNullaryTerm :: ScalaName -> NameEnv -> NameEnv
+registerNullaryTerm name ne =
+  ne{neNullaryTerms = HS.insert name (neNullaryTerms ne)}
+
+isNullaryTerm :: ScalaName -> NameEnv -> Bool
+isNullaryTerm name ne = HS.member name (neNullaryTerms ne)

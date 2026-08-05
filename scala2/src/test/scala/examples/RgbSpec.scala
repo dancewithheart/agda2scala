@@ -1,7 +1,7 @@
 package examples
 
 import zio.test.Assertion.equalTo
-import zio.test.junit.JUnitRunnableSpec
+import zio.test.ZIOSpecDefault
 import zio.test.assert
 
 import examples.adts.Rgb.{Red, Green, Blue}
@@ -9,7 +9,7 @@ import examples.adts.idRgb
 import examples.adts.{RgbPair, constRgbPair, hello}
 import examples.adts.Answer.{Yes, No}
 
-object RgbSpec extends JUnitRunnableSpec {
+object RgbSpec extends ZIOSpecDefault {
 
   def spec = suite("RGB")(
     test("identity on Rgb") {

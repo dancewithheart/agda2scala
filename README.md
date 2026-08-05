@@ -92,7 +92,7 @@ Roadmap is captured in milestones:
 
 ## Basic usage:
 ```sh
-cabal run -- agda2scala ./examples/adts.agda
+cabal run -- agda2scala ./examples/rbt.agda
 ```
 
 compile following Agda code:
@@ -225,12 +225,6 @@ cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=sca
 
 ```sh
 cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
-```
-
-```sh
-cabal run -- agda2scala --help
-cabal run -- agda2scala ./examples/adts.agda
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
 ```
 
 * format code

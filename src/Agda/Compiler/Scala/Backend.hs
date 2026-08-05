@@ -1,14 +1,17 @@
-module Agda.Compiler.Scala.Backend (
-    runScalaBackend,
-    scalaBackend,
-    scalaBackend',
-    defaultOptions,
-    outDirOpt,
-    scalaDialectOpt,
-    initModuleEnv,
-    Options (..),
-    selectPrinter,
-    shouldWriteModule,
+{-# LANGUAGE PatternSynonyms #-}
+
+module Agda.Compiler.Scala.Backend
+  ( Options (..)
+  , defaultOptions
+  , initModuleEnv
+  , outDirOpt
+  , qualifyTermWithEnv
+  , runScalaBackend
+  , scalaBackend
+  , scalaBackend'
+  , scalaDialectOpt
+  , selectPrinter
+  , shouldWriteModule
 ) where
 
 import Control.DeepSeq (NFData (..))
@@ -22,28 +25,43 @@ import qualified Data.Text as T
 import Data.Version (showVersion)
 import Paths_agda2scala (version)
 import Agda.Compiler.Backend (
-    Backend'_boot(..),
     Backend,
     Backend',
+    Backend'_boot(..),
     CompilerPragma,
     Definition (..),
     Flag,
     IsMain,
     Recompile (..),
-    TCM
+    TCM,
+    RecordData (..),
+    Defn(..),
+    funWith,
+    pattern Function
  )
 import qualified Agda.Compiler.Backend.Base as BackendBase
 import Agda.Compiler.Common (compileDir)
 import Agda.Main (runAgda)
 import Agda.Syntax.Abstract.Name( QName(..) )
 import Agda.Syntax.Common (moduleNameParts)
+import Agda.Syntax.Internal (ConHead (..))
 import Agda.Syntax.TopLevelModuleName (TopLevelModuleName, moduleNameToFileName)
 import Agda.TypeChecking.Monad.Env ( withCurrentModule )
 import Agda.TypeChecking.Monad.Signature (getUniqueCompilerPragma)
 import Agda.Utils.GetOpt (ArgDescr (ReqArg), OptDescr (Option))
 
 import Agda.Compiler.Scala.Compile (CompileError, compileDefinition)
-import Agda.Compiler.Scala.Name.NameEnv (NameEnv, emptyNameEnv, lookupCtorOwner, registerCtors)
+import Agda.Compiler.Scala.Name.NameEnv
+  ( NameEnv
+  , emptyNameEnv
+  , isNullaryTerm
+  , lookupCtorOwner
+  , lookupRecordCtor
+  , registerCtors
+  , registerRecordCtor
+  , registerNullaryTerm
+  )
+import Agda.Compiler.Scala.Name.NamePolicy (defaultNamePolicy, ctorName)
 import Agda.Compiler.Scala.Render.PrintScala2 (printScala2)
 import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 import Agda.Compiler.Scala.IR.ScalaExpr
@@ -52,6 +70,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTerm (..)
   , unHandled
   )
+import Agda.Compiler.Scala.Compile.Types (fromQName)
 
 runScalaBackend :: IO ()
 runScalaBackend = runAgda [scalaBackend]
@@ -132,7 +151,7 @@ scalaCompileDef ::
     TCM ScalaDefinition
 scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
     withCurrentModule (qnameModule qn) $ do
-        modulePragma <- lookupScalaPragma qn
+        modulePragma <- lookupScalaPragmaForDefinition def
         moduleDebugPragma <- lookupScalaDebugPragma qn
         case moduleDebugPragma of
             Nothing -> pure ()
@@ -156,11 +175,38 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                             let ne' = registerCtors parent ctors ne
                              in (ne', ())
                         pure expr
+                    -- register nullary definitions before qualifying their bodies
                     SeFun fName args scheme body -> do
-                        ne <- liftIO $ readIORef modEnv
+                        ne <- liftIO $ atomicModifyIORef' modEnv $ \current ->
+                            let updated =
+                                  case args of
+                                    [] -> registerNullaryTerm fName current
+                                    _  -> current
+                             in (updated, updated)
                         let body' = qualifyTermWithEnv ne body
                         pure (SeFun fName args scheme body')
+                    -- register the record constructor
+                    SeProd parent _tyParams _fields -> do
+                        case theDef def of
+                            RecordDefn (RecordData{_recConHead = conHead}) ->
+                                liftIO $ atomicModifyIORef' modEnv $ \ne ->
+                                    let recordCtor = ctorName defaultNamePolicy (fromQName (conName conHead))
+                                        ne' = registerRecordCtor parent recordCtor ne
+                                     in (ne', ())
+                            _ -> pure ()
+                        pure expr
                     _ -> pure expr
+
+lookupScalaPragmaForDefinition
+  :: Definition
+  -> TCM (Maybe CompilerPragma)
+lookupScalaPragmaForDefinition def@Defn{defName = qn} = do
+    directPragma <- lookupScalaPragma qn
+    case directPragma of
+        Just pragma -> pure (Just pragma)
+        Nothing -> case theDef def of
+          Function{funWith = Just parentFunction} -> lookupScalaPragma parentFunction
+          _ -> pure Nothing
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
@@ -168,9 +214,11 @@ lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
 qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
 qualifyTermWithEnv ne = go
   where
-    go (STeVar n) = case lookupCtorOwner n ne of
-      Just parent -> STeVar (parent <> "." <> n)
-      Nothing -> STeVar n
+    go (STeVar n)
+      | isNullaryTerm n ne = STeApp (STeVar n) []
+      | otherwise = STeVar (qualifyCtor n)
+    go (STeSelect target field) =
+      STeSelect (go target) field
     go (STeApp f xs)    = STeApp (go f) (map go xs)
     go (STeLam ns body) = STeLam ns (go body)
     go (STeIf cond thenBranch elseBranch) =
@@ -187,14 +235,18 @@ qualifyTermWithEnv ne = go
         [ (goPat pat, go rhs) | (pat, rhs) <- alts ]
     goPat SPWild          = SPWild
     goPat (SPVar n)       = SPVar n
-    goPat (SPCtor n args) =
-      let n' = case lookupCtorOwner n ne of
-                 Just parent -> parent <> "." <> n
-                 Nothing     -> n
-      in SPCtor n' (map goPat args)
+    goPat (SPCtor n args) = SPCtor (qualifyCtor n) (map goPat args)
     goPat (SPLitInt n)    = SPLitInt n
     goPat (SPLitBool b)   = SPLitBool b
     goPat (SPLitString s) = SPLitString s
+    goPat (SPCons headPat tailPat) = SPCons (goPat headPat) (goPat tailPat)
+    qualifyCtor n =
+      case lookupRecordCtor n ne of
+        Just parent -> parent
+        Nothing ->
+          case lookupCtorOwner n ne of
+            Just parent -> parent <> "." <> n
+            Nothing     -> n
 
 ---------------------------------------------
 -- pragmas specific for agda2scala

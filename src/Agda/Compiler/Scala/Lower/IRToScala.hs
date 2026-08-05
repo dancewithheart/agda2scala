@@ -71,7 +71,6 @@ lowerTerm policy term = case term of
         (lowerTerm policy cond)
         (lowerTerm policy thenBranch)
         (lowerTerm policy elseBranch)
-
     STeBinOp lhs op rhs ->
       STeBinOp
         (lowerTerm policy lhs)
@@ -81,6 +80,10 @@ lowerTerm policy term = case term of
       STeMatch
         (lowerTerm policy scrut)
         [ (lowerPat policy pat, lowerTerm policy rhs) | (pat, rhs) <- alts ]
+    STeSelect target field ->
+      STeSelect
+        (lowerTerm policy target)
+        (termName policy field)
 
 lowerPat :: NamePolicy -> ScalaPat -> ScalaPat
 lowerPat policy pat = case pat of
@@ -90,3 +93,5 @@ lowerPat policy pat = case pat of
   SPLitInt n       -> SPLitInt n
   SPLitBool b      -> SPLitBool b
   SPLitString s    -> SPLitString s
+  SPCons headPat tailPat ->
+    SPCons (lowerPat policy headPat) (lowerPat policy tailPat)

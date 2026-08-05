@@ -124,6 +124,7 @@ printTermBlock term =
         STeMatch scrut alts ->
             printTermInline scrut <> sp <> "match" <> nl
                 <> indentBlock 2 (intercalate "\n" (map printCase alts))
+        STeSelect target field -> printTermInline target <> "." <> field
 
 printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
 printIf cond thenBranch elseBranch =
