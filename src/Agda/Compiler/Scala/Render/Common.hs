@@ -70,7 +70,11 @@ printPat pat =
     SPLitBool b      -> if b then "true" else "false"
     SPLitString s    -> "\"" <> escapeScalaString s <> "\""
     SPCons headPat tailPat ->
-      printPat headPat <> " :: " <> printPat tailPat
+      printConsHead headPat <> " :: " <> printPat tailPat
+
+printConsHead :: ScalaPat -> String
+printConsHead p@(SPCons _ _) = "(" <> printPat p <> ")"
+printConsHead p = printPat p
 
 colonSeparator :: String
 colonSeparator = ":"
