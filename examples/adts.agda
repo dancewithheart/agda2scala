@@ -2,7 +2,6 @@ module examples.adts where
 
 open import Agda.Builtin.String
 open import Agda.Builtin.Nat
--- open import Data.Nat using (ℕ)
 
 -- simple sum type no arguments - sealed trait + case objects
 data Rgb : Set where
@@ -63,29 +62,8 @@ withEscapes = "line1\nline2\t\"quote\"\\backslash"
 -- literals Nat
 two : Nat
 two = 2
--- TODO {-# COMPILE AGDA2SCALA two #-}
+{-# COMPILE AGDA2SCALA two #-}
 -- {-# COMPILE AGDA2SCALA_DEBUG two #-}
-
--- polymorphic functions
-
-id : {A : Set} -> A -> A
-id x = x
-{-# COMPILE AGDA2SCALA id #-}
-
-data Maybe (A : Set) : Set where
-  Just : (x : A) -> Maybe A
-  None :            Maybe A
-{-# COMPILE AGDA2SCALA Maybe #-}
-
-data List (X : Set) : Set where
-  []   : List X
-  _::_ : X -> List X -> List X
-{-# COMPILE AGDA2SCALA List #-}
-
---emptyNatList : List ℕ
---emptyNatList = []
--- {-# COMPILE AGDA2SCALA emptyNatList #-}
--- TODO handle variance
 
 -- pattern matching
 
