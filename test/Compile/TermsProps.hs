@@ -305,11 +305,5 @@ prop_var_apply_isCurried = property $ do
     argumentCount <- forAll (Gen.int (Range.linear 1 8))
     let env = Env [ Just "x", Just "f" ]
         term = Var 1 (replicate argumentCount (mkApply (Var 0 [])))
-        expected =
-            foldl
-                (\function _ ->
-                    STeApp function [STeVar "x"]
-                )
-                (STeVar "f")
-                [1 .. argumentCount]
+        expected = iterate (\ function -> STeApp function [STeVar "x"]) (STeVar "f") !! argumentCount
     compileBodyTerm env term === Right expected
