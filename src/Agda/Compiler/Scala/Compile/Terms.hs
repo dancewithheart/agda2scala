@@ -228,19 +228,18 @@ validateCaseShape branches
 compileBodyTerm :: Env -> Term -> Either CompileError ScalaTerm
 compileBodyTerm env = \case
     Var i elims -> do
-        f <- STeVar <$> lookupVar env i
-        applyElims env f elims
+        function <- STeVar <$> lookupVar env i
+        applyFunctionElims env function elims
     Def qn elims
       | fromQName qn == "if_then_else_" -> compileIfThenElse env qn elims
       | fromQName qn == "_<ᵇ_" -> compileBinaryOp env qn "<" elims
       | fromQName qn == "_<_" -> compileBinaryOp env qn "<" elims
       | otherwise -> do
---          debugElims ("Def " <> fromQName qn) elims
-          let f = STeVar (termName defaultNamePolicy (fromQName qn))
-          applyElims env f elims
-    Con ch _ es -> compileConApp env ch es
-    Lit lit -> compileLiteral lit
-    t -> Left (UnsupportedTerm t)
+          let function = STeVar (termName defaultNamePolicy (fromQName qn))
+          applyDefinitionElims env function elims
+    Con constructor _ eliminations -> compileConApp env constructor eliminations
+    Lit literal -> compileLiteral literal
+    term -> Left (UnsupportedTerm term)
 
 compileIfThenElse :: Env -> QName -> [Elim' Term] -> Either CompileError ScalaTerm
 compileIfThenElse env qn elims = do
@@ -281,20 +280,48 @@ compileConApp env conHead elims = do
             [] -> constructor
             _  -> STeApp constructor args
 
-applyElims :: Env -> ScalaTerm -> [Elim' Term] -> Either CompileError ScalaTerm
-applyElims env = go
+data ApplicationStyle
+    = DefinitionApplication
+    | FunctionApplication
+
+applyDefinitionElims
+  :: Env
+  -> ScalaTerm
+  -> [Elim' Term]
+  -> Either CompileError ScalaTerm
+applyDefinitionElims = applyElims DefinitionApplication
+
+applyFunctionElims
+  :: Env
+  -> ScalaTerm
+  -> [Elim' Term]
+  -> Either CompileError ScalaTerm
+applyFunctionElims = applyElims FunctionApplication
+
+applyElims
+  :: ApplicationStyle
+  -> Env
+  -> ScalaTerm
+  -> [Elim' Term]
+  -> Either CompileError ScalaTerm
+applyElims initialStyle env = go initialStyle
   where
-    go term [] = Right term
-    go term elims = do
-      let (applyPrefix, remaining) = span isApplyElim elims
-      args <- compileVisibleApplyTerms env applyPrefix
-      let applied = case args of
-            [] -> term
-            _  -> STeApp term args
+    go _ term [] = Right term
+    go style term eliminations = do
+      let (applyPrefix, remaining) = span isApplyElim eliminations
+      arguments <- compileVisibleApplyTerms env applyPrefix
+      let applied = applyArgs style term arguments
       case remaining of
         [] -> Right applied
-        Proj _ qn : rest -> go (STeSelect applied (fromQName qn)) rest
+        Proj _ qn : rest -> go FunctionApplication (STeSelect applied (fromQName qn)) rest
         unsupported : _ -> Left (UnsupportedElimination (show unsupported))
+    applyArgs _ term [] = term
+    applyArgs DefinitionApplication term arguments = STeApp term arguments
+    applyArgs FunctionApplication term arguments =
+        foldl
+            (\function argument -> STeApp function [argument])
+            term
+            arguments
     isApplyElim Apply{} = True
     isApplyElim _       = False
 

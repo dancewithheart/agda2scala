@@ -59,6 +59,7 @@ termsProps =
     , ("constructor fields replace the scrutinized slot in source order", prop_replaceCaseArg_matchesSourceOrderModel)
     , ("replaceCaseArg makes fields addressable in source order", prop_replaceCaseArg_makesFieldsAddressableInSourceOrder)
     , ( "case splits with no runtime alternatives are rejected", prop_caseSplitWithNoAlternatives_isRejected)
+    , ( "function-valued Var applications are curried", prop_var_apply_isCurried)
     ]
 
 mkApply :: Term -> Elim' Term
@@ -298,3 +299,17 @@ prop_caseSplitWithNoAlternatives_isRejected = property $ do
   let clauses = Case (defaultArg 0) emptyCaseBranches
   compileFunctionBody [] ["x0"] (Just clauses)
     === Left (UnsupportedCaseShape HasNoRuntimeAlternatives)
+
+prop_var_apply_isCurried :: Property
+prop_var_apply_isCurried = property $ do
+    argumentCount <- forAll (Gen.int (Range.linear 1 8))
+    let env = Env [ Just "x", Just "f" ]
+        term = Var 1 (replicate argumentCount (mkApply (Var 0 [])))
+        expected =
+            foldl
+                (\function _ ->
+                    STeApp function [STeVar "x"]
+                )
+                (STeVar "f")
+                [1 .. argumentCount]
+    compileBodyTerm env term === Right expected
