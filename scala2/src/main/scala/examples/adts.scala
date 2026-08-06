@@ -34,19 +34,7 @@ def hello(): String = "Hello, world!"
 
 def withEscapes(): String = "line1\nline2\t\"quote\"\\backslash"
 
-def id[A](x1: A): A = x1
-
-sealed trait Maybe[+A]
-object Maybe {
-  final case class Just[+A](x0: A) extends Maybe[A]
-  case object None extends Maybe[Nothing]
-}
-
-sealed trait List[+X]
-object List {
-  case object Nil extends List[Nothing]
-  final case class Cons[+X](x0: X, x1: List[X]) extends List[X]
-}
+def two(): Long = 2
 
 def not(x0: Answer): Answer = x0 match {
   case Answer.Yes =>

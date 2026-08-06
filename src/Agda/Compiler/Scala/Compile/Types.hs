@@ -28,17 +28,17 @@ import Control.Monad (foldM)
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Common (Arg (..), Hiding (..), NamedName, Ranged (..), WithOrigin (..), getHiding)
 import Agda.Syntax.Common.Pretty (prettyShow)
-import Agda.Syntax.Internal (
-    Abs,
-    ConHead (..),
-    Dom,
-    Dom' (..),
-    Elim' (..),
-    Term (..),
-    Type,
-    Type'' (..),
-    qnameName,
-    unDom,
+import Agda.Syntax.Internal
+  ( Abs (..)
+  , ConHead (..)
+  , Dom
+  , Dom' (..)
+  , Elim' (..)
+  , Term (..)
+  , Type
+  , Type'' (..)
+  , qnameName
+  , unDom
  )
 import Agda.TypeChecking.Substitute (absBody)
 
@@ -152,6 +152,14 @@ compileTypeTermWith tyEnv = \case
         pure $ case args of
             [] -> STyVar f
             _ -> STyApp f args
+    term@(Pi dom absTy) ->
+      case absTy of
+        NoAbs _ codomain ->
+          STyFun
+            <$> compileDomTypeWith tyEnv dom
+            <*> compileTypeWith tyEnv codomain
+            -- reject genuinely dependent functions
+        Abs _ _ -> Left (UnsupportedTerm term)
     Con c _ _ -> Right (STyName (fromQName (conName c)))
     Sort _ -> Right (STyName "Type")
     t -> Left (UnsupportedTerm t)

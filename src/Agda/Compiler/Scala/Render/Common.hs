@@ -50,9 +50,13 @@ escapeScalaString = concatMap $ \c -> case c of
 
 printType :: ScalaType -> String
 printType (STyName name) = name
-printType (STyVar v) = v
-printType (STyApp n ts) = n <> "[" <> intercalate ", " (map printType ts) <> "]"
-printType (STyFun a b) = printType a <> " => " <> printType b
+printType (STyVar var) = var
+printType (STyApp name args) = name <> "[" <> intercalate ", " (map printType args) <> "]"
+printType (STyFun input out) = printFunctionInput input <> " => " <> printType out
+
+printFunctionInput :: ScalaType -> String
+printFunctionInput functionType@(STyFun _ _) = "(" <> printType functionType <> ")"
+printFunctionInput otherType = printType otherType
 
 printTyParams :: [ScalaName] -> String
 printTyParams [] = ""

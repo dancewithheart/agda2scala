@@ -59,6 +59,9 @@ tests =
             [ testCase "compileTypeTermWith lowers a type variable to STyVar" test_compileTypeTermWith_typeVariable
             , testCase "compileTypeTermWith lowers applied type variable to STyApp" test_compileTypeTermWith_typeVariableApplication
             , testCase "compileTypeTermWith rejects unsupported lambda terms explicitly" test_compileTypeTermWith_rejectsLambda
+            , testCase "compileTypeTermWith lowers a non-dependent Pi to STyFun" test_compileTypeTermWith_functionType
+            , testCase "compileTypeTermWith lowers a curried Pi to nested STyFun" test_compileTypeTermWith_curriedFunctionType
+            , testCase "compileTypeTermWith rejects a dependent Pi" test_compileTypeTermWith_rejectsDependentFunctionType
             ]
         ]
 
@@ -148,3 +151,48 @@ assertLeft label actual =
                     , "Actual:"
                     , "  " <> show value
                     ]
+
+test_compileTypeTermWith_functionType :: Assertion
+test_compileTypeTermWith_functionType = do
+    let env = pushTyParam "B" (pushTyParam "A" mempty)
+        term = Pi
+                (dummyDom (typeFromTerm (Var 1 [])))
+                (NoAbs "_" (typeFromTerm (Var 0 [])))
+    compileTypeTermWith env term
+        @?= Right
+            (STyFun
+                (STyVar "A")
+                (STyVar "B"))
+
+test_compileTypeTermWith_curriedFunctionType :: Assertion
+test_compileTypeTermWith_curriedFunctionType = do
+    let env = pushTyParam "B" (pushTyParam "A" mempty)
+        term = Pi
+                (dummyDom (typeFromTerm (Var 1 [])))
+                (NoAbs "_" $
+                    typeFromTerm $
+                        Pi
+                            (dummyDom (typeFromTerm (Var 0 [])))
+                            (NoAbs "_" (typeFromTerm (Var 0 []))))
+    compileTypeTermWith env term
+        @?= Right
+            (STyFun
+                (STyVar "A")
+                (STyFun
+                    (STyVar "B")
+                    (STyVar "B")
+                )
+            )
+
+test_compileTypeTermWith_rejectsDependentFunctionType :: Assertion
+test_compileTypeTermWith_rejectsDependentFunctionType = do
+    let env = pushTyParam "A" mempty
+        term = Pi
+                (dummyDom (typeFromTerm (Var 0 [])))
+                (Abs "x" (typeFromTerm (Var 0 [])))
+    assertLeft
+        "dependent function type is not supported"
+        (compileTypeTermWith env term)
+
+typeFromTerm :: Term -> Type
+typeFromTerm = El dummySort
