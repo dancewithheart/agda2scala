@@ -46,6 +46,7 @@ tests =
             , testCase "prints monomorphic sum type" test_printSum
             , testCase "prints polymorphic sum type" test_printSumPoly
             , testCase "prints polymorphic function definition" test_polyDef
+            , testCase "renders a polymorphic trait with abstract members" test_printMonoidTrait
             ]
         , testGroup
             "layout"
@@ -310,3 +311,26 @@ test_combineDecls_strips_newlines =
         "combineDecls strips trailing newlines before joining declarations"
         "a\n\nb"
         (combineDecls ["a\n", "", "b\n"])
+
+test_printMonoidTrait :: IO ()
+test_printMonoidTrait =
+  assertStringEqual
+    "Monoid operation record"
+    expected
+    (printScala2 monoid)
+  where
+    a = STyVar "A"
+
+    monoid =
+      SeTrait
+        "Monoid"
+        ["A"]
+        [ SeVar "empty" a
+        , SeVar "combine" (STyFun a (STyFun a a))
+        ]
+
+    expected =
+      "trait Monoid[A] {\n"
+        <> "  def empty: A\n"
+        <> "  def combine: A => A => A\n"
+        <> "}\n"

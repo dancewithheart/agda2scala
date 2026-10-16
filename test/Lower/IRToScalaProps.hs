@@ -34,6 +34,9 @@ iRToScalaProps =
     [ ("data lowering preserves constructor arity", prop_dataCtorArityPreserved)
     , ("data lowering applies constructor NamePolicy", prop_dataCtorNamePolicy)
     , ("record lowering preserves field count", prop_recordFieldCountPreserved)
+    , ( "operation records lower to Scala traits"
+      , prop_operationRecordLowersToTrait
+      )
     ]
 
 prop_dataCtorArityPreserved :: Property
@@ -99,3 +102,23 @@ prop_recordFieldCountPreserved = property $ do
     other -> do
       annotateShow other
       assert False
+
+prop_operationRecordLowersToTrait :: Property
+prop_operationRecordLowersToTrait = property $ do
+  let a = STyVar "A"
+
+      fields =
+        [ SeVar "empty" a
+        , SeVar "combine" (STyFun a (STyFun a a))
+        ]
+
+      decl =
+        DRecord
+          AgdaRecord
+            { arName = "Monoid"
+            , arTyParams = ["A"]
+            , arFields = fields
+            }
+
+  toScalaExpr defaultNamePolicy decl
+    === SeTrait "Monoid" ["A"] fields

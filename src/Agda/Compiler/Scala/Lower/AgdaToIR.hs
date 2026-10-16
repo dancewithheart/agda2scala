@@ -28,11 +28,13 @@ import Agda.Syntax.Internal
   , Tele(..)
   , Telescope
   , Type
+  , unDom
   )
 import Agda.TypeChecking.CompiledClause (CompiledClauses)
 import Agda.TypeChecking.Monad (TCM, getConstInfo)
 import Agda.TypeChecking.Monad.Base (Definition(..))
 import Agda.TypeChecking.Substitute (absBody)
+import Control.Monad (foldM)
 
 import Agda.Compiler.Scala.Compile.Terms (compileFunctionBody)
 import Agda.Compiler.Scala.Compile.Types
@@ -44,6 +46,7 @@ import Agda.Compiler.Scala.Compile.Types
   , dataTyParamsFromType
   , fromQName
   , funSchemeFromType
+  , pushTermBinder
   )
 import Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaData(..)
@@ -65,8 +68,8 @@ toAgdaExpr def _pragma = case def of
   Defn{theDef = Datatype{dataCons = cons}, defName = qn, defType = ty} ->
     lowerData qn ty cons
 
-  Defn{theDef = RecordDefn (RecordData{_recTel = tel}), defName = qn, defType = ty} ->
-    pure (DRecord <$> lowerRecord qn ty tel)
+  Defn{theDef = RecordDefn recordData, defName = qn, defType = ty} ->
+    pure (DRecord <$> lowerRecord qn ty recordData)
 
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Function
   Defn{theDef = Function{funCompiled = cc}, defName = qn, defType = ty} ->
@@ -77,21 +80,43 @@ toAgdaExpr def _pragma = case def of
 
 -- ===== Records ===============================================================
 
-lowerRecord :: QName -> Type -> Telescope -> Either CompileError AgdaRecord
-lowerRecord qn recTy tel = do
-  (tps, tyEnv) <- dataTyParamsFromType recTy
-  fields <- traverse (lowerField tyEnv) (zip [0 :: Int ..] (teleToList tel))
-  pure
-    AgdaRecord
-      { arName = fromQName qn
-      , arTyParams = tps
-      , arFields = fields
-      }
+lowerRecord :: QName
+  -> Type
+  -> RecordData
+  -> Either CompileError AgdaRecord
+lowerRecord qn recTy recordData = do
+  (tps, tyEnv0) <- dataTyParamsFromType recTy
 
-lowerField :: TyEnv -> (Int, Dom Type) -> Either CompileError SeVar
-lowerField tyEnv (i, dom) = do
+  let allDoms = teleToList (_recTel recordData)
+      fieldNames = map (fromQName . unDom) (_recFields recordData)
+      parameterCount = length allDoms - length fieldNames
+
+  if parameterCount < 0
+    then Left (UnsupportedDefinition qn)
+    else do
+      let fieldDoms = drop parameterCount allDoms
+
+      (fieldsRev, _) <-
+        foldM
+          lowerRecordField
+          ([], tyEnv0)
+          (zip fieldNames fieldDoms)
+
+      pure AgdaRecord
+        { arName = fromQName qn
+        , arTyParams = tps
+        , arFields = reverse fieldsRev
+        }
+
+lowerRecordField :: ([SeVar], TyEnv)
+  -> (ScalaName, Dom Type)
+  -> Either CompileError ([SeVar], TyEnv)
+lowerRecordField (fields, tyEnv) (name, dom) = do
   ty <- compileDomTypeWith tyEnv dom
-  pure (SeVar (binderName i dom) ty)
+  pure
+    ( SeVar name ty : fields
+    , pushTermBinder tyEnv
+    )
 
 -- Agda.Syntax.Internal.Tele / Telescope:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Tele

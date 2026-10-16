@@ -66,6 +66,8 @@ printScala2 def = case def of
             <> nl
     SeProd name tyParams args ->
         printCaseClass name tyParams args <> nl
+    SeTrait name tyParams fields ->
+        printTrait name tyParams fields <> nl
     SeUnhandled "" _payload ->
         "" -- filtered out
     SeUnhandled name payload ->
@@ -77,6 +79,20 @@ printScala2 def = case def of
         <> " "
         <> multiLineCommentEnd
         <> nl
+
+printTrait :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printTrait name tyParams fields =
+  "trait"
+    <> sp
+    <> name
+    <> printTyParams tyParams
+    <> sp
+    <> bracket
+         (indentBlock 2 (combineLines (map printAbstractMember fields)))
+
+printAbstractMember :: SeVar -> String
+printAbstractMember (SeVar name ty) =
+  "def" <> sp <> name <> ":" <> sp <> printType ty
 
 -- ===== Sum types ============================================================
 

@@ -1,48 +1,65 @@
 module examples.Monoids where
 
 open import Agda.Builtin.Equality using (_≡_)
-open import examples.higher_order_fun using (List; []; _::_)
-open import Data.Nat using (ℕ; _+_; zero; suc)
+open import Data.Nat using (ℕ; _+_; zero)
+open import Data.Nat.Properties using
+  (+-assoc; +-identityˡ; +-identityʳ)
+
 
 record Monoid (A : Set) : Set where
   field
-    -- operations
     empty   : A
-    _⊕_ : A -> A -> A
+    combine : A → A → A
+
 {-# COMPILE AGDA2SCALA Monoid #-}
+
+
+combine3 : {A : Set} → Monoid A → A → A → A → A
+combine3 m x y z = combine x (combine y z)
+  where
+    open Monoid m
+
+{-# COMPILE AGDA2SCALA combine3 #-}
+
+
+prependEmpty : {A : Set} → Monoid A → A → A
+prependEmpty m x = combine empty x
+  where
+    open Monoid m
+
+{-# COMPILE AGDA2SCALA prependEmpty #-}
+
+
+-- Next PR: compile record construction.
+
+NatPlusMonoid : Monoid ℕ
+NatPlusMonoid = record
+  { empty   = zero
+  ; combine = _+_
+  }
+
+
+-- Later: compile selected equality propositions into property tests.
 
 record MonoidLaws (A : Set) : Set where
   field
     monoid : Monoid A
-  open Monoid monoid  
+
+  open Monoid monoid
+
   field
-    -- laws
-    right-unit : forall (x : A) -> x ⊕ empty ≡ x
-    left-unit  : forall (x : A) -> empty ⊕ x ≡ x
-    assoc      : forall (x y z : A) -> (x ⊕ y) ⊕ z ≡ x ⊕ (y ⊕ z)
-{-# COMPILE AGDA2SCALA MonoidLaws #-}
+    right-unit : (x : A) → combine x empty ≡ x
+    left-unit  : (x : A) → combine empty x ≡ x
 
-NatPlusMonoid : Monoid ℕ
-NatPlusMonoid = record
-  { empty = zero
-  ; _⊕_ = _+_
-  }
-{-# COMPILE AGDA2SCALA NatPlusMonoid #-}
+    assoc : (x y z : A) →
+      combine (combine x y) z ≡
+      combine x (combine y z)
 
-{-
+
 NatPlusMonoidLaws : MonoidLaws ℕ
 NatPlusMonoidLaws = record
-  { monoid =  NatPlusMonoid
-  ; right-unit = {!!}
-  ; left-unit = {!!}
-  ; assoc = {!!}
+  { monoid     = NatPlusMonoid
+  ; right-unit = +-identityʳ
+  ; left-unit  = +-identityˡ
+  ; assoc      = +-assoc
   }
--}
-
-fold : {A : Set} -> Monoid A -> List A -> A
-fold M []        = Monoid.empty M
-fold M (x :: xs) = x ⊕ (fold M xs)
-  where
-   open Monoid M
-{-# COMPILE AGDA2SCALA fold #-}
-

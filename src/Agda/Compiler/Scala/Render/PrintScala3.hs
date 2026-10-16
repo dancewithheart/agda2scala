@@ -57,7 +57,10 @@ printScala3 def = case def of
             <> exprSeparator
             <> printTerm funBody
             <> defsSeparator
-    (SeProd name _tyParams args) -> printCaseClass name args <> defsSeparator
+    (SeProd name tyParams args) ->
+      printCaseClass name tyParams args <> defsSeparator
+    (SeTrait name tyParams fields) ->
+      printTrait name tyParams fields <> defsSeparator
     (SeUnhandled "" _payload) -> ""
     (SeUnhandled name payload) -> "/* TODO In printScala3 got SeUnhandled "
       <> show name
@@ -96,8 +99,32 @@ printExtends name tyParams = " extends " <> name <> printTyParams tyParams
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> colonSeparator <> exprSeparator <> printType ty
 
-printCaseClass :: ScalaName -> [SeVar] -> String
-printCaseClass name args = "final case class" <> exprSeparator <> name <> "(" <> printExpr args <> ")"
+printCaseClass :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printCaseClass name tyParams args =
+  "final case class"
+    <> exprSeparator
+    <> name
+    <> printTyParams tyParams
+    <> "("
+    <> printExpr args
+    <> ")"
+
+printTrait :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printTrait name tyParams fields =
+  "trait"
+    <> exprSeparator
+    <> name
+    <> printTyParams tyParams
+    <> bracketWithIndent (map printAbstractMember fields) 2
+
+printAbstractMember :: SeVar -> String
+printAbstractMember (SeVar name ty) =
+  "def"
+    <> exprSeparator
+    <> name
+    <> colonSeparator
+    <> exprSeparator
+    <> printType ty
 
 printTerm :: ScalaTerm -> String
 printTerm = printTermBlock
