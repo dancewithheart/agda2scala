@@ -17,6 +17,7 @@ module Agda.Compiler.Scala.Compile.Terms
 
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict ( StateT, evalStateT, state )
+import qualified Data.HashSet as HS
 import Data.Maybe (catMaybes)
 --import Debug.Trace (trace) -- TODO #72
 import Data.List (isPrefixOf, isSuffixOf)
@@ -42,6 +43,7 @@ import Agda.Compiler.Scala.Name.NameEnv
   ( FreshNameSupply
   , freshNameSupplyFrom
   , takeFreshNumberedNames
+  , freshNumberedNamesAvoiding
   )
 import Agda.Compiler.Scala.Name.NamePolicy (ctorName, defaultNamePolicy, termName)
 import Agda.Compiler.Scala.IR.ScalaExpr ( ScalaName, ScalaPat(..), ScalaTerm(..) )
@@ -231,6 +233,7 @@ compileBodyTerm env = \case
         function <- STeVar <$> lookupVar env i
         applyFunctionElims env function elims
     Def qn elims
+      | isBuiltinQName "Agda.Builtin.Nat" "_+_" qn -> compileNatAddition env qn elims
       | fromQName qn == "if_then_else_" -> compileIfThenElse env qn elims
       | fromQName qn == "_<ᵇ_" -> compileBinaryOp env qn "<" elims
       | fromQName qn == "_<_" -> compileBinaryOp env qn "<" elims
@@ -240,6 +243,35 @@ compileBodyTerm env = \case
     Con constructor _ eliminations -> compileConApp env constructor eliminations
     Lit literal -> compileLiteral literal
     term -> Left (UnsupportedTerm term)
+
+compileNatAddition :: Env
+  -> QName
+  -> [Elim' Term]
+  -> Either CompileError ScalaTerm
+compileNatAddition env qn elims = do
+  args <- compileVisibleApplyTerms env elims
+  let names =
+        freshNumberedNamesAvoiding
+          (HS.fromList (envNames env))
+          "natArg"
+          2
+  case (args, names) of
+    ([], [leftName, rightName]) ->
+      pure $
+        STeLam [leftName] $
+          STeLam [rightName] $
+            STeBinOp
+              (STeVar leftName)
+              "+"
+              (STeVar rightName)
+    ([left], [_, rightName]) ->
+      pure $
+        STeLam [rightName] $
+          STeBinOp left "+" (STeVar rightName)
+    ([left, right], _) ->
+      pure (STeBinOp left "+" right)
+    _ ->
+      Left (UnsupportedTerm (Def qn elims))
 
 compileIfThenElse :: Env -> QName -> [Elim' Term] -> Either CompileError ScalaTerm
 compileIfThenElse env qn elims = do
@@ -345,6 +377,8 @@ compileBuiltinConstructor qn args
     , [] <- args = Just (STeVar "None")
     | isBuiltinQName "Agda.Builtin.Maybe" "just" qn
     , [value] <- args = Just (STeApp (STeVar "Some") [value])
+    | isBuiltinQName "Agda.Builtin.Nat" "zero" qn
+    , [] <- args = Just (STeLitInt 0)
     | otherwise = Nothing
 
 compileBuiltinPattern :: QName -> [ScalaPat] -> Maybe ScalaPat

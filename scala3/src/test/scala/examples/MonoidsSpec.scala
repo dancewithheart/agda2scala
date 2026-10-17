@@ -4,10 +4,8 @@ import zio.test._
 
 object MonoidsSpec extends ZIOSpecDefault:
 
-  val natPlus = new Monoids.Monoid[Long]:
-    def empty: Long = 0L
-    def combine: Long => Long => Long =
-      x => y => x + y
+  val natPlus: Monoids.Monoid[Long] =
+    Monoids.NatPlusMonoid()
 
   def spec =
     suite("Monoid")(
