@@ -54,6 +54,7 @@ data ScalaTerm
   | STeLitBool Bool
   | STeLitString String
   | STeError String
+  | STeNew ScalaType [(SeVar, ScalaTerm)]
   deriving (Eq, Show)
 
 data SeVar = SeVar ScalaName ScalaType

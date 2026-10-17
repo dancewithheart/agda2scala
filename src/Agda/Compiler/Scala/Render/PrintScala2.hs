@@ -172,6 +172,22 @@ printTermBlock x = case x of
         <> "\n}"
     STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
     STeSelect target field -> printTermInline target <> "." <> field
+    STeNew ty members ->
+      "new "
+        <> printType ty
+        <> " {\n"
+        <> indentBlock 2
+             (intercalate "\n" (map printNewMember members))
+        <> "\n}"
+
+printNewMember :: (SeVar, ScalaTerm) -> String
+printNewMember (SeVar name ty, body) =
+  "def "
+    <> name
+    <> ": "
+    <> printType ty
+    <> " = "
+    <> printTermBlock body
 
 printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
 printIf cond thenBranch elseBranch =
