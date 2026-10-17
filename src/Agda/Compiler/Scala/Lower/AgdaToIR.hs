@@ -40,7 +40,6 @@ import Agda.Compiler.Scala.Compile.Terms (compileFunctionBody)
 import Agda.Compiler.Scala.Compile.Types
   ( CompileError(..)
   , TyEnv
-  , binderName
   , compileDomTypeWith
   , ctorArgTypesFromTypeWith
   , dataTyParamsFromType

@@ -15,6 +15,9 @@ module Agda.Compiler.Scala.Name.NameEnv
     , sanitizeScalaIdent
     , scalaKeywords
     , takeFreshNumberedNames
+    , TraitCtor (..)
+    , registerTraitCtor
+    , lookupTraitCtor
 ) where
 
 import qualified Data.Char as Char
@@ -23,7 +26,11 @@ import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Agda.Syntax.Abstract.Name (QName)
-import Agda.Compiler.Scala.IR.ScalaExpr(ScalaCtor (..), ScalaName)
+import Agda.Compiler.Scala.IR.ScalaExpr
+  ( ScalaCtor (..)
+  , ScalaName
+  , SeVar
+  )
 
 -- Scala 3 keywords: https://scala-lang.org/files/archive/spec/3.4/01-lexical-syntax.html#regular-keywords
 -- Scala 2 keywords: https://scala-lang.org/files/archive/spec/2.13/01-lexical-syntax.html#identifiers
@@ -65,6 +72,13 @@ scalaKeywords =
         , "null"
         ]
 
+data TraitCtor = TraitCtor
+  { tcParent :: ScalaName
+  , tcTyParams :: [ScalaName]
+  , tcFields :: [SeVar]
+  }
+  deriving (Eq, Show)
+
 data NameEnv = NameEnv
     { neQNameToScala :: HashMap QName ScalaName  -- stable mapping for globals
     , neTaken :: HashSet ScalaName               -- names already used in this module
@@ -72,6 +86,7 @@ data NameEnv = NameEnv
     , neCtorOwner :: HashMap ScalaName ScalaName -- constructor name -> parent type
     , neRecordCtor :: HashMap ScalaName ScalaName
     , neNullaryTerms :: HashSet ScalaName
+    , neTraitCtors :: HashMap ScalaName TraitCtor
     }
     deriving (Eq, Show)
 
@@ -84,7 +99,29 @@ emptyNameEnv =
         , neCtorOwner = HM.empty
         , neRecordCtor = HM.empty
         , neNullaryTerms = HS.empty
+        , neTraitCtors = HM.empty
         }
+
+registerTraitCtor :: ScalaName
+  -> ScalaName
+  -> [ScalaName]
+  -> [SeVar]
+  -> NameEnv
+  -> NameEnv
+registerTraitCtor parentName ctorName tyParams fields nameEvn =
+  nameEvn
+    { neTraitCtors =
+        HM.insert
+          ctorName
+          ctr
+          (neTraitCtors nameEvn)
+    }
+  where
+    ctr = (TraitCtor parentName tyParams fields)
+
+lookupTraitCtor :: ScalaName -> NameEnv -> Maybe TraitCtor
+lookupTraitCtor ctor ne =
+  HM.lookup ctor (neTraitCtors ne)
 
 sanitizeScalaIdent :: String -> String
 sanitizeScalaIdent = avoidScalaKeyword
