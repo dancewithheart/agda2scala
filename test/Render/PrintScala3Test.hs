@@ -34,6 +34,7 @@ tests =
             [ testCase "prints sealed trait for an ADT parent" test_printSealedTrait
             , testCase "prints case object for a zero-argument constructor" test_printCaseObject
             , testCase "prints case class for a record/product type" test_printCaseClass
+            , testCase "renders a polymorphic trait with abstract members" test_printMonoidTrait
             ]
         , testGroup
             "layout"
@@ -78,6 +79,7 @@ test_printCaseClass =
         "final case class RgbPair(snd: Bool, fst: Rgb)"
         ( printCaseClass
             "RgbPair"
+            []
             [ SeVar "snd" (STyName "Bool")
             , SeVar "fst" (STyName "Rgb")
             ]
@@ -191,3 +193,25 @@ test_print_if_then_else =
      <> "  x\n"
      <> "else\n"
      <> "  y\n"
+
+test_printMonoidTrait :: IO ()
+test_printMonoidTrait =
+  assertStringEqual
+    "Monoid operation record"
+    expected
+    (printScala3 monoid)
+  where
+    a = STyVar "A"
+
+    monoid =
+      SeTrait
+        "Monoid"
+        ["A"]
+        [ SeVar "empty" a
+        , SeVar "combine" (STyFun a (STyFun a a))
+        ]
+
+    expected =
+      "trait Monoid[A]:\n"
+        <> "  def empty: A\n"
+        <> "  def combine: A => A => A\n"

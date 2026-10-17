@@ -67,8 +67,9 @@ data ScalaCtor = ScalaCtor
 
 data ScalaExpr
     = SePackage [ScalaName] [ScalaExpr]
-    | SeSum ScalaName [ScalaTyParam] [ScalaCtor] -- name, type params, ctors
-    | SeProd ScalaName [ScalaName] [SeVar] -- name, type params, fields
+    | SeSum ScalaName [ScalaTyParam] [ScalaCtor]
+    | SeProd ScalaName [ScalaName] [SeVar]
+    | SeTrait ScalaName [ScalaName] [SeVar]
     | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
     | SeUnhandled ScalaName String
     deriving (Eq, Show)

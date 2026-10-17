@@ -22,6 +22,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaPat(..)
   , ScalaTerm(..)
   , SeVar(..)
+  , ScalaType(..)
   )
 import Agda.Compiler.Scala.Lower.Variance ( inferDataTyParams )
 
@@ -33,10 +34,13 @@ toScalaExpr policy decl = case decl of
       (inferDataTyParams (adName d) (adTyParams d) (adCtors d))
       (map (lowerCtor policy) (adCtors d))
   DRecord r ->
-    SeProd
-      (typeName policy (arName r))
-      (arTyParams r)
-      (map (lowerField policy) (arFields r))
+    let name = typeName policy (arName r)
+        tyParams = arTyParams r
+        fields = map (lowerField policy) (arFields r)
+    in
+      if isOperationRecord fields
+        then SeTrait name tyParams fields
+        else SeProd name tyParams fields
   DFun f ->
     SeFun
       (termName policy (afName f))
@@ -95,3 +99,10 @@ lowerPat policy pat = case pat of
   SPLitString s    -> SPLitString s
   SPCons headPat tailPat ->
     SPCons (lowerPat policy headPat) (lowerPat policy tailPat)
+
+isOperationRecord :: [SeVar] -> Bool
+isOperationRecord = any isOperationField
+
+isOperationField :: SeVar -> Bool
+isOperationField (SeVar _ STyFun{}) = True
+isOperationField _ = False
