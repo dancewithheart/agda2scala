@@ -19,24 +19,37 @@ import Agda.Compiler.Backend
   , RecordData(..)
   , funCompiled
   , dataCons
+  , funClauses
   , pattern Datatype
   , pattern Function
   )
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Internal
-  ( Dom
+  ( Clause(..)
+  , ConHead(..)
+  , DataOrRecord'(..)
+  , Dom
   , Tele(..)
   , Telescope
+  , Term(..)
   , Type
   , unDom
   )
-import Agda.TypeChecking.CompiledClause (CompiledClauses)
+import Agda.TypeChecking.CompiledClause
+  ( Case(projPatterns)
+  , CompiledClauses
+  , CompiledClauses'(..)
+  )
 import Agda.TypeChecking.Monad (TCM, getConstInfo)
 import Agda.TypeChecking.Monad.Base (Definition(..))
 import Agda.TypeChecking.Substitute (absBody)
 import Control.Monad (foldM)
 
-import Agda.Compiler.Scala.Compile.Terms (compileFunctionBody)
+import Agda.Compiler.Scala.Compile.Terms
+  ( compileBodyTerm
+  , compileFunctionBody
+  , envFromFunction
+  )
 import Agda.Compiler.Scala.Compile.Types
   ( CompileError(..)
   , TyEnv
@@ -71,8 +84,14 @@ toAgdaExpr def _pragma = case def of
     pure (DRecord <$> lowerRecord qn ty recordData)
 
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Function
-  Defn{theDef = Function{funCompiled = cc}, defName = qn, defType = ty} ->
-    pure (DFun <$> lowerFun qn ty cc)
+  Defn
+    { theDef = Function
+        { funCompiled = cc
+        , funClauses = clauses
+        }
+    , defName = qn
+    , defType = ty
+    } -> pure (DFun <$> lowerFun qn ty cc clauses)
 
   Defn{defName = qn} ->
     pure (Left (UnsupportedDefinition qn))
@@ -162,14 +181,18 @@ lowerCtor eParams conQName = do
 
 -- ===== Functions =============================================================
 
-lowerFun
-  :: QName
+lowerFun :: QName
   -> Type
   -> Maybe CompiledClauses
+  -> [Clause]
   -> Either CompileError AgdaFun
-lowerFun qn defTy mcc = do
+lowerFun qn defTy mcc clauses = do
   (args, scheme) <- funSchemeFromType defTy
-  body <- compileFunctionBody (ssTyParams scheme) (argNames args) mcc
+  body <-
+    case directRecordConstructor mcc clauses of
+      Just term | null args -> compileBodyTerm (envFromFunction (ssTyParams scheme) []) term
+      _ -> compileFunctionBody (ssTyParams scheme) (argNames args) mcc
+      _ -> compileFunctionBody (ssTyParams scheme) (argNames args) mcc
   pure
     AgdaFun
       { afName = fromQName qn
@@ -179,3 +202,22 @@ lowerFun qn defTy mcc = do
       }
   where
     argNames = map (\(SeVar n _) -> n)
+
+-- Agda may compile a record value into a projection-pattern case tree,
+-- even when its original definition is just a record constructor.
+--
+-- ATM: support only a single clause with no pattern binders
+-- whose body directly constructs a record.
+-- TODO FUTURE: general copattern matching support
+directRecordConstructor
+  :: Maybe CompiledClauses
+  -> [Clause]
+  -> Maybe Term
+directRecordConstructor (Just (Case _ branches)) [clause]
+  | projPatterns branches
+  , EmptyTel <- clauseTel clause
+  , null (namedClausePats clause)
+  , Just term@(Con con _ _) <- clauseBody clause
+  , IsRecord _ <- conDataRecord con
+  = Just term
+directRecordConstructor _ _ = Nothing
