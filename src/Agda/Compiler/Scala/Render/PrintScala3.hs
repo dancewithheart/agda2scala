@@ -152,6 +152,18 @@ printTermBlock term =
             printTermInline scrut <> sp <> "match" <> nl
                 <> indentBlock 2 (intercalate "\n" (map printCase alts))
         STeSelect target field -> printTermInline target <> "." <> field
+        STeNew ty members ->
+          "new " <> printType ty <> ":" <> nl
+            <> indentBlock 2 (intercalate nl (map printNewMember members))
+
+printNewMember :: (SeVar, ScalaTerm) -> String
+printNewMember (SeVar name ty, body) =
+  "def "
+    <> name
+    <> ": "
+    <> printType ty
+    <> " = "
+    <> printTermBlock body
 
 printIf :: ScalaTerm -> ScalaTerm -> ScalaTerm -> String
 printIf cond thenBranch elseBranch =
