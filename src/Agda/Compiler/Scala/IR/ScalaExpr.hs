@@ -86,13 +86,13 @@ data ScalaVariance
   deriving (Eq, Show)
 
 data ScalaTyParam = ScalaTyParam
-  { stpName :: ScalaName
+  { stpBinder :: ScalaTypeBinder
   , stpVariance :: ScalaVariance
   }
   deriving (Eq, Show)
 
 tyParamNames :: [ScalaTyParam] -> [ScalaName]
-tyParamNames = map stpName
+tyParamNames = map (stbName . stpBinder)
 
 data ScalaTypeBinder = ScalaTypeBinder
   { stbName :: ScalaName

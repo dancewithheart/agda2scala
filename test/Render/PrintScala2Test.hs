@@ -196,7 +196,7 @@ test_printSumPoly =
         expected
         ( printSum
             "Maybe"
-            [ ScalaTyParam "A" Covariant ]
+            [ ScalaTyParam (ScalaTypeBinder "A" 0) Covariant ]
             [ ScalaCtor "None" []
             , ScalaCtor "Just" [STyVar "A"]
             ]

@@ -7,6 +7,7 @@ module Agda.Compiler.Scala.Lower.Variance
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaName
+  , ScalaTypeBinder(..)
   , ScalaTyParam(..)
   , ScalaType(..)
   , ScalaVariance(..)
@@ -34,15 +35,17 @@ instance Semigroup Occurrence where
 instance Monoid Occurrence where
   mempty = Absent
 
-inferDataTyParams
-  :: ScalaName
-  -> [ScalaName]
+-- TODO variance for higher-kinded parameters
+inferDataTyParams :: ScalaName
+  -> [ScalaTypeBinder]
   -> [ScalaCtor]
   -> [ScalaTyParam]
 inferDataTyParams dataName params ctors =
-  [ ScalaTyParam param (inferParamVariance dataName param ctors)
-  | param <- params
-  ]
+  [ ScalaTyParam binder (inferVariance binder) | binder <- params ]
+  where
+    inferVariance binder
+      | stbArity binder > 0 = Invariant
+      | otherwise = inferParamVariance dataName (stbName binder) ctors
 
 inferParamVariance
   :: ScalaName

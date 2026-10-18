@@ -74,6 +74,7 @@ data CompileError
   | UnsupportedElimination String
   | UnsupportedCompiledClauses
   | UnsupportedCaseShape CaseUnsupported
+  | UnsupportedHigherKindedNullaryConstructor ScalaName
   | VarOutOfRange Int Int
   | ErasedVarReferenced Int
   deriving (Eq, Show)
@@ -202,10 +203,8 @@ recordTyParamsFromType ty0 = do
         Nothing -> pure (params, pushTermBinder env)
 
 
-dataTyParamsFromType :: Type -> Either CompileError ([ScalaName], TyEnv)
-dataTyParamsFromType ty = do
-  (params, env) <- recordTyParamsFromType ty
-  pure (map stbName params, env)
+dataTyParamsFromType :: Type -> Either CompileError ([ScalaTypeBinder], TyEnv)
+dataTyParamsFromType = recordTyParamsFromType
 
 compileTypeArgs :: TyEnv -> [Elim' Term] -> Either CompileError [ScalaType]
 compileTypeArgs tyEnv elims =

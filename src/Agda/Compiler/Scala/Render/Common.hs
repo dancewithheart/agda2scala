@@ -110,7 +110,7 @@ printVariantTyParams params =
   "[" <> intercalate ", " (map printVariantTyParam params) <> "]"
 
 printVariantTyParam :: ScalaTyParam -> String
-printVariantTyParam (ScalaTyParam name variance) = variancePrefix variance <> name
+printVariantTyParam (ScalaTyParam binder variance) = variancePrefix variance <> printTypeBinder binder
 
 variancePrefix :: ScalaVariance -> String
 variancePrefix variance =
@@ -120,8 +120,14 @@ variancePrefix variance =
 
 printTypeBinders :: [ScalaTypeBinder] -> String
 printTypeBinders [] = ""
-printTypeBinders params = "[" <> intercalate ", " (map printBinder params) <> "]"
-  where
-    printBinder (ScalaTypeBinder name 0) = name
-    printBinder (ScalaTypeBinder name arity) =
-      name <> "[" <> intercalate ", " (replicate arity "_") <> "]"
+printTypeBinders params =
+  "[" <> intercalate ", " (map printTypeBinder params) <> "]"
+
+printTypeBinder :: ScalaTypeBinder -> String
+printTypeBinder (ScalaTypeBinder name arity)
+  | arity == 0 = name
+  | otherwise =
+      name
+        <> "["
+        <> intercalate ", " (replicate arity "_")
+        <> "]"

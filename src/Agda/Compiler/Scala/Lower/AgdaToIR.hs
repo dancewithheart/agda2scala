@@ -152,17 +152,24 @@ lowerData typeName typeTy cons = do
   pure $ do
     (tps, _tyEnv) <- eParams
     ctors <- sequence eCtors
-    pure
-      ( DData
-          AgdaData
-            { adName = fromQName typeName
-            , adTyParams = tps
-            , adCtors = ctors
-            }
-      )
+    case
+      [ scName ctor
+      | ctor <- ctors
+      , null (scArgs ctor)
+      ] of
+      ctorName : _
+        | any ((> 0) . stbArity) tps ->
+            Left (UnsupportedHigherKindedNullaryConstructor ctorName)
+      _ ->
+        pure
+          (DData
+            AgdaData
+              { adName = fromQName typeName
+              , adTyParams = tps
+              , adCtors = ctors
+              })
 
-lowerCtor
-  :: Either CompileError ([ScalaName], TyEnv)
+lowerCtor :: Either CompileError ([ScalaTypeBinder], TyEnv)
   -> QName
   -> TCM (Either CompileError ScalaCtor)
 lowerCtor eParams conQName = do
