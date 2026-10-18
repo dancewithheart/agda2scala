@@ -25,7 +25,7 @@ data ScalaType
     deriving (Eq, Show)
 
 data ScalaTypeScheme = ScalaTypeScheme
-    { ssTyParams :: [ScalaName] -- [A,B]
+    { ssTyParams :: [ScalaTypeBinder] -- [A,B]
     , ssType :: ScalaType -- A => B
     }
     deriving (Eq, Show)

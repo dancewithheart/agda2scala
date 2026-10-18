@@ -3,8 +3,10 @@
 module Compile.TypesTest (tests) where
 
 import Agda.Syntax.Common
-    ( Arg (..)
+    ( Arg(..)
+    , Hiding(..)
     , defaultArgInfo
+    , setHiding
     )
 import Agda.Syntax.Internal
     ( Abs (..)
@@ -30,6 +32,7 @@ import Test.Tasty.HUnit
 
 import Agda.Compiler.Scala.Compile.Types
     ( compileTypeTermWith
+    , funSchemeFromType
     , isTypeLike
     , lookupTyVar
     , pushTermBinder
@@ -38,6 +41,8 @@ import Agda.Compiler.Scala.Compile.Types
     )
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaType (..)
+    , ScalaTypeBinder (..)
+    , ScalaTypeScheme (..)
     )
 
 tests :: TestTree
@@ -65,6 +70,9 @@ tests =
             , testCase "compileTypeTermWith rejects a dependent Pi" test_compileTypeTermWith_rejectsDependentFunctionType
             ]
         , testCase "extracts type constructor arity" test_typeParameterArity
+        , testCase
+            "function schemes preserve higher-kinded parameter arity"
+            test_funSchemeFromType_higherKinded
         ]
 
 -- A : Type u  ==> El _ (Sort _)
@@ -208,3 +216,18 @@ test_typeParameterArity = do
             (Pi (dummyDom typeSort)
               (NoAbs "_" piToSortType))
     typeParameterArity binaryConstructor @?= Just 2
+
+test_funSchemeFromType_higherKinded :: Assertion
+test_funSchemeFromType_higherKinded = do
+    let functionType =
+          El dummySort $
+            Pi
+              (setHiding Hidden (dummyDom piToSortType))
+              (NoAbs "_" typeSort)
+    funSchemeFromType functionType
+      @?= Right
+        ( []
+        , ScalaTypeScheme
+            [ScalaTypeBinder "x0" 1]
+            (STyName "Type")
+        )

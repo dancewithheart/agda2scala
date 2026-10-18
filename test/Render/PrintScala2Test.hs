@@ -220,7 +220,7 @@ test_polyDef =
         SeFun
             "id"
             [SeVar "x1" (STyVar "A")]
-            (ScalaTypeScheme ["A"] (STyVar "A"))
+            (ScalaTypeScheme [ScalaTypeBinder "A" 0] (STyVar "A"))
             (STeVar "x1")
     expected = "def id[A](x1: A): A = x1\n"
 
@@ -288,7 +288,7 @@ test_print_if_breaks_branches =
             [ SeVar "x1" (STyVar "V")
             , SeVar "x2" (STyName "Long")
             ]
-            (ScalaTypeScheme ["V"] (STyVar "V"))
+            (ScalaTypeScheme [ScalaTypeBinder "V" 0] (STyVar "V"))
             ( STeIf
                 (STeBinOp (STeVar "x2") "<" (STeVar "p2"))
                 (STeApp (STeVar "lookup") [STeVar "x1", STeVar "x2", STeVar "p1"])

@@ -47,7 +47,7 @@ printScala3 def = case def of
         "def"
             <> exprSeparator
             <> fName
-            <> printTyParams (ssTyParams resType)
+            <> printTypeBinders (ssTyParams resType)
             <> "("
             <> combineThem (map printVar args)
             <> ")"

@@ -54,7 +54,7 @@ printScala2 def = case def of
         "def"
             <> sp
             <> fName
-            <> printTyParams (ssTyParams resScheme)
+            <> printTypeBinders (ssTyParams resScheme)
             <> "("
             <> intercalate ", " (map printVar args)
             <> ")"
