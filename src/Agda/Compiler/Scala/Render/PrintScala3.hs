@@ -14,6 +14,7 @@ import Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printTypeBinders
   , printVariantTyParams
   , strip
   , sp
@@ -25,6 +26,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaPat(..)
   , ScalaTerm (..)
   , ScalaType (..)
+  , ScalaTypeBinder
   , ScalaTyParam (..)
   , ScalaTypeScheme (..)
   , SeVar (..)
@@ -99,22 +101,22 @@ printExtends name tyParams = " extends " <> name <> printTyParams tyParams
 ctorParam :: Int -> ScalaType -> String
 ctorParam i ty = "x" <> show i <> colonSeparator <> exprSeparator <> printType ty
 
-printCaseClass :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printCaseClass :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
 printCaseClass name tyParams args =
   "final case class"
     <> exprSeparator
     <> name
-    <> printTyParams tyParams
+    <> printTypeBinders tyParams
     <> "("
     <> printExpr args
     <> ")"
 
-printTrait :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printTrait :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
 printTrait name tyParams fields =
   "trait"
     <> exprSeparator
     <> name
-    <> printTyParams tyParams
+    <> printTypeBinders tyParams
     <> bracketWithIndent (map printAbstractMember fields) 2
 
 printAbstractMember :: SeVar -> String

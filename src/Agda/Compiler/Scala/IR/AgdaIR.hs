@@ -9,6 +9,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor
   , ScalaName
   , ScalaTerm
+  , ScalaTypeBinder
   , ScalaTypeScheme
   , SeVar
   )
@@ -27,7 +28,7 @@ data AgdaData = AgdaData
 
 data AgdaRecord = AgdaRecord
   { arName     :: ScalaName
-  , arTyParams :: [ScalaName]
+  , arTyParams :: [ScalaTypeBinder]
   , arFields   :: [SeVar]
   } deriving (Eq, Show)
 

@@ -7,7 +7,7 @@ This makes tests robust across refactors.
 -}
 module Render.PrintProps (printProps) where
 
-import Data.List (isInfixOf)
+import Data.List (intercalate, isInfixOf)
 
 import Hedgehog (Gen, Group (..), Property, assert, forAll, property, success)
 import qualified Hedgehog.Gen as Gen
@@ -17,6 +17,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaExpr (..)
   , ScalaTerm (..)
   , ScalaType (..)
+  , ScalaTypeBinder (..)
   , ScalaTypeScheme (..)
   , SeVar (..)
   , scalaTypeScheme
@@ -37,6 +38,9 @@ printProps =
         , ("prop_escape_no_raw_newlines", prop_escape_no_raw_newlines)
         , ("prop_printScala3_type_total", prop_printScala3_type_total)
         , ("prop_scala2_prints_type_params_iff_present", prop_scala2_prints_type_params_iff_present)
+        , ( "higher-kinded record parameters render in both dialects"
+          , prop_recordTypeParameterArity
+          )
         ]
 
 -- ===== Generators ============================================================
@@ -175,3 +179,19 @@ prop_scala2_prints_type_params_iff_present = property $ do
     if null ps
         then assert (not hasBrackets)
         else assert hasBrackets
+
+prop_recordTypeParameterArity :: Property
+prop_recordTypeParameterArity = property $ do
+    arity <- forAll (Gen.int (Range.linear 0 4))
+    let param = ScalaTypeBinder "F" arity
+        expr = SeTrait
+          "Transformer"
+          [param]
+          [SeVar "run" (STyName "Long")]
+        suffix
+          | arity == 0 = ""
+          | otherwise =
+              "[" <> intercalate ", " (replicate arity "_") <> "]"
+        expected = "trait Transformer[F" <> suffix <> "]"
+    assert (expected `isInfixOf` printScala2 expr)
+    assert (expected `isInfixOf` printScala3 expr)

@@ -59,6 +59,7 @@ import Agda.Compiler.Scala.Compile.Types
   , fromQName
   , funSchemeFromType
   , pushTermBinder
+  , recordTyParamsFromType
   )
 import Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaData(..)
@@ -103,23 +104,19 @@ lowerRecord :: QName
   -> RecordData
   -> Either CompileError AgdaRecord
 lowerRecord qn recTy recordData = do
-  (tps, tyEnv0) <- dataTyParamsFromType recTy
-
+  (tps, tyEnv0) <- recordTyParamsFromType recTy
   let allDoms = teleToList (_recTel recordData)
       fieldNames = map (fromQName . unDom) (_recFields recordData)
       parameterCount = length allDoms - length fieldNames
-
   if parameterCount < 0
     then Left (UnsupportedDefinition qn)
     else do
       let fieldDoms = drop parameterCount allDoms
-
       (fieldsRev, _) <-
         foldM
           lowerRecordField
           ([], tyEnv0)
           (zip fieldNames fieldDoms)
-
       pure AgdaRecord
         { arName = fromQName qn
         , arTyParams = tps

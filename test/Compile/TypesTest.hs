@@ -34,6 +34,7 @@ import Agda.Compiler.Scala.Compile.Types
     , lookupTyVar
     , pushTermBinder
     , pushTyParam
+    , typeParameterArity
     )
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaType (..)
@@ -63,6 +64,7 @@ tests =
             , testCase "compileTypeTermWith lowers a curried Pi to nested STyFun" test_compileTypeTermWith_curriedFunctionType
             , testCase "compileTypeTermWith rejects a dependent Pi" test_compileTypeTermWith_rejectsDependentFunctionType
             ]
+        , testCase "extracts type constructor arity" test_typeParameterArity
         ]
 
 -- A : Type u  ==> El _ (Sort _)
@@ -196,3 +198,13 @@ test_compileTypeTermWith_rejectsDependentFunctionType = do
 
 typeFromTerm :: Term -> Type
 typeFromTerm = El dummySort
+
+test_typeParameterArity :: Assertion
+test_typeParameterArity = do
+    typeParameterArity typeSort @?= Just 0
+    typeParameterArity piToSortType @?= Just 1
+    let binaryConstructor =
+          El dummySort
+            (Pi (dummyDom typeSort)
+              (NoAbs "_" piToSortType))
+    typeParameterArity binaryConstructor @?= Just 2

@@ -21,6 +21,7 @@ import Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printTypeBinders
   , printVariantTyParams
   , sp
   )
@@ -34,6 +35,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTyParam
   , ScalaTypeScheme (..)
   , SeVar (..)
+  , ScalaTypeBinder
   , tyParamNames
   )
 
@@ -80,15 +82,14 @@ printScala2 def = case def of
         <> multiLineCommentEnd
         <> nl
 
-printTrait :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printTrait :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
 printTrait name tyParams fields =
   "trait"
     <> sp
     <> name
-    <> printTyParams tyParams
+    <> printTypeBinders tyParams
     <> sp
-    <> bracket
-         (indentBlock 2 (combineLines (map printAbstractMember fields)))
+    <> bracket (indentBlock 2 (combineLines (map printAbstractMember fields)))
 
 printAbstractMember :: SeVar -> String
 printAbstractMember (SeVar name ty) =
@@ -134,12 +135,12 @@ printCaseObject superName caseName =
 
 -- ===== Product types ========================================================
 
-printCaseClass :: ScalaName -> [ScalaName] -> [SeVar] -> String
+printCaseClass :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
 printCaseClass name tyParams args =
     "final case class"
         <> sp
         <> name
-        <> printTyParams tyParams
+        <> printTypeBinders tyParams
         <> "("
         <> intercalate ", " (map printVar args)
         <> ")"

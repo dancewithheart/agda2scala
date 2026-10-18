@@ -7,8 +7,9 @@ module Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTerm (..)
   , ScalaTypeScheme (..)
   , ScalaCtor (..)
-  , ScalaTyParam(..)
-  , ScalaVariance(..)
+  , ScalaTyParam (..)
+  , ScalaVariance (..)
+  , ScalaTypeBinder (..)
   , scalaTypeScheme
   , tyParamNames
   , unHandled
@@ -69,8 +70,8 @@ data ScalaCtor = ScalaCtor
 data ScalaExpr
     = SePackage [ScalaName] [ScalaExpr]
     | SeSum ScalaName [ScalaTyParam] [ScalaCtor]
-    | SeProd ScalaName [ScalaName] [SeVar]
-    | SeTrait ScalaName [ScalaName] [SeVar]
+    | SeProd ScalaName [ScalaTypeBinder] [SeVar]
+    | SeTrait ScalaName [ScalaTypeBinder] [SeVar]
     | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
     | SeUnhandled ScalaName String
     deriving (Eq, Show)
@@ -92,3 +93,9 @@ data ScalaTyParam = ScalaTyParam
 
 tyParamNames :: [ScalaTyParam] -> [ScalaName]
 tyParamNames = map stpName
+
+data ScalaTypeBinder = ScalaTypeBinder
+  { stbName :: ScalaName
+  , stbArity :: Int
+  }
+  deriving (Eq, Show)

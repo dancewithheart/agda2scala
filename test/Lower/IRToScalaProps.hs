@@ -25,6 +25,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
   , ScalaType(..)
+  , ScalaTypeBinder(..)
   , SeVar(..)
   )
 
@@ -116,9 +117,9 @@ prop_operationRecordLowersToTrait = property $ do
         DRecord
           AgdaRecord
             { arName = "Monoid"
-            , arTyParams = ["A"]
+            , arTyParams = [ScalaTypeBinder "A" 0]
             , arFields = fields
             }
 
   toScalaExpr defaultNamePolicy decl
-    === SeTrait "Monoid" ["A"] fields
+    === SeTrait "Monoid" [ScalaTypeBinder "A" 0] fields

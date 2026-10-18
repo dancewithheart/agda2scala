@@ -20,8 +20,10 @@ module Agda.Compiler.Scala.Compile.Types (
     isTypeParamBinder,
     lookupTyVar,
     pushTermBinder,
-    pushTyParam,
-    unrollPi,
+    pushTyParam
+    , typeParameterArity
+    , recordTyParamsFromType
+    , unrollPi
 ) where
 
 import Control.Monad (foldM)
@@ -46,9 +48,22 @@ import Agda.Compiler.Scala.Name.NameEnv (sanitizeScalaIdent)
 import Agda.Compiler.Scala.IR.ScalaExpr (
   ScalaName,
   ScalaType (..),
+  ScalaTypeBinder (..),
   ScalaTypeScheme (..),
   SeVar (..),
  )
+
+-- Set             -> arity 0
+-- Set -> Set      -> arity 1
+-- Set -> Set -> Set -> arity 2
+
+typeParameterArity :: Type -> Maybe Int
+typeParameterArity (El _ (Sort _)) = Just 0
+
+typeParameterArity (El _ (Pi dom codomain)) | isTypeLike (unDom dom) =
+  (1 +) <$> typeParameterArity (absBody codomain)
+
+typeParameterArity _ = Nothing
 
 -- ===== Errors ================================================================
 
@@ -168,20 +183,29 @@ compileTypeTermWith tyEnv = \case
 We treat only binders whose dom type is type-like (Sort/Pi..Sort) as type params.
 Example: Maybe (A : Type u) : Type u   -- A is NotHidden but type-like
 -}
-dataTyParamsFromType :: Type -> Either CompileError ([ScalaName], TyEnv)
-dataTyParamsFromType ty0 = do
-    (pis, _res) <- unrollPi ty0
-    -- fold like funSchemeFromType but without term args; for datatypes
-    foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
+recordTyParamsFromType :: Type -> Either CompileError ([ScalaTypeBinder], TyEnv)
+recordTyParamsFromType ty0 = do
+  (pis, _) <- unrollPi ty0
+  foldM step ([], emptyTyEnv) (zip [0 :: Int ..] pis)
   where
-    step (ps, env) (i, (dom, _absTy)) =
-        if isDataTypeParamBinder dom
-            then
-                let a = binderName i dom
-                 in pure (ps <> [a], pushTyParam a env)
-            else
-                -- datatype indices/term params are possible; keep env aligned
-                pure (ps, pushTermBinder env)
+    step :: ([ScalaTypeBinder], TyEnv)
+      -> (Int, (Dom Type, Abs Type))
+      -> Either CompileError ([ScalaTypeBinder], TyEnv)
+    step (params, env) (i, (dom, _)) =
+      case typeParameterArity (unDom dom) of
+        -- count the type arguments
+        Just arity ->
+          let name = binderName i dom
+              param = ScalaTypeBinder name arity
+          in pure
+              (params <> [param], pushTyParam name env)
+        Nothing -> pure (params, pushTermBinder env)
+
+
+dataTyParamsFromType :: Type -> Either CompileError ([ScalaName], TyEnv)
+dataTyParamsFromType ty = do
+  (params, env) <- recordTyParamsFromType ty
+  pure (map stbName params, env)
 
 compileTypeArgs :: TyEnv -> [Elim' Term] -> Either CompileError [ScalaType]
 compileTypeArgs tyEnv elims =
