@@ -76,6 +76,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTerm (..)
   , unHandled
   , ScalaType(..)
+  , ScalaTypeBinder (..)
   , ScalaTypeScheme(..)
   , SeVar(..)
   )
@@ -210,7 +211,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                         RecordDefn (RecordData{_recConHead = conHead}) ->
                           liftIO $ atomicModifyIORef' modEnv $ \ne ->
                             let recordCtor = ctorName defaultNamePolicy (fromQName (conName conHead))
-                                ne' = registerTraitCtor parent recordCtor tyParams fields ne
+                                ne' = registerTraitCtor parent recordCtor (map stbName tyParams) fields ne
                             in (ne', ())
                         _ -> pure ()
                       pure expr

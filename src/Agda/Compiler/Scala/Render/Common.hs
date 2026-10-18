@@ -9,6 +9,7 @@ module Agda.Compiler.Scala.Render.Common
   , printPat
   , printType
   , printTyParams
+  , printTypeBinders
   , printVariantTyParams
   , sp
   , strip
@@ -20,6 +21,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
   , ScalaPat(..)
   , ScalaType (..)
+  , ScalaTypeBinder (..)
   , ScalaVariance (..)
   , ScalaTyParam (..)
   )
@@ -115,3 +117,11 @@ variancePrefix variance =
   case variance of
     Invariant -> ""
     Covariant -> "+"
+
+printTypeBinders :: [ScalaTypeBinder] -> String
+printTypeBinders [] = ""
+printTypeBinders params = "[" <> intercalate ", " (map printBinder params) <> "]"
+  where
+    printBinder (ScalaTypeBinder name 0) = name
+    printBinder (ScalaTypeBinder name arity) =
+      name <> "[" <> intercalate ", " (replicate arity "_") <> "]"

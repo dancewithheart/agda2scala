@@ -1,5 +1,7 @@
 module examples.hk_typs where
 
+open import Agda.Builtin.Nat
+
 record NatTransformer (F : Set → Set) : Set₁ where
   field
     run : F Nat → F Nat

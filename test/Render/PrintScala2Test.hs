@@ -9,6 +9,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , ScalaPat (..)
     , ScalaTerm (..)
     , ScalaType (..)
+    , ScalaTypeBinder (..)
     , ScalaTyParam (..)
     , ScalaVariance (..)
     , ScalaTypeScheme (..)
@@ -120,7 +121,7 @@ test_printCaseClassPoly =
         "final case class Box[A](unbox: A)"
         ( printCaseClass
             "Box"
-            ["A"]
+            [ScalaTypeBinder "A" 0]
             [SeVar "unbox" (STyVar "A")]
         )
 
@@ -324,7 +325,7 @@ test_printMonoidTrait =
     monoid =
       SeTrait
         "Monoid"
-        ["A"]
+        [ScalaTypeBinder "A" 0]
         [ SeVar "empty" a
         , SeVar "combine" (STyFun a (STyFun a a))
         ]

@@ -8,6 +8,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , ScalaExpr (..)
     , ScalaPat (..)
     , ScalaTerm (..)
+    , ScalaTypeBinder (..)
     , ScalaType (..)
     , SeVar (..)
     , scalaTypeScheme
@@ -206,7 +207,7 @@ test_printMonoidTrait =
     monoid =
       SeTrait
         "Monoid"
-        ["A"]
+        [ScalaTypeBinder "A" 0]
         [ SeVar "empty" a
         , SeVar "combine" (STyFun a (STyFun a a))
         ]
