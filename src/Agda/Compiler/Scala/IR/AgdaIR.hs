@@ -22,7 +22,7 @@ data AgdaDecl
 
 data AgdaData = AgdaData
   { adName     :: ScalaName
-  , adTyParams :: [ScalaName]
+  , adTyParams :: [ScalaTypeBinder]
   , adCtors    :: [ScalaCtor]
   } deriving (Eq, Show)
 

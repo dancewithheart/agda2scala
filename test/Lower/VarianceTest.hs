@@ -7,6 +7,7 @@ import Test.Tasty.HUnit ( Assertion, assertEqual, testCase )
 
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaType (..)
+  , ScalaTypeBinder (..)
   , ScalaTyParam (..)
   , ScalaVariance(..)
   , ScalaCtor (..)
@@ -21,14 +22,17 @@ tests =
         , testCase "Function input prevents covariance" test_negativeOccurrenceIsInvariant
         , testCase "Positive and negative is invariant" test_mixedOccurrenceIsInvariant
         , testCase "Unknown wrappers remain conservative" test_unknownTypeConstructorIsInvariant
+        , testCase
+            "higher-kinded parameters are invariant"
+            test_higherKindedParameterIsInvariant
         ]
 
 test_rbtParameterIsCovariant :: Assertion
 test_rbtParameterIsCovariant =
   assertEqual
     "RBT value parameter occurs only covariantly"
-    [ScalaTyParam "V" Covariant]
-    (inferDataTyParams "RedBlackTree" ["V"] ctors)
+    [ScalaTyParam (ScalaTypeBinder "V" 0) Covariant]
+    (inferDataTyParams "RedBlackTree" [ScalaTypeBinder "V" 0] ctors)
   where
     v = STyVar "V"
     treeV = STyApp "RedBlackTree" [v]
@@ -49,10 +53,10 @@ test_negativeOccurrenceIsInvariant :: Assertion
 test_negativeOccurrenceIsInvariant =
   assertEqual
     "function input is a negative occurrence"
-    [ScalaTyParam "A" Invariant]
+    [ScalaTyParam (ScalaTypeBinder "A" 0) Invariant]
     ( inferDataTyParams
         "Consumer"
-        ["A"]
+        [ScalaTypeBinder "A" 0]
         [ ScalaCtor
             "Consumer"
             [STyFun (STyVar "A") (STyName "Long")]
@@ -63,10 +67,10 @@ test_mixedOccurrenceIsInvariant :: Assertion
 test_mixedOccurrenceIsInvariant =
   assertEqual
     "mixed occurrences require invariance"
-    [ScalaTyParam "A" Invariant]
+    [ScalaTyParam (ScalaTypeBinder "A" 0) Invariant]
     ( inferDataTyParams
         "Endomorphism"
-        ["A"]
+        [ScalaTypeBinder "A" 0]
         [ScalaCtor "Endomorphism" [STyFun (STyVar "A") (STyVar "A")]]
     )
 
@@ -74,9 +78,21 @@ test_unknownTypeConstructorIsInvariant :: Assertion
 test_unknownTypeConstructorIsInvariant =
   assertEqual
     "unknown constructor variance is treated conservatively"
-    [ScalaTyParam "A" Invariant]
+    [ScalaTyParam (ScalaTypeBinder "A" 0) Invariant]
     ( inferDataTyParams
         "Wrapped"
-        ["A"]
+        [ScalaTypeBinder "A" 0]
         [ScalaCtor "Wrapped" [STyApp "UnknownContainer" [STyVar "A"]]]
     )
+
+test_higherKindedParameterIsInvariant :: Assertion
+test_higherKindedParameterIsInvariant =
+  assertEqual
+    "higher-kinded parameters remain invariant"
+    [ ScalaTyParam (ScalaTypeBinder "F" 1) Invariant
+    , ScalaTyParam (ScalaTypeBinder "A" 0) Invariant
+    ]
+    (inferDataTyParams "HKBox" params ctors)
+  where
+    params = [ ScalaTypeBinder "F" 1, ScalaTypeBinder "A" 0 ]
+    ctors = [ ScalaCtor "Wrap" [STyApp "F" [STyVar "A"]] ]

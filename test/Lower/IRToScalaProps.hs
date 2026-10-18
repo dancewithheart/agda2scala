@@ -53,7 +53,7 @@ prop_dataCtorArityPreserved = property $ do
         DData
           AgdaData
             { adName = "Box"
-            , adTyParams = ["A"]
+            , adTyParams = [ScalaTypeBinder "A" 0]
             , adCtors = [ctor]
             }
   case toScalaExpr defaultNamePolicy decl of
@@ -68,7 +68,7 @@ prop_dataCtorNamePolicy = property $ do
         DData
           AgdaData
             { adName = "List"
-            , adTyParams = ["A"]
+            , adTyParams = [ScalaTypeBinder "A" 0]
             , adCtors =
                 [ ScalaCtor
                     { scName = "[]"

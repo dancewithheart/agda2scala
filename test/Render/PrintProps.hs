@@ -14,11 +14,14 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
 import Agda.Compiler.Scala.IR.ScalaExpr
-  ( ScalaExpr (..)
+  ( ScalaCtor(..)
+  , ScalaExpr (..)
   , ScalaTerm (..)
   , ScalaType (..)
   , ScalaTypeBinder (..)
   , ScalaTypeScheme (..)
+  , ScalaTyParam(..)
+  , ScalaVariance(..)
   , SeVar (..)
   , scalaTypeScheme
   )
@@ -43,6 +46,9 @@ printProps =
           )
         , ( "higher-kinded function parameters render in both dialects"
           , prop_functionTypeParameterArity
+          )
+        , ( "higher-kinded datatypes render in both dialects"
+          , prop_higherKindedDatatypeRendering
           )
         ]
 
@@ -223,3 +229,25 @@ prop_functionTypeParameterArity = property $ do
         expected = "def idF[F" <> suffix <> "]"
     assert (expected `isInfixOf` printScala2 expr)
     assert (expected `isInfixOf` printScala3 expr)
+
+prop_higherKindedDatatypeRendering :: Property
+prop_higherKindedDatatypeRendering = property $ do
+    let expr =
+          SeSum
+            "HKBox"
+            [ ScalaTyParam (ScalaTypeBinder "F" 1) Invariant
+            , ScalaTyParam (ScalaTypeBinder "A" 0) Invariant
+            ]
+            [ ScalaCtor "Wrap" [STyApp "F" [STyVar "A"]] ]
+        scala2 = printScala2 expr
+        scala3 = printScala3 expr
+    assert ("sealed trait HKBox[F[_], A]" `isInfixOf` scala2)
+    assert
+      ( "final case class Wrap[F[_], A](x0: F[A]) extends HKBox[F, A]"
+          `isInfixOf` scala2
+      )
+    assert ("enum HKBox[F[_], A]" `isInfixOf` scala3)
+    assert
+      ( "case Wrap(x0: F[A]) extends HKBox[F, A]"
+          `isInfixOf` scala3
+      )

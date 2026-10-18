@@ -10,4 +10,8 @@ record NatTransformer (F : Set → Set) : Set₁ where
 polyId : {F : Set → Set} {A : Set} → F A → F A
 polyId x = x
 {-# COMPILE AGDA2SCALA polyId #-}
-{-# COMPILE AGDA2SCALA_DEBUG polyId #-}
+
+data HKBox (F : Set → Set) (A : Set) : Set₁ where
+  Wrap : F A → HKBox F A
+{-# COMPILE AGDA2SCALA HKBox #-}
+{-# COMPILE AGDA2SCALA_DEBUG HKBox #-}
