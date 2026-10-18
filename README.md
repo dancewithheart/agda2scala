@@ -78,7 +78,6 @@ Currently supported:
 
 
 Roadmap is captured in milestones:
-* support polymorphic ADTs: List, Red Black Tree, ZIO: https://github.com/dancewithheart/agda2scala/issues/17
 * support FP abstractions: Functor, Monad: https://github.com/dancewithheart/agda2scala/issues/12
 
 ## Basic usage:
