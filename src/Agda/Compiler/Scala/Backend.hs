@@ -4,6 +4,9 @@ module Agda.Compiler.Scala.Backend
   ( Options (..)
   , defaultOptions
   , initModuleEnv
+  , lowerRecordConstruction
+  , substituteType
+  , initModuleEnv
   , outDirOpt
   , qualifyTermWithEnv
   , runScalaBackend
@@ -60,6 +63,9 @@ import Agda.Compiler.Scala.Name.NameEnv
   , registerCtors
   , registerRecordCtor
   , registerNullaryTerm
+  , TraitCtor (..)
+  , lookupTraitCtor
+  , registerTraitCtor
   )
 import Agda.Compiler.Scala.Name.NamePolicy (defaultNamePolicy, ctorName)
 import Agda.Compiler.Scala.Render.PrintScala2 (printScala2)
@@ -69,6 +75,9 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaPat (..)
   , ScalaTerm (..)
   , unHandled
+  , ScalaType(..)
+  , ScalaTypeScheme(..)
+  , SeVar(..)
   )
 import Agda.Compiler.Scala.Compile.Types (fromQName)
 
@@ -183,8 +192,9 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                                     [] -> registerNullaryTerm fName current
                                     _  -> current
                              in (updated, updated)
-                        let body' = qualifyTermWithEnv ne body
-                        pure (SeFun fName args scheme body')
+                        case lowerRecordConstruction ne (ssType scheme) body of
+                          Left err -> pure (SeUnhandled fName err)
+                          Right body' -> pure (SeFun fName args scheme body')
                     -- register the record constructor
                     SeProd parent _tyParams _fields -> do
                         case theDef def of
@@ -195,6 +205,15 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                                      in (ne', ())
                             _ -> pure ()
                         pure expr
+                    SeTrait parent tyParams fields -> do
+                      case theDef def of
+                        RecordDefn (RecordData{_recConHead = conHead}) ->
+                          liftIO $ atomicModifyIORef' modEnv $ \ne ->
+                            let recordCtor = ctorName defaultNamePolicy (fromQName (conName conHead))
+                                ne' = registerTraitCtor parent recordCtor tyParams fields ne
+                            in (ne', ())
+                        _ -> pure ()
+                      pure expr
                     _ -> pure expr
 
 lookupScalaPragmaForDefinition
@@ -210,6 +229,55 @@ lookupScalaPragmaForDefinition def@Defn{defName = qn} = do
 
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
+
+lowerRecordConstruction :: NameEnv
+  -> ScalaType
+  -> ScalaTerm
+  -> Either String ScalaTerm
+lowerRecordConstruction ne resultType body =
+  case body of
+    STeApp (STeVar constructor) values
+      | Just info <- lookupTraitCtor constructor ne ->
+          constructTrait info values
+    _ -> Right (qualifyTermWithEnv ne body)
+  where
+    constructTrait info values = do
+      actualTypes <-
+        case resultType of
+          STyName name | name == tcParent info -> Right []
+          STyApp name args | name == tcParent info -> Right args
+          _ -> Left "Record constructor result type mismatch"
+      let params = tcTyParams info
+          fields = tcFields info
+      if length params /= length actualTypes
+        then Left "Record type parameter arity mismatch"
+        else if length fields /= length values
+          then Left "Record field arity mismatch"
+          else do
+            let substitutions = zip params actualTypes
+                instantiate (SeVar name ty) =
+                  SeVar name (substituteType substitutions ty)
+                members =
+                  zip
+                    (map instantiate fields)
+                    (map (qualifyTermWithEnv ne) values)
+            Right (STeNew resultType members)
+
+substituteType :: [(String, ScalaType)]
+  -> ScalaType
+  -> ScalaType
+substituteType substitutions ty =
+  case ty of
+    STyVar name -> fromMaybe ty (lookup name substitutions)
+    STyApp name args ->
+      STyApp
+        name
+        (map (substituteType substitutions) args)
+    STyFun input output ->
+      STyFun
+        (substituteType substitutions input)
+        (substituteType substitutions output)
+    STyName _ -> ty
 
 qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
 qualifyTermWithEnv ne = go
@@ -233,6 +301,8 @@ qualifyTermWithEnv ne = go
       STeMatch
         (go scrut)
         [ (goPat pat, go rhs) | (pat, rhs) <- alts ]
+    go (STeNew ty members) =
+      STeNew ty [ (field, go value) | (field, value) <- members ]
     goPat SPWild          = SPWild
     goPat (SPVar n)       = SPVar n
     goPat (SPCtor n args) = SPCtor (qualifyCtor n) (map goPat args)

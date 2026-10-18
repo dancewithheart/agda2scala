@@ -9,6 +9,8 @@ import Agda.Compiler.Scala.Backend
     ( Options (..)
     , defaultOptions
     , initModuleEnv
+    , lowerRecordConstruction
+    , substituteType
     , outDirOpt
     , qualifyTermWithEnv
     , scalaBackend'
@@ -21,8 +23,15 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , ScalaExpr (..)
     , ScalaPat (..)
     , ScalaTerm (..)
+    , ScalaType (..)
+    , SeVar (..)
     )
-import Agda.Compiler.Scala.Name.NameEnv (emptyNameEnv, registerRecordCtor)
+import Agda.Compiler.Scala.Name.NameEnv
+  ( NameEnv
+  , emptyNameEnv
+  , registerRecordCtor
+  , registerTraitCtor
+  )
 import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 
 tests :: TestTree
@@ -38,6 +47,14 @@ tests =
         , testCase "shouldWriteModule skips modules with only empty SeUnhandled definitions" test_shouldWriteModule_allUnhandled
         , testCase "shouldWriteModule writes modules with at least one handled definition" test_shouldWriteModule_someHandled
         , testCase "record constructor patterns use the generated record type" test_qualifyRecordConstructorPattern
+        , testCase "substituteType replaces nested type variables" test_substituteType
+        , testCase "record construction instantiates field types" test_lowerRecordConstruction
+        , testCase "record construction rejects incorrect type arity"
+            test_recordTypeArity
+        , testCase "record construction rejects incorrect field arity"
+            test_recordFieldArity
+        , testCase "record construction rejects mismatched result type"
+            test_recordResultTypeMismatch
         ]
 
 test_isEnabled :: IO ()
@@ -124,3 +141,84 @@ test_qualifyRecordConstructorPattern = do
         expected
         (qualifyTermWithEnv nameEnv input)
 
+test_substituteType :: IO ()
+test_substituteType =
+    assertEqual
+        "nested type substitution"
+        (STyApp "List"
+            [STyFun (STyName "Long") (STyVar "B")])
+        (substituteType
+            [("A", STyName "Long")]
+            (STyApp "List"
+                [STyFun (STyVar "A") (STyVar "B")]))
+
+monoidEnv :: NameEnv
+monoidEnv =
+    registerTraitCtor
+        "Monoid"
+        "mkMonoid"
+        ["A"]
+        [ SeVar "empty" (STyVar "A")
+        , SeVar "combine"
+            (STyFun (STyVar "A")
+            (STyFun (STyVar "A") (STyVar "A"))
+            )
+        ]
+        emptyNameEnv
+
+monoidType :: ScalaType
+monoidType = STyApp "Monoid" [STyName "Long"]
+
+monoidValues :: [ScalaTerm]
+monoidValues =
+    [ STeLitInt 0
+    , STeVar "plus"
+    ]
+
+test_lowerRecordConstruction :: IO ()
+test_lowerRecordConstruction =
+    assertEqual
+        "record construction"
+        (Right
+            (STeNew monoidType
+                [ (SeVar "empty" (STyName "Long"), STeLitInt 0)
+                , ( SeVar "combine"
+                        (STyFun (STyName "Long")
+                            (STyFun (STyName "Long") (STyName "Long")))
+                  , STeVar "plus"
+                  )
+                ]))
+        (lowerRecordConstruction
+            monoidEnv
+            monoidType
+            (STeApp (STeVar "mkMonoid") monoidValues))
+
+test_recordTypeArity :: IO ()
+test_recordTypeArity =
+    assertEqual
+        "incorrect type parameter arity"
+        (Left "Record type parameter arity mismatch")
+        (lowerRecordConstruction
+            monoidEnv
+            (STyName "Monoid")
+            (STeApp (STeVar "mkMonoid") monoidValues))
+
+test_recordFieldArity :: IO ()
+test_recordFieldArity =
+    assertEqual
+        "incorrect field arity"
+        (Left "Record field arity mismatch")
+        (lowerRecordConstruction
+            monoidEnv
+            monoidType
+            (STeApp (STeVar "mkMonoid") [STeLitInt 0]))
+
+test_recordResultTypeMismatch :: IO ()
+test_recordResultTypeMismatch =
+    assertEqual
+        "incorrect result type"
+        (Left "Record constructor result type mismatch")
+        (lowerRecordConstruction
+            monoidEnv
+            (STyApp "Other" [STyName "Long"])
+            (STeApp (STeVar "mkMonoid") monoidValues))
