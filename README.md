@@ -18,7 +18,7 @@ Currently supported:
   * ✅ `Int` / `Nat`
   * ✅ `Bool`
   * ✅ `String`
-  * 🚧 broader literal coverage
+  * 🚧 more literal
 * ✅ Function application
   * ✅ normal visible arguments
   * ✅ erased hidden/type-level Agda arguments
@@ -41,7 +41,7 @@ Currently supported:
   * ✅ Agda `if_then_else_` lowered to Scala `if ... then ... else ...`
   * ✅ selected binary operators
   * ✅ natural-number boolean comparison `_ <ᵇ _` lowered to Scala `<`
-  * 🚧 broader operator coverage
+  * 🚧 more operators
 * ✅ Generated Scala 2 and Scala 3
   * ✅ Scala 2 sealed traits, case classes, and case objects
   * ✅ Scala 3 enums and enum cases
@@ -54,8 +54,8 @@ Currently supported:
   * ✅ `Nat`
   * ✅ `List`
   * ✅ pairs / products
-  * 🚧 broader stdlib coverage
-  * 🚧 principled mapping table with types, constructors, functions, and operators
+  * 🚧 more stdlib
+  * 🚧 mapping table with types, constructors, functions, and operators
 * 🚧 Variance inference
   * ✅ positive occurrences
   * ✅ negative occurrences through function inputs
@@ -65,15 +65,6 @@ Currently supported:
   * 🚧 variance propagation through known Scala and Agda type constructors
   * 🚧 contravariant parameters
   * 🚧 variance validation for records and other generated declarations
-* 🚧 Compiler robustness
-  * ✅ explicit errors for unsupported case-tree shapes
-  * ✅ property tests for de Bruijn environments and source-order case indices
-  * ✅ property tests for constructor-field replacement
-  * ✅ property tests for fresh-name supply
-  * ✅ algebraic-law tests for variance occurrence accumulation
-  * 🚧 structured diagnostics with source definition names and context
-  * 🚧 golden tests for generated Scala files
-  * 🚧 compile generated Scala automatically as part of Haskell integration tests
 * 🚧 Larger language features
   * 🚧 local `let` bindings
   * 🚧 lambda expressions
