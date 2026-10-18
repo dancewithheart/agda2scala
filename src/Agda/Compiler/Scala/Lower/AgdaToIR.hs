@@ -70,6 +70,7 @@ import Agda.Compiler.Scala.IR.AgdaIR
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaName
+  , ScalaTypeBinder(..)
   , ScalaTypeScheme(..)
   , SeVar(..)
   )
@@ -185,10 +186,11 @@ lowerFun :: QName
   -> Either CompileError AgdaFun
 lowerFun qn defTy mcc clauses = do
   (args, scheme) <- funSchemeFromType defTy
+  let tyParamNames = map stbName (ssTyParams scheme)
   body <-
     case directRecordConstructor mcc clauses of
-      Just term | null args -> compileBodyTerm (envFromFunction (ssTyParams scheme) []) term
-      _ -> compileFunctionBody (ssTyParams scheme) (argNames args) mcc
+      Just term | null args -> compileBodyTerm (envFromFunction tyParamNames []) term
+      _ -> compileFunctionBody tyParamNames (argNames args) mcc
   pure
     AgdaFun
       { afName = fromQName qn

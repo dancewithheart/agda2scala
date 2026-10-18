@@ -317,17 +317,28 @@ funSchemeFromType ty0 = do
     ret <- compileTypeWith env resTy
     pure (reverse args, ScalaTypeScheme (reverse tps) ret)
   where
-    step (argsAcc, tpsAcc, env) (i, (dom, _)) =
-        case getHiding dom of
-            Hidden
-                | isFunTypeParamBinder dom ->
-                    let a = binderName i dom
-                     in pure (argsAcc, a : tpsAcc, pushTyParam a env)
-            -- Any other binder is a term binder (explicit or implicit):
-            _ -> do
-                ty <- compileDomTypeWith env dom
-                let x = binderName i dom
-                pure (SeVar x ty : argsAcc, tpsAcc, pushTermBinder env)
+    step (argsAcc, tpsAcc, env) (i, (dom, _))
+        | isFunTypeParamBinder dom = do
+            arity <-
+                maybe
+                    (Left (UnsupportedType (unDom dom)))
+                    Right
+                    (typeParameterArity (unDom dom))
+            let name = binderName i dom
+                param = ScalaTypeBinder name arity
+            pure
+                ( argsAcc
+                , param : tpsAcc
+                , pushTyParam name env
+                )
+        | otherwise = do
+            ty <- compileDomTypeWith env dom
+            let name = binderName i dom
+            pure
+                ( SeVar name ty : argsAcc
+                , tpsAcc
+                , pushTermBinder env
+                )
 
 -- ===== Naming ================================================================
 

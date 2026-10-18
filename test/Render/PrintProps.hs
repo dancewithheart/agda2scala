@@ -41,6 +41,9 @@ printProps =
         , ( "higher-kinded record parameters render in both dialects"
           , prop_recordTypeParameterArity
           )
+        , ( "higher-kinded function parameters render in both dialects"
+          , prop_functionTypeParameterArity
+          )
         ]
 
 -- ===== Generators ============================================================
@@ -170,7 +173,10 @@ prop_scala2_prints_type_params_iff_present :: Property
 prop_scala2_prints_type_params_iff_present = property $ do
     ps <- forAll (Gen.list (Range.linear 0 4) genTyParam)
 
-    let scheme = ScalaTypeScheme ps (STyVar "A")
+    let scheme =
+          ScalaTypeScheme
+            (map (\name -> ScalaTypeBinder name 0) ps)
+            (STyVar "A")
         expr = SeFun "f" [SeVar "x" (STyVar "A")] scheme (STeVar "x")
         out = printScala2 expr
 
@@ -193,5 +199,27 @@ prop_recordTypeParameterArity = property $ do
           | otherwise =
               "[" <> intercalate ", " (replicate arity "_") <> "]"
         expected = "trait Transformer[F" <> suffix <> "]"
+    assert (expected `isInfixOf` printScala2 expr)
+    assert (expected `isInfixOf` printScala3 expr)
+
+prop_functionTypeParameterArity :: Property
+prop_functionTypeParameterArity = property $ do
+    arity <- forAll (Gen.int (Range.linear 0 4))
+    let param = ScalaTypeBinder "F" arity
+        ty
+          | arity == 0 = STyVar "F"
+          | otherwise =
+              STyApp "F" (replicate arity (STyName "Long"))
+        expr =
+          SeFun
+            "idF"
+            [SeVar "x" ty]
+            (ScalaTypeScheme [param] ty)
+            (STeVar "x")
+        suffix
+          | arity == 0 = ""
+          | otherwise =
+              "[" <> intercalate ", " (replicate arity "_") <> "]"
+        expected = "def idF[F" <> suffix <> "]"
     assert (expected `isInfixOf` printScala2 expr)
     assert (expected `isInfixOf` printScala3 expr)
