@@ -192,7 +192,6 @@ lowerFun qn defTy mcc clauses = do
     case directRecordConstructor mcc clauses of
       Just term | null args -> compileBodyTerm (envFromFunction (ssTyParams scheme) []) term
       _ -> compileFunctionBody (ssTyParams scheme) (argNames args) mcc
-      _ -> compileFunctionBody (ssTyParams scheme) (argNames args) mcc
   pure
     AgdaFun
       { afName = fromQName qn

@@ -4,6 +4,9 @@ module Agda.Compiler.Scala.Backend
   ( Options (..)
   , defaultOptions
   , initModuleEnv
+  , lowerRecordConstruction
+  , substituteType
+  , initModuleEnv
   , outDirOpt
   , qualifyTermWithEnv
   , runScalaBackend
@@ -227,8 +230,7 @@ lookupScalaPragmaForDefinition def@Defn{defName = qn} = do
 lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
 lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
 
-lowerRecordConstruction
-  :: NameEnv
+lowerRecordConstruction :: NameEnv
   -> ScalaType
   -> ScalaTerm
   -> Either String ScalaTerm
@@ -266,7 +268,7 @@ substituteType :: [(String, ScalaType)]
   -> ScalaType
 substituteType substitutions ty =
   case ty of
-    STyVar name -> maybe ty id (lookup name substitutions)
+    STyVar name -> fromMaybe ty (lookup name substitutions)
     STyApp name args ->
       STyApp
         name
