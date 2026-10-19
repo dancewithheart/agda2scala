@@ -1,14 +1,14 @@
 [![CI](https://github.com/dancewithheart/agda2scala/actions/workflows/haskell.yml/badge.svg?branch=main)](https://github.com/dancewithheart/agda2scala/actions?query=workflow%3A%22build%22+branch%3Amain)
 
-An **experimental Agda backend** that generates Scala 2 or Scala 3 source files.
+An **experimental Agda backend** that generates Scala 2 or Scala 3 source files from Agda (formal verification).
 
-Currently supported:
+## Roadmap
 
 * ✅ Sum types / ADTs
   * ✅ simple ADTs
   * ✅ polymorphic ADTs, e.g. `Maybe[A]`, `List[A]`
   * ✅ constructors with arguments
-  * ✅ inferred covariance for generated ADTs where safe, e.g. `RedBlackTree[+V]`
+  * ✅ inferred covariance for generated ADTs (`RedBlackTree[+V]`)
   * ✅ nullary polymorphic constructors lowered with `Nothing`, e.g. `EmptyRBT extends RedBlackTree[Nothing]`
 * ✅ Product types / records
   * ✅ simple records
@@ -77,15 +77,27 @@ Currently supported:
   * 🚧 termination and totality assumptions in generated Scala
 
 
-Roadmap is captured in milestones:
+Planed milestones:
 * support FP abstractions: Functor, Monad: https://github.com/dancewithheart/agda2scala/issues/12
+* convert Agda proofs into property tests e.g. Monoids, Functor (create generators based on inductive definitions)
+* convert some Agda definitions to:
+   - Scala 3 match types
+   - Scala 2 / 3 path dependent types
+* convert coinductive definitions from Agda into lazy streams in Scala
+* (?) support more languages: Kotlin, Java, JVM bytecode
 
-## Basic usage:
+## Usage
+
 ```sh
 cabal run -- agda2scala ./examples/rbt.agda
+cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/Monoids.agda
 ```
 
-compile following Agda code:
+# Examples
+
+[Agda examples](./examples/adts.agda) and generated [Scala 3 code](./scala3/src/main/scala) and [Scala 2 code](./scala2/src/main/scala).
+
+## Example RedBlackTree
 
 ```agda
 module examples.rbt where
@@ -116,7 +128,7 @@ lookup defaultVal key (RBT c left currKey x right) =
 {-# COMPILE AGDA2SCALA lookup #-}
 ```
 
-into Scala code:
+generated Scala:
 
 ```scala
 package examples
@@ -142,8 +154,6 @@ object rbt:
         p3
 ```
 
-More [Agda examples](./examples/adts.agda) and [output Scala 3 code](./scala3/src/main/scala/examples/adts.scala).
-
 ## Architecture
 
 We use 2 internal representation
@@ -156,7 +166,6 @@ Definition ==========> AgdaIR ==> ScalaIR ============> String
 ```
 
 At the end we choose between [Scala 2](./src/Agda/Compiler/Scala/Render/PrintScala2.hs) and [Scala 3](./src/Agda/Compiler/Scala/Render/PrintScala3.hs) syntax.
-Possible future directions: Kotlin, Java, JVM bytecode
 
 ## Identifier mapping
 
@@ -198,70 +207,34 @@ cabal test agda2scala-test
 cabal test agda2scala-props
 ```
 
-* Simple way to run Scala backend
-
-```sh
-cabal run -- agda2scala --help
-cabal run -- agda2scala ./examples/adts.agda
-```
-
-* Generate Scala2 output
-
-```sh
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
-```
-
-* Generate Scala3 (dotty) output
-
-```sh
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
-```
-
-* format code
-```sh
-fourmolu -i $(find src app test -name '*.hs')
-cabal-fmt -i agda2scala.cabal
-```
-
 * static code analysis using [HLint](https://hackage.haskell.org/package/hlint/docs/Language-Haskell-HLint.html):
 ```sh
 hlint src app test
 ```
 
+* format code (optionally)
+```sh
+fourmolu -i $(find src app test -name '*.hs')
+cabal-fmt -i agda2scala.cabal
+```
+
 ## end-to-end tests
 
 There are [Scala 3](./scala3) and [Scala 2](./scala2) projects for code
-generated from [Agda examples](./examples/adts.agda)
-
-They have unit tests, that use code generated from examples.
-
+generated from [Agda examples](./examples/adts.agda) they are [checked CI on Github](/.github/workflows/haskell.yml), they include unit tests
+to execute code generated from Agda.
 ```text
                 agda2scala                
                 (generate)                     sbt test
 Agda examples ==============> src/main/scala <============ src/test/scala
-
-checks:
-* compile Agda examples to Scala code
-* run Scala unit tests that calls that Scala code
 ```
-
-Those tests are [run on CI - Github Actions](/.github/workflows/haskell.yml).
-
-Generate Scala 2 code from Agda examples and running tests:
-```shell
+Locally (you need [SBT](https://www.scala-sbt.org/2.x/docs/en/Setup.html):
+```sh
 cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/adts.agda
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/rbt.agda
-cd scala2
-sbt ~test
+cd scala3
+sbt test
 ```
 
-generate Scala 3 code:
-```shell
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/adts.agda
-cabal run -- agda2scala --compile --no-main --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/rbt.agda
-cd scala3
-sbt ~test
-```
 
 ## Resources
 * Documentation for [Agda as Haskell library on Hackage](https://hackage.haskell.org/package/Agda) including
@@ -275,4 +248,3 @@ sbt ~test
   * [omelkonian/agda-minimal-backend](https://github.com/omelkonian/agda-minimal-backend)
   * [omelkonian/agda2train](https://github.com/omelkonian/agda2train)
   * [HectorPeeters/agda2rust](https://github.com/HectorPeeters/agda2rust), ([publication](https://repository.tudelft.nl/islandora/object/uuid:39bff395-1bd6-4905-8554-cef0cd5e7d3e))
-
