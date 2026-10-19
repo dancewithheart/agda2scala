@@ -21,9 +21,11 @@ import Agda.Compiler.Scala.Backend
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
     , ScalaExpr (..)
+    , ScalaMember(..)
     , ScalaPat (..)
     , ScalaTerm (..)
     , ScalaType (..)
+    , ScalaTypeBinder(..)
     , SeVar (..)
     )
 import Agda.Compiler.Scala.Name.NameEnv
@@ -49,12 +51,10 @@ tests =
         , testCase "record constructor patterns use the generated record type" test_qualifyRecordConstructorPattern
         , testCase "substituteType replaces nested type variables" test_substituteType
         , testCase "record construction instantiates field types" test_lowerRecordConstruction
-        , testCase "record construction rejects incorrect type arity"
-            test_recordTypeArity
-        , testCase "record construction rejects incorrect field arity"
-            test_recordFieldArity
-        , testCase "record construction rejects mismatched result type"
-            test_recordResultTypeMismatch
+        , testCase "record construction rejects incorrect type arity" test_recordTypeArity
+        , testCase "record construction rejects incorrect field arity" test_recordFieldArity
+        , testCase "record construction rejects mismatched result type" test_recordResultTypeMismatch
+        , testCase "polymorphic method implementations require lowering" test_polymorphicMethodRequiresLowering
         ]
 
 test_isEnabled :: IO ()
@@ -153,18 +153,18 @@ test_substituteType =
                 [STyFun (STyVar "A") (STyVar "B")]))
 
 monoidEnv :: NameEnv
-monoidEnv =
-    registerTraitCtor
-        "Monoid"
-        "mkMonoid"
-        ["A"]
-        [ SeVar "empty" (STyVar "A")
-        , SeVar "combine"
-            (STyFun (STyVar "A")
-            (STyFun (STyVar "A") (STyVar "A"))
-            )
-        ]
-        emptyNameEnv
+monoidEnv = registerTraitCtor
+    "Monoid"
+    "mkMonoid"
+    ["A"]
+    [ MemberValue (SeVar "empty" (STyVar "A"))
+    , MemberValue
+        (SeVar "combine"
+          (STyFun
+            (STyVar "A")
+            (STyFun (STyVar "A") (STyVar "A"))))
+    ]
+    emptyNameEnv
 
 monoidType :: ScalaType
 monoidType = STyApp "Monoid" [STyName "Long"]
@@ -222,3 +222,28 @@ test_recordResultTypeMismatch =
             monoidEnv
             (STyApp "Other" [STyName "Long"])
             (STeApp (STeVar "mkMonoid") monoidValues))
+
+test_polymorphicMethodRequiresLowering :: IO ()
+test_polymorphicMethodRequiresLowering =
+  assertEqual
+    "polymorphic method implementations require explicit lowering"
+    (Left "Polymorphic member implementation requires method lowering: map")
+    (lowerRecordConstruction
+      functorEnv
+      (STyApp "Functor" [STyName "Option"])
+      (STeApp (STeVar "mkFunctor") [STeVar "mapMaybe"]))
+  where
+    functorEnv =
+      registerTraitCtor
+        "Functor"
+        "mkFunctor"
+        ["F"]
+        [ MemberMethod
+            "map"
+            [ ScalaTypeBinder "A" 0 , ScalaTypeBinder "B" 0 ]
+            [ SeVar "f" (STyFun (STyVar "A") (STyVar "B"))
+            , SeVar "fa" (STyApp "F" [STyVar "A"])
+            ]
+            (STyApp "F" [STyVar "B"])
+        ]
+        emptyNameEnv

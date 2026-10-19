@@ -28,8 +28,8 @@ import qualified Data.HashSet as HS
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor (..)
+  , ScalaMember
   , ScalaName
-  , SeVar
   )
 
 -- Scala 3 keywords: https://scala-lang.org/files/archive/spec/3.4/01-lexical-syntax.html#regular-keywords
@@ -75,7 +75,7 @@ scalaKeywords =
 data TraitCtor = TraitCtor
   { tcParent :: ScalaName
   , tcTyParams :: [ScalaName]
-  , tcFields :: [SeVar]
+  , tcFields :: [ScalaMember]
   }
   deriving (Eq, Show)
 
@@ -105,19 +105,13 @@ emptyNameEnv =
 registerTraitCtor :: ScalaName
   -> ScalaName
   -> [ScalaName]
-  -> [SeVar]
+  -> [ScalaMember]
   -> NameEnv
   -> NameEnv
-registerTraitCtor parentName ctorName tyParams fields nameEvn =
-  nameEvn
-    { neTraitCtors =
-        HM.insert
-          ctorName
-          ctr
-          (neTraitCtors nameEvn)
-    }
+registerTraitCtor parentName ctorName tyParams fields nameEnv =
+  nameEnv { neTraitCtors = HM.insert ctorName ctor (neTraitCtors nameEnv) }
   where
-    ctr = (TraitCtor parentName tyParams fields)
+    ctor = TraitCtor parentName tyParams fields
 
 lookupTraitCtor :: ScalaName -> NameEnv -> Maybe TraitCtor
 lookupTraitCtor ctor ne =

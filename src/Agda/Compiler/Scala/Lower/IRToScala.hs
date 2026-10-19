@@ -19,6 +19,7 @@ import Agda.Compiler.Scala.Name.NamePolicy
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
+  , ScalaMember(..)
   , ScalaPat(..)
   , ScalaTerm(..)
   , SeVar(..)
@@ -36,17 +37,38 @@ toScalaExpr policy decl = case decl of
   DRecord r ->
     let name = typeName policy (arName r)
         tyParams = arTyParams r
-        fields = map (lowerField policy) (arFields r)
+        members = map (lowerMember policy) (arFields r)
     in
-      if isOperationRecord fields
-        then SeTrait name tyParams fields
-        else SeProd name tyParams fields
+      case traverse valueMember members of
+        Just values | not (any isOperationMember members) ->
+          SeProd name tyParams values
+        _ -> SeTrait name tyParams members
   DFun f ->
     SeFun
       (termName policy (afName f))
       (map (lowerField policy) (afArgs f))
       (afScheme f)
       (lowerTerm policy (afBody f))
+
+lowerMember :: NamePolicy -> ScalaMember -> ScalaMember
+lowerMember policy member =
+  case member of
+    MemberValue field -> MemberValue (lowerField policy field)
+    MemberMethod name tyParams args result ->
+      MemberMethod
+        (termName policy name)
+        tyParams
+        (map (lowerField policy) args)
+        result
+
+valueMember :: ScalaMember -> Maybe SeVar
+valueMember (MemberValue field) = Just field
+valueMember _ = Nothing
+
+isOperationMember :: ScalaMember -> Bool
+isOperationMember (MemberMethod _ _ _ _) = True
+isOperationMember (MemberValue (SeVar _ STyFun{})) = True
+isOperationMember _ = False
 
 lowerCtor :: NamePolicy -> ScalaCtor -> ScalaCtor
 lowerCtor policy (ScalaCtor name args) =
@@ -99,10 +121,3 @@ lowerPat policy pat = case pat of
   SPLitString s    -> SPLitString s
   SPCons headPat tailPat ->
     SPCons (lowerPat policy headPat) (lowerPat policy tailPat)
-
-isOperationRecord :: [SeVar] -> Bool
-isOperationRecord = any isOperationField
-
-isOperationField :: SeVar -> Bool
-isOperationField (SeVar _ STyFun{}) = True
-isOperationField _ = False

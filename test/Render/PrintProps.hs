@@ -16,6 +16,7 @@ import qualified Hedgehog.Range as Range
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr (..)
+  , ScalaMember (..)
   , ScalaTerm (..)
   , ScalaType (..)
   , ScalaTypeBinder (..)
@@ -199,7 +200,7 @@ prop_recordTypeParameterArity = property $ do
         expr = SeTrait
           "Transformer"
           [param]
-          [SeVar "run" (STyName "Long")]
+          [MemberValue (SeVar "run" (STyName "Long"))]
         suffix
           | arity == 0 = ""
           | otherwise =

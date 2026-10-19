@@ -72,6 +72,7 @@ import Agda.Compiler.Scala.Render.PrintScala2 (printScala2)
 import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaExpr (..)
+  , ScalaMember (..)
   , ScalaPat (..)
   , ScalaTerm (..)
   , unHandled
@@ -237,9 +238,8 @@ lowerRecordConstruction :: NameEnv
   -> Either String ScalaTerm
 lowerRecordConstruction ne resultType body =
   case body of
-    STeApp (STeVar constructor) values
-      | Just info <- lookupTraitCtor constructor ne ->
-          constructTrait info values
+    STeApp (STeVar constructor) values | Just info <- lookupTraitCtor constructor ne ->
+      constructTrait info values
     _ -> Right (qualifyTermWithEnv ne body)
   where
     constructTrait info values = do
@@ -249,20 +249,29 @@ lowerRecordConstruction ne resultType body =
           STyApp name args | name == tcParent info -> Right args
           _ -> Left "Record constructor result type mismatch"
       let params = tcTyParams info
-          fields = tcFields info
+          members = tcFields info
       if length params /= length actualTypes
         then Left "Record type parameter arity mismatch"
-        else if length fields /= length values
+        else if length members /= length values
           then Left "Record field arity mismatch"
           else do
+            fields <- traverse requireValueMember members
             let substitutions = zip params actualTypes
                 instantiate (SeVar name ty) =
                   SeVar name (substituteType substitutions ty)
-                members =
+                implementations =
                   zip
                     (map instantiate fields)
                     (map (qualifyTermWithEnv ne) values)
-            Right (STeNew resultType members)
+            Right (STeNew resultType implementations)
+    requireValueMember :: ScalaMember -> Either String SeVar
+    requireValueMember member =
+      case member of
+        MemberValue field -> Right field
+        MemberMethod name _ _ _ ->
+          Left $
+            "Polymorphic member implementation requires method lowering: "
+              <> name
 
 substituteType :: [(String, ScalaType)]
   -> ScalaType
@@ -271,9 +280,14 @@ substituteType substitutions ty =
   case ty of
     STyVar name -> fromMaybe ty (lookup name substitutions)
     STyApp name args ->
-      STyApp
-        name
-        (map (substituteType substitutions) args)
+      let newName =
+            case lookup name substitutions of
+              Just (STyName n) -> n
+              Just (STyVar n)  -> n
+              _                -> name
+      in STyApp
+          newName
+          (map (substituteType substitutions) args)
     STyFun input output ->
       STyFun
         (substituteType substitutions input)

@@ -6,6 +6,7 @@ import Test.Tasty.HUnit (testCase)
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
     , ScalaExpr (..)
+    , ScalaMember (..)
     , ScalaPat (..)
     , ScalaTerm (..)
     , ScalaTypeBinder (..)
@@ -203,15 +204,14 @@ test_printMonoidTrait =
     (printScala3 monoid)
   where
     a = STyVar "A"
-
     monoid =
       SeTrait
         "Monoid"
         [ScalaTypeBinder "A" 0]
-        [ SeVar "empty" a
-        , SeVar "combine" (STyFun a (STyFun a a))
+        [ MemberValue (SeVar "empty" a)
+        , MemberValue
+            (SeVar "combine" (STyFun a (STyFun a a)))
         ]
-
     expected =
       "trait Monoid[A]:\n"
         <> "  def empty: A\n"

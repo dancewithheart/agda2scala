@@ -28,6 +28,7 @@ import Agda.Compiler.Scala.Render.Common
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor (..)
   , ScalaExpr (..)
+  , ScalaMember(..)
   , ScalaName
   , ScalaPat(..)
   , ScalaTerm (..)
@@ -82,7 +83,7 @@ printScala2 def = case def of
         <> multiLineCommentEnd
         <> nl
 
-printTrait :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
+printTrait :: ScalaName -> [ScalaTypeBinder] -> [ScalaMember] -> String
 printTrait name tyParams fields =
   "trait"
     <> sp
@@ -91,9 +92,19 @@ printTrait name tyParams fields =
     <> sp
     <> bracket (indentBlock 2 (combineLines (map printAbstractMember fields)))
 
-printAbstractMember :: SeVar -> String
-printAbstractMember (SeVar name ty) =
-  "def" <> sp <> name <> ":" <> sp <> printType ty
+printAbstractMember :: ScalaMember -> String
+printAbstractMember member =
+  case member of
+    MemberValue (SeVar name ty) ->
+      "def " <> name <> ": " <> printType ty
+    MemberMethod name binders args result ->
+      "def "
+        <> name
+        <> printTypeBinders binders
+        <> "("
+        <> intercalate ", " (map printVar args)
+        <> "): "
+        <> printType result
 
 -- ===== Sum types ============================================================
 
