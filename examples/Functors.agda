@@ -20,8 +20,6 @@ mapList f (x ∷ xs) = f x ∷ mapList f xs
 
 optionFunctor : Functor Maybe
 optionFunctor = record { map = mapMaybe }
-{-# COMPILE AGDA2SCALA optionFunctor #-}
 
 listFunctor : Functor List
 listFunctor = record { map = mapList }
-{-# COMPILE AGDA2SCALA listFunctor #-}
