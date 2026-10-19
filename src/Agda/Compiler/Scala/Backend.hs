@@ -6,7 +6,6 @@ module Agda.Compiler.Scala.Backend
   , initModuleEnv
   , lowerRecordConstruction
   , substituteType
-  , initModuleEnv
   , outDirOpt
   , qualifyTermWithEnv
   , runScalaBackend

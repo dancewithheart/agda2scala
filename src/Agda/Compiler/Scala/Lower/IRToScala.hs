@@ -66,7 +66,7 @@ valueMember (MemberValue field) = Just field
 valueMember _ = Nothing
 
 isOperationMember :: ScalaMember -> Bool
-isOperationMember (MemberMethod _ _ _ _) = True
+isOperationMember MemberMethod {} = True
 isOperationMember (MemberValue (SeVar _ STyFun{})) = True
 isOperationMember _ = False
 
@@ -110,6 +110,11 @@ lowerTerm policy term = case term of
       STeSelect
         (lowerTerm policy target)
         (termName policy field)
+    STeNew ty members ->
+      STeNew ty
+        [ (lowerField policy field, lowerTerm policy body)
+        | (field, body) <- members
+        ]
 
 lowerPat :: NamePolicy -> ScalaPat -> ScalaPat
 lowerPat policy pat = case pat of

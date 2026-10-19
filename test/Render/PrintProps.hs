@@ -182,7 +182,7 @@ prop_scala2_prints_type_params_iff_present = property $ do
 
     let scheme =
           ScalaTypeScheme
-            (map (\name -> ScalaTypeBinder name 0) ps)
+            (map (`ScalaTypeBinder` 0) ps)
             (STyVar "A")
         expr = SeFun "f" [SeVar "x" (STyVar "A")] scheme (STeVar "x")
         out = printScala2 expr
