@@ -58,8 +58,11 @@ import Agda.Compiler.Scala.Compile.Types
   , dataTyParamsFromType
   , fromQName
   , funSchemeFromType
+  , funSchemeFromTypeWith
+  , isTypeParamBinder
   , pushTermBinder
   , recordTyParamsFromType
+  , unrollPi
   )
 import Agda.Compiler.Scala.IR.AgdaIR
   ( AgdaData(..)
@@ -69,6 +72,7 @@ import Agda.Compiler.Scala.IR.AgdaIR
   )
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
+  , ScalaMember(..)
   , ScalaName
   , ScalaTypeBinder(..)
   , ScalaTypeScheme(..)
@@ -124,15 +128,29 @@ lowerRecord qn recTy recordData = do
         , arFields = reverse fieldsRev
         }
 
-lowerRecordField :: ([SeVar], TyEnv)
+lowerRecordField
+  :: ([ScalaMember], TyEnv)
   -> (ScalaName, Dom Type)
-  -> Either CompileError ([SeVar], TyEnv)
-lowerRecordField (fields, tyEnv) (name, dom) = do
-  ty <- compileDomTypeWith tyEnv dom
-  pure
-    ( SeVar name ty : fields
-    , pushTermBinder tyEnv
-    )
+  -> Either CompileError ([ScalaMember], TyEnv)
+
+lowerRecordField (fields, env) (name, dom) = do
+  (pis, _) <- unrollPi (unDom dom)
+  member <-
+    case pis of
+      (firstDom, _) : _
+        | isTypeParamBinder firstDom -> do
+            (args, scheme) <-
+              funSchemeFromTypeWith env (unDom dom)
+            pure $
+              MemberMethod
+                name
+                (ssTyParams scheme)
+                args
+                (ssType scheme)
+      _ -> do
+        ty <- compileDomTypeWith env dom
+        pure (MemberValue (SeVar name ty))
+  pure (member : fields, pushTermBinder env)
 
 -- Agda.Syntax.Internal.Tele / Telescope:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Tele

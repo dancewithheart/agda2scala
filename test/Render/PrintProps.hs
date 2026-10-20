@@ -16,6 +16,7 @@ import qualified Hedgehog.Range as Range
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr (..)
+  , ScalaMember (..)
   , ScalaTerm (..)
   , ScalaType (..)
   , ScalaTypeBinder (..)
@@ -181,7 +182,7 @@ prop_scala2_prints_type_params_iff_present = property $ do
 
     let scheme =
           ScalaTypeScheme
-            (map (\name -> ScalaTypeBinder name 0) ps)
+            (map (`ScalaTypeBinder` 0) ps)
             (STyVar "A")
         expr = SeFun "f" [SeVar "x" (STyVar "A")] scheme (STeVar "x")
         out = printScala2 expr
@@ -199,7 +200,7 @@ prop_recordTypeParameterArity = property $ do
         expr = SeTrait
           "Transformer"
           [param]
-          [SeVar "run" (STyName "Long")]
+          [MemberValue (SeVar "run" (STyName "Long"))]
         suffix
           | arity == 0 = ""
           | otherwise =

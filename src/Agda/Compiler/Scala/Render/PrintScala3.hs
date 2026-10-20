@@ -22,6 +22,7 @@ import Agda.Compiler.Scala.Render.Common
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor (..)
   , ScalaExpr (..)
+  , ScalaMember (..)
   , ScalaName
   , ScalaPat(..)
   , ScalaTerm (..)
@@ -111,7 +112,7 @@ printCaseClass name tyParams args =
     <> printExpr args
     <> ")"
 
-printTrait :: ScalaName -> [ScalaTypeBinder] -> [SeVar] -> String
+printTrait :: ScalaName -> [ScalaTypeBinder] -> [ScalaMember] -> String
 printTrait name tyParams fields =
   "trait"
     <> exprSeparator
@@ -119,14 +120,19 @@ printTrait name tyParams fields =
     <> printTypeBinders tyParams
     <> bracketWithIndent (map printAbstractMember fields) 2
 
-printAbstractMember :: SeVar -> String
-printAbstractMember (SeVar name ty) =
-  "def"
-    <> exprSeparator
-    <> name
-    <> colonSeparator
-    <> exprSeparator
-    <> printType ty
+printAbstractMember :: ScalaMember -> String
+printAbstractMember member =
+  case member of
+    MemberValue (SeVar name ty) ->
+      "def " <> name <> ": " <> printType ty
+    MemberMethod name binders args result ->
+      "def "
+        <> name
+        <> printTypeBinders binders
+        <> "("
+        <> intercalate ", " (map printVar args)
+        <> "): "
+        <> printType result
 
 printTerm :: ScalaTerm -> String
 printTerm = printTermBlock

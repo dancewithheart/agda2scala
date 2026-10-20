@@ -24,6 +24,7 @@ import Agda.Compiler.Scala.Name.NamePolicy ( defaultNamePolicy )
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
+  , ScalaMember(..)
   , ScalaType(..)
   , ScalaTypeBinder(..)
   , SeVar(..)
@@ -86,10 +87,7 @@ prop_dataCtorNamePolicy = property $ do
 prop_recordFieldCountPreserved :: Property
 prop_recordFieldCountPreserved = property $ do
   fieldCount <- forAll (Gen.int (Range.linear 0 8))
-  let fields =
-        [ SeVar ("x" <> show i) (STyName "A")
-        | i <- [0 .. fieldCount - 1]
-        ]
+  let fields = [ MemberValue (SeVar ("x" <> show i) (STyName "A")) | i <- [0 .. fieldCount - 1] ]
       decl =
         DRecord
           AgdaRecord
@@ -107,12 +105,11 @@ prop_recordFieldCountPreserved = property $ do
 prop_operationRecordLowersToTrait :: Property
 prop_operationRecordLowersToTrait = property $ do
   let a = STyVar "A"
-
       fields =
-        [ SeVar "empty" a
-        , SeVar "combine" (STyFun a (STyFun a a))
+        [ MemberValue (SeVar "empty" a)
+        , MemberValue
+            (SeVar "combine" (STyFun a (STyFun a a)))
         ]
-
       decl =
         DRecord
           AgdaRecord
@@ -120,6 +117,8 @@ prop_operationRecordLowersToTrait = property $ do
             , arTyParams = [ScalaTypeBinder "A" 0]
             , arFields = fields
             }
+  toScalaExpr defaultNamePolicy decl
+    === SeTrait "Monoid" [ScalaTypeBinder "A" 0] fields
 
   toScalaExpr defaultNamePolicy decl
     === SeTrait "Monoid" [ScalaTypeBinder "A" 0] fields

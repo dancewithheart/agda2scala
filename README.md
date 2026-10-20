@@ -2,7 +2,11 @@
 
 An **experimental Agda backend** that generates Scala 2 or Scala 3 source files from Agda (formal verification).
 
-## Roadmap
+For Agda code you want to convert to Scala add pragma `AGDA2SCALA:
+```agda
+{-# COMPILE AGDA2SCALA Rgb #-}
+```
+## Supported features
 
 * ✅ Sum types / ADTs
   * ✅ simple ADTs

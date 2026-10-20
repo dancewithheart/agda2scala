@@ -3,6 +3,7 @@ module Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaType (..)
   , ScalaExpr (..)
   , SeVar (..)
+  , ScalaMember(..)
   , ScalaPat (..)
   , ScalaTerm (..)
   , ScalaTypeScheme (..)
@@ -67,11 +68,20 @@ data ScalaCtor = ScalaCtor
     }
     deriving (Eq, Show)
 
+data ScalaMember
+  = MemberValue SeVar
+  | MemberMethod
+      ScalaName
+      [ScalaTypeBinder]
+      [SeVar]
+      ScalaType
+  deriving (Eq, Show)
+
 data ScalaExpr
     = SePackage [ScalaName] [ScalaExpr]
     | SeSum ScalaName [ScalaTyParam] [ScalaCtor]
     | SeProd ScalaName [ScalaTypeBinder] [SeVar]
-    | SeTrait ScalaName [ScalaTypeBinder] [SeVar]
+    | SeTrait ScalaName [ScalaTypeBinder] [ScalaMember]
     | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
     | SeUnhandled ScalaName String
     deriving (Eq, Show)

@@ -14,4 +14,4 @@ polyId x = x
 data HKBox (F : Set → Set) (A : Set) : Set₁ where
   Wrap : F A → HKBox F A
 {-# COMPILE AGDA2SCALA HKBox #-}
-{-# COMPILE AGDA2SCALA_DEBUG HKBox #-}
+-- {-# COMPILE AGDA2SCALA_DEBUG HKBox #-}

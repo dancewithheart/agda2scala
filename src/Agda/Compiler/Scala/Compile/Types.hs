@@ -16,6 +16,7 @@ module Agda.Compiler.Scala.Compile.Types (
     emptyTyEnv,
     fromQName,
     funSchemeFromType,
+    funSchemeFromTypeWith,
     isTypeLike,
     isTypeParamBinder,
     lookupTyVar,
@@ -310,9 +311,15 @@ isTypeLike = \case
 Hidden Pis become `ssTyParams`; explicit Pis become `[SeVar]`.
 -}
 funSchemeFromType :: Type -> Either CompileError ([SeVar], ScalaTypeScheme)
-funSchemeFromType ty0 = do
+funSchemeFromType = funSchemeFromTypeWith emptyTyEnv
+
+funSchemeFromTypeWith
+  :: TyEnv
+  -> Type
+  -> Either CompileError ([SeVar], ScalaTypeScheme)
+funSchemeFromTypeWith env0 ty0 = do
     (pis, resTy) <- unrollPi ty0
-    (args, tps, env) <- foldM step ([], [], emptyTyEnv) (zip [0 :: Int ..] pis)
+    (args, tps, env) <- foldM step ([], [], env0) (zip [0 :: Int ..] pis)
     ret <- compileTypeWith env resTy
     pure (reverse args, ScalaTypeScheme (reverse tps) ret)
   where
