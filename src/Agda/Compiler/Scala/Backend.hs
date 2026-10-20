@@ -67,20 +67,26 @@ import Agda.Compiler.Scala.Name.NameEnv
   , registerTraitCtor
   )
 import Agda.Compiler.Scala.Name.NamePolicy (defaultNamePolicy, ctorName)
-import Agda.Compiler.Scala.Render.PrintScala2 (printScala2)
-import Agda.Compiler.Scala.Render.PrintScala3 (printScala3)
+import Agda.Compiler.Scala.Render.PropertyTest (printPropertySuite)
+import Agda.Compiler.Scala.Render.PrintScala2 (printScala2, printScala2Term)
+import Agda.Compiler.Scala.Render.PrintScala3 (printScala3, printScala3Term)
+
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaExpr (..)
   , ScalaMember (..)
   , ScalaPat (..)
+  , ScalaProperty (..)
   , ScalaTerm (..)
-  , unHandled
   , ScalaType(..)
   , ScalaTypeBinder (..)
   , ScalaTypeScheme(..)
   , SeVar(..)
+  , unHandled
   )
 import Agda.Compiler.Scala.Compile.Types (fromQName)
+
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath ((</>), dropExtension, takeDirectory)
 
 runScalaBackend :: IO ()
 runScalaBackend = runAgda [scalaBackend]
@@ -89,10 +95,11 @@ scalaBackend :: Backend
 scalaBackend = BackendBase.Backend scalaBackend'
 
 data Options = Options
-    { optOutDir :: Maybe FilePath
-    , scalaDialect :: Maybe String
-    }
-    deriving (Show)
+  { optOutDir     :: Maybe FilePath
+  , optTestOutDir :: Maybe FilePath
+  , scalaDialect  :: Maybe String
+  }
+  deriving (Show)
 
 instance NFData Options where
     rnf _ = ()
@@ -142,6 +149,11 @@ scalaCmdLineFlags =
         ["scala-dialect"]
         (ReqArg scalaDialectOpt "scalaDialect")
         "Write output files using Scala2 or Scala3 dialect. (default: Scala3)"
+    , Option
+        []
+        ["test-out-dir"]
+        (ReqArg testOutDirOpt "DIR")
+        "Directory for generated Scala property tests"
     ]
 
 outDirOpt :: (Monad m) => FilePath -> Options -> m Options
@@ -149,6 +161,9 @@ outDirOpt dir opts = return opts{optOutDir = Just dir}
 
 scalaDialectOpt :: (Monad m) => String -> Options -> m Options
 scalaDialectOpt sVer opts = return opts{scalaDialect = Just sVer}
+
+testOutDirOpt :: Monad m => FilePath -> Options -> m Options
+testOutDirOpt dir opts = pure opts { optTestOutDir = Just dir }
 
 ---------------------------------------------
 -- compile into Scala Expr
@@ -354,28 +369,45 @@ noPragmaResult _def = SeUnhandled "" ""
 ---------------------------------------------
 -- output Scala code in scalaPostModule
 
-scalaPostModule ::
-    ScalaEnv ->
-    ScalaModuleEnv ->
-    IsMain ->
-    TopLevelModuleName ->
-    [ScalaDefinition] ->
-    TCM ScalaModule
+scalaPostModule :: ScalaEnv
+  -> ScalaModuleEnv
+  -> IsMain
+  -> TopLevelModuleName
+  -> [ScalaDefinition]
+  -> TCM ScalaModule
 scalaPostModule env modEnv _isMain mName cdefs = do
-    nameEnv <- liftIO $ readIORef modEnv
-    outDir <- compileDir
-    compileLog $ "compiling " <> mkOutFile outDir
-    when (shouldWriteModule cdefs) $
-        liftIO $
-            writeFile (mkOutFile outDir) (fileContent nameEnv)
-    pure ScalaModule{smDefs = cdefs, smNames = nameEnv}
-  where
-    fileName = scalaFileName mName
-    dirName outDir = fromMaybe outDir (optOutDir env)
-    mkOutFile outDir = (dirName outDir) <> "/" <> fileName
-    scalaExprs = compileModule mName cdefs
-    fileContent :: NameEnv -> String
-    fileContent _nameEnv = selectPrinter env scalaExprs
+  nameEnv <- liftIO $ readIORef modEnv
+  outDir <- compileDir
+  let fileName = scalaFileName mName
+      sourceDir = fromMaybe outDir (optOutDir env)
+      sourcePath = sourceDir </> fileName
+      properties = [ law | SeProperty law <- cdefs ]
+      scalaExprs = compileModule mName cdefs
+      testTermPrinter =
+        case scalaDialect env of
+          Just "Scala2" -> printScala2Term
+          Just "scala2" -> printScala2Term
+          _             -> printScala3Term
+  when (shouldWriteModule cdefs) $ liftIO $ do
+    createDirectoryIfMissing True (takeDirectory sourcePath)
+    writeFile sourcePath (selectPrinter env scalaExprs)
+  when (not (null properties)) $
+    case optTestOutDir env of
+      Nothing -> liftIO $ ioError $ userError "Properties require --test-out-dir"
+      Just testDir -> liftIO $ do
+        let testFile = dropExtension fileName <> "PropertySpec.scala"
+            testPath = testDir </> testFile
+            testSource =
+              printPropertySuite
+                testTermPrinter
+                (moduleName mName)
+                properties
+        createDirectoryIfMissing True (takeDirectory testPath)
+        writeFile testPath testSource
+  pure ScalaModule
+    { smDefs = cdefs
+    , smNames = nameEnv
+    }
 
 selectPrinter :: Options -> (ScalaExpr -> String)
 selectPrinter env = case scalaDialect env of
@@ -424,7 +456,11 @@ scalaBackendVersion :: Maybe T.Text
 scalaBackendVersion = Just $ T.pack $ showVersion version
 
 defaultOptions :: ScalaFlags
-defaultOptions = Options{optOutDir = Nothing, scalaDialect = Nothing}
+defaultOptions = Options
+  { optOutDir = Nothing
+  , optTestOutDir = Nothing
+  , scalaDialect = Nothing
+  }
 
 initModuleEnv :: IO ScalaModuleEnv
 initModuleEnv = newIORef emptyNameEnv

@@ -5,6 +5,7 @@ module Agda.Compiler.Scala.IR.ScalaExpr
   , SeVar (..)
   , ScalaMember(..)
   , ScalaPat (..)
+  , ScalaProperty(..)
   , ScalaTerm (..)
   , ScalaTypeScheme (..)
   , ScalaCtor (..)
@@ -77,17 +78,27 @@ data ScalaMember
       ScalaType
   deriving (Eq, Show)
 
+data ScalaProperty = ScalaProperty
+  { spName  :: ScalaName
+  , spArg   :: SeVar
+  , spLeft  :: ScalaTerm
+  , spRight :: ScalaTerm
+  }
+  deriving (Eq, Show)
+
 data ScalaExpr
     = SePackage [ScalaName] [ScalaExpr]
     | SeSum ScalaName [ScalaTyParam] [ScalaCtor]
     | SeProd ScalaName [ScalaTypeBinder] [SeVar]
     | SeTrait ScalaName [ScalaTypeBinder] [ScalaMember]
     | SeFun ScalaName [SeVar] ScalaTypeScheme ScalaTerm
+    | SeProperty ScalaProperty      -- this is not part of Scala language, maybe I should have higher level language ?
     | SeUnhandled ScalaName String
     deriving (Eq, Show)
 
 unHandled :: ScalaExpr -> Bool
 unHandled (SeUnhandled _ _) = True
+unHandled (SeProperty _) = True
 unHandled _ = False
 
 data ScalaVariance

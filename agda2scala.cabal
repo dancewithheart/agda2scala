@@ -49,6 +49,8 @@ library
     Agda.Compiler.Scala.Render.Common
     Agda.Compiler.Scala.Render.PrintScala3
     Agda.Compiler.Scala.Render.PrintScala2
+    Agda.Compiler.Scala.Lower.Property
+    Agda.Compiler.Scala.Render.PropertyTest
     Paths_agda2scala
   ghc-options:
       -Wall
@@ -65,6 +67,8 @@ library
     , Agda                  >=2.8.0  && <2.9.0
     , base                  >=4.13   && <4.23
     , containers            >=0.6.0  && <0.9
+    , directory
+    , filepath
     , deepseq               >=1.4.4  && <1.6
     , text                  >=2.0.2  && <2.2
     , transformers
@@ -109,6 +113,7 @@ test-suite agda2scala-test
     Render.CommonTest
     Render.PrintScala2Test
     Render.PrintScala3Test
+    Render.PropertyTest
     ScalaBackendTest
     Support.Assertions
 

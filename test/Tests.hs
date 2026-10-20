@@ -7,24 +7,24 @@ import qualified Name.NamePolicyTest
 import qualified Render.CommonTest
 import qualified Render.PrintScala2Test
 import qualified Render.PrintScala3Test
+import qualified Render.PropertyTest
 import qualified ScalaBackendTest
 import qualified Compile.TypesTest
 import qualified Lower.VarianceTest
 
 main :: IO ()
-main =
-    defaultMain tests
+main = defaultMain tests
 
 tests :: TestTree
-tests =
-    testGroup
-        "agda2scala unit tests"
-        [ Name.NameEnvTest.tests
-        , Name.NamePolicyTest.tests
-        , Render.CommonTest.tests
-        , Render.PrintScala2Test.tests
-        , Render.PrintScala3Test.tests
-        , ScalaBackendTest.tests
-        , Compile.TypesTest.tests
-        , Lower.VarianceTest.tests
-        ]
+tests = testGroup
+    "agda2scala unit tests"
+    [ Name.NameEnvTest.tests
+    , Name.NamePolicyTest.tests
+    , Render.CommonTest.tests
+    , Render.PrintScala2Test.tests
+    , Render.PrintScala3Test.tests
+    , Render.PropertyTest.tests
+    , ScalaBackendTest.tests
+    , Compile.TypesTest.tests
+    , Lower.VarianceTest.tests
+    ]
