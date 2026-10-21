@@ -14,7 +14,7 @@ module Agda.Compiler.Scala.Lower.AgdaToIR
   ) where
 
 import Agda.Compiler.Backend
-  ( CompilerPragma
+  ( CompilerPragma(..)
   , Defn(..)
   , RecordData(..)
   , funCompiled
@@ -61,7 +61,9 @@ import Agda.Compiler.Scala.Compile.Types
   , funSchemeFromTypeWith
   , isTypeParamBinder
   , pushTermBinder
+  , pushTyParam
   , recordTyParamsFromType
+  , typeParameterArity
   , unrollPi
   )
 import Agda.Compiler.Scala.IR.AgdaIR
@@ -81,13 +83,15 @@ import Agda.Compiler.Scala.IR.ScalaExpr
 
 -- `Definition` is Agda's checked top-level definition
 toAgdaExpr :: Definition -> CompilerPragma -> TCM (Either CompileError AgdaDecl)
-toAgdaExpr def _pragma = case def of
+toAgdaExpr def pragma = case def of
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Datatype
   Defn{theDef = Datatype{dataCons = cons}, defName = qn, defType = ty} ->
     lowerData qn ty cons
 
   Defn{theDef = RecordDefn recordData, defName = qn, defType = ty} ->
-    pure (DRecord <$> lowerRecord qn ty recordData)
+    pure $ do
+      strategy <- parseRecordStrategy pragma
+      DRecord <$> lowerRecord strategy qn ty recordData
 
   -- https://hackage-content.haskell.org/package/Agda/docs/Agda-TypeChecking-Monad-Base.html#v:Function
   Defn
@@ -104,11 +108,12 @@ toAgdaExpr def _pragma = case def of
 
 -- ===== Records ===============================================================
 
-lowerRecord :: QName
+lowerRecord :: RecordStrategy
+  -> QName
   -> Type
   -> RecordData
   -> Either CompileError AgdaRecord
-lowerRecord qn recTy recordData = do
+lowerRecord strategy qn recTy recordData = do
   (tps, tyEnv0) <- recordTyParamsFromType recTy
   let allDoms = teleToList (_recTel recordData)
       fieldNames = map (fromQName . unDom) (_recFields recordData)
@@ -119,7 +124,7 @@ lowerRecord qn recTy recordData = do
       let fieldDoms = drop parameterCount allDoms
       (fieldsRev, _) <-
         foldM
-          lowerRecordField
+          (lowerRecordField strategy)
           ([], tyEnv0)
           (zip fieldNames fieldDoms)
       pure AgdaRecord
@@ -128,29 +133,42 @@ lowerRecord qn recTy recordData = do
         , arFields = reverse fieldsRev
         }
 
-lowerRecordField
-  :: ([ScalaMember], TyEnv)
+lowerRecordField :: RecordStrategy
+  -> ([ScalaMember], TyEnv)
   -> (ScalaName, Dom Type)
   -> Either CompileError ([ScalaMember], TyEnv)
 
-lowerRecordField (fields, env) (name, dom) = do
-  (pis, _) <- unrollPi (unDom dom)
-  member <-
-    case pis of
-      (firstDom, _) : _
-        | isTypeParamBinder firstDom -> do
-            (args, scheme) <-
-              funSchemeFromTypeWith env (unDom dom)
-            pure $
-              MemberMethod
-                name
-                (ssTyParams scheme)
-                args
-                (ssType scheme)
-      _ -> do
-        ty <- compileDomTypeWith env dom
-        pure (MemberValue (SeVar name ty))
-  pure (member : fields, pushTermBinder env)
+lowerRecordField strategy (fields, env) (name, dom) =
+  case typeParameterArity (unDom dom) of
+    -- Carrier : Set
+    Just 0 ->
+      case strategy of
+        PathDependentRecord ->
+          Right
+            ( MemberType name : fields
+            , pushTyParam name env
+            )
+        OrdinaryRecord -> Left (UnsupportedDependentRecordField name)
+    -- TODO Higher-kinded abstract type members
+    Just _ -> Left (UnsupportedDependentRecordField name)
+    Nothing -> do
+      (pis, _) <- unrollPi (unDom dom)
+      member <-
+        case pis of
+          (firstDom, _) : _
+            | isTypeParamBinder firstDom -> do
+                (args, scheme) <-
+                  funSchemeFromTypeWith env (unDom dom)
+                pure $
+                  MemberMethod
+                    name
+                    (ssTyParams scheme)
+                    args
+                    (ssType scheme)
+          _ -> do
+            ty <- compileDomTypeWith env dom
+            pure (MemberValue (SeVar name ty))
+      Right (member : fields, pushTermBinder env)
 
 -- Agda.Syntax.Internal.Tele / Telescope:
 -- https://hackage.haskell.org/package/Agda/docs/Agda-Syntax-Internal.html#t:Tele
@@ -244,3 +262,16 @@ directRecordConstructor (Just (Case _ branches)) [clause]
   , IsRecord _ <- conDataRecord con
   = Just term
 directRecordConstructor _ _ = Nothing
+
+data RecordStrategy
+  = OrdinaryRecord
+  | PathDependentRecord
+  deriving (Eq, Show)
+
+parseRecordStrategy :: CompilerPragma
+  -> Either CompileError RecordStrategy
+parseRecordStrategy (CompilerPragma _ source) =
+  case words source of
+    []            -> Right OrdinaryRecord
+    ["=", "path"] -> Right PathDependentRecord
+    _             -> Left (UnsupportedRecordStrategy source)

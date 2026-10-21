@@ -77,6 +77,8 @@ data CompileError
   | UnsupportedCaseShape CaseUnsupported
   | UnsupportedHigherKindedNullaryConstructor ScalaName
   | UnsupportedProperty String
+  | UnsupportedRecordStrategy String
+  | UnsupportedDependentRecordField ScalaName
   | VarOutOfRange Int Int
   | ErasedVarReferenced Int
   deriving (Eq, Show)
