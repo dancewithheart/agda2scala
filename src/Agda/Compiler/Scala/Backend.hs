@@ -73,6 +73,7 @@ import Agda.Compiler.Scala.Render.PrintScala3 (printScala3, printScala3Term)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaExpr (..)
+  , ScalaInstanceMember (..)
   , ScalaMember (..)
   , ScalaPat (..)
   , ScalaProperty (..)
@@ -83,7 +84,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , SeVar(..)
   , unHandled
   )
-import Agda.Compiler.Scala.Compile.Types (fromQName)
+import Agda.Compiler.Scala.Compile.Types (fromQName, substituteType)
 
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>), dropExtension, takeDirectory)
@@ -292,27 +293,6 @@ lowerRecordConstruction ne resultType body =
             "Polymorphic member implementation requires method lowering: "
               <> name
 
-substituteType :: [(String, ScalaType)]
-  -> ScalaType
-  -> ScalaType
-substituteType substitutions ty =
-  case ty of
-    STyVar name -> fromMaybe ty (lookup name substitutions)
-    STyApp name args ->
-      let newName =
-            case lookup name substitutions of
-              Just (STyName n) -> n
-              Just (STyVar n)  -> n
-              _                -> name
-      in STyApp
-          newName
-          (map (substituteType substitutions) args)
-    STyFun input output ->
-      STyFun
-        (substituteType substitutions input)
-        (substituteType substitutions output)
-    STyName _ -> ty
-
 qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
 qualifyTermWithEnv ne = go
   where
@@ -337,6 +317,8 @@ qualifyTermWithEnv ne = go
         [ (goPat pat, go rhs) | (pat, rhs) <- alts ]
     go (STeNew ty members) =
       STeNew ty [ (field, go value) | (field, value) <- members ]
+    go (STeNewWithTypes ty members) =
+      STeNewWithTypes ty (map qualifyMember members)
     goPat SPWild          = SPWild
     goPat (SPVar n)       = SPVar n
     goPat (SPCtor n args) = SPCtor (qualifyCtor n) (map goPat args)
@@ -351,6 +333,12 @@ qualifyTermWithEnv ne = go
           case lookupCtorOwner n ne of
             Just parent -> parent <> "." <> n
             Nothing     -> n
+    qualifyMember member =
+      case member of
+        InstanceType name ty ->
+          InstanceType name ty
+        InstanceValue field body ->
+          InstanceValue field (go body)
 
 ---------------------------------------------
 -- pragmas specific for agda2scala

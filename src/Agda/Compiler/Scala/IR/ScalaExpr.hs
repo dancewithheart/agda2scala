@@ -1,5 +1,6 @@
 module Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaName
+  , ScalaInstanceMember (..)
   , ScalaType (..)
   , ScalaExpr (..)
   , SeVar (..)
@@ -58,6 +59,7 @@ data ScalaTerm
   | STeLitString String
   | STeError String
   | STeNew ScalaType [(SeVar, ScalaTerm)]
+  | STeNewWithTypes ScalaType [ScalaInstanceMember]
   deriving (Eq, Show)
 
 data SeVar = SeVar ScalaName ScalaType
@@ -85,6 +87,11 @@ data ScalaProperty = ScalaProperty
   , spLeft  :: ScalaTerm
   , spRight :: ScalaTerm
   }
+  deriving (Eq, Show)
+
+data ScalaInstanceMember
+  = InstanceType ScalaName ScalaType
+  | InstanceValue SeVar ScalaTerm
   deriving (Eq, Show)
 
 data ScalaExpr

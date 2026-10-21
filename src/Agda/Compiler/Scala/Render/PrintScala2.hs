@@ -29,6 +29,7 @@ import Agda.Compiler.Scala.Render.Common
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor (..)
   , ScalaExpr (..)
+  , ScalaInstanceMember (..)
   , ScalaMember(..)
   , ScalaName
   , ScalaPat(..)
@@ -197,6 +198,21 @@ printTermBlock x = case x of
         <> indentBlock 2
              (intercalate "\n" (map printNewMember members))
         <> "\n}"
+    STeNewWithTypes ty members ->
+      "new " <> printType ty <> " {\n"
+        <> indentBlock 2
+             (intercalate "\n" (map printInstanceMember members))
+        <> "\n}" -- TODO unify creating new instances
+
+printInstanceMember :: ScalaInstanceMember -> String
+printInstanceMember member =
+  case member of
+    InstanceType name ty ->
+      "type " <> name <> " = " <> printType ty
+
+    InstanceValue (SeVar name ty) body ->
+      "def " <> name <> ": " <> printType ty
+        <> " = " <> printTermBlock body
 
 printNewMember :: (SeVar, ScalaTerm) -> String
 printNewMember (SeVar name ty, body) =

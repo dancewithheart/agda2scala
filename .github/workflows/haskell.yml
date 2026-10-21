@@ -89,6 +89,7 @@ jobs:
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/Functors.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala --test-out-dir=scala2/src/test/scala  ./examples/Properties.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/DependentPackage.agda
+          cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/Coyoneda.agda
 
       - name: Compile example Agda code to Scala 3
         run: |
@@ -100,6 +101,7 @@ jobs:
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/hk_typs.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/Functors.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala --test-out-dir=scala3/src/test/scala  ./examples/Properties.agda
+          cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/DependentPackage.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/DependentPackage.agda
 
       - name: Set up JVM

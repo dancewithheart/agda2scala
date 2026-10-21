@@ -32,6 +32,7 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTyParam (..)
   , ScalaTypeScheme (..)
   , SeVar (..)
+  , ScalaInstanceMember (..)
   , tyParamNames
  )
 import Data.List (intercalate)
@@ -169,6 +170,19 @@ printTermBlock term =
         STeNew ty members ->
           "new " <> printType ty <> ":" <> nl
             <> indentBlock 2 (intercalate nl (map printNewMember members))
+        STeNewWithTypes ty members ->
+          "new " <> printType ty <> ":" <> nl
+            <> indentBlock 2
+                 (intercalate nl (map printInstanceMember members))
+
+printInstanceMember :: ScalaInstanceMember -> String
+printInstanceMember member =
+  case member of
+    InstanceType name ty ->
+      "type " <> name <> " = " <> printType ty
+    InstanceValue (SeVar name ty) body ->
+      "def " <> name <> ": " <> printType ty
+        <> " = " <> printTermBlock body
 
 printNewMember :: (SeVar, ScalaTerm) -> String
 printNewMember (SeVar name ty, body) =

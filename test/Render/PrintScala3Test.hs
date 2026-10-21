@@ -5,6 +5,7 @@ import Test.Tasty.HUnit (testCase)
 
 import Agda.Compiler.Scala.IR.ScalaExpr
     ( ScalaCtor (..)
+    , ScalaInstanceMember (..)
     , ScalaExpr (..)
     , ScalaMember (..)
     , ScalaPat (..)
@@ -20,6 +21,7 @@ import Agda.Compiler.Scala.Render.PrintScala3
     , printPackageAndObject
     , printScala3
     , printSealedTrait
+    , printScala3Term
     )
 import Support.Assertions (assertStringEqual)
 
@@ -52,6 +54,7 @@ tests =
             [ testCase "prints if then else" test_print_if_then_else
             ]
          , testCase "renders abstract type members" test_printDependentPackage
+         , testCase "test_concreteTypeMember" test_concreteTypeMember
         ]
 
 test_printCaseObject :: IO ()
@@ -235,3 +238,22 @@ test_printDependentPackage =
         <> "  type Carrier\n"
         <> "  def item: Carrier\n"
 
+test_concreteTypeMember :: IO ()
+test_concreteTypeMember =
+  assertStringEqual
+    "Concrete dependent record"
+    expected
+    (printScala3Term term)
+  where
+    term =
+      STeNewWithTypes
+        (STyName "Package")
+        [ InstanceType "Carrier" (STyName "Long")
+        , InstanceValue
+            (SeVar "item" (STyVar "Carrier"))
+            (STeLitInt 42)
+        ]
+    expected =
+      "new Package:\n"
+        <> "  type Carrier = Long\n"
+        <> "  def item: Carrier = 42"
