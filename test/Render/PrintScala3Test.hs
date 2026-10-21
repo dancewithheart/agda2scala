@@ -55,6 +55,7 @@ tests =
             ]
          , testCase "renders abstract type members" test_printDependentPackage
          , testCase "test_concreteTypeMember" test_concreteTypeMember
+         , testCase "preserves binary operator grouping" test_binaryGrouping
         ]
 
 test_printCaseObject :: IO ()
@@ -257,3 +258,17 @@ test_concreteTypeMember =
       "new Package:\n"
         <> "  type Carrier = Long\n"
         <> "  def item: Carrier = 42"
+
+test_binaryGrouping :: IO ()
+test_binaryGrouping = do
+  let x = STeVar "x"
+      y = STeVar "y"
+      z = STeVar "z"
+  assertStringEqual
+    "left-associated subtraction"
+    "(x - y) - z"
+    (printScala3Term (STeBinOp (STeBinOp x "-" y) "-" z))
+  assertStringEqual
+    "right-associated subtraction"
+    "x - (y - z)"
+    (printScala3Term (STeBinOp x "-" (STeBinOp y "-" z)))
