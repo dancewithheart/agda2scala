@@ -17,7 +17,7 @@ module Agda.Compiler.Scala.Backend
 ) where
 
 import Control.DeepSeq (NFData (..))
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import qualified Data.List.NonEmpty as Nel
@@ -391,7 +391,7 @@ scalaPostModule env modEnv _isMain mName cdefs = do
   when (shouldWriteModule cdefs) $ liftIO $ do
     createDirectoryIfMissing True (takeDirectory sourcePath)
     writeFile sourcePath (selectPrinter env scalaExprs)
-  when (not (null properties)) $
+  unless (null properties) $
     case optTestOutDir env of
       Nothing -> liftIO $ ioError $ userError "Properties require --test-out-dir"
       Just testDir -> liftIO $ do
