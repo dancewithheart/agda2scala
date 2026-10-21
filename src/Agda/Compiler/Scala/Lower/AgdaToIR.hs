@@ -24,11 +24,17 @@ import Agda.Compiler.Backend
   , pattern Function
   )
 import Agda.Syntax.Abstract.Name (QName)
+import Agda.Syntax.Common
+  ( Arg(..)
+  , Hiding(..)
+  , getHiding
+  )
 import Agda.Syntax.Internal
   ( Clause(..)
   , ConHead(..)
   , DataOrRecord'(..)
   , Dom
+  , Elim'(..)
   , Tele(..)
   , Telescope
   , Term(..)
@@ -41,9 +47,10 @@ import Agda.TypeChecking.CompiledClause
   , CompiledClauses'(..)
   )
 import Agda.TypeChecking.Monad (TCM, getConstInfo)
-import Agda.TypeChecking.Monad.Base (Definition(..))
+import Agda.TypeChecking.Monad.Base (Definition(..), conData, pattern Constructor)
 import Agda.TypeChecking.Substitute (absBody)
 import Control.Monad (foldM)
+import Data.Maybe (catMaybes, fromMaybe)
 
 import Agda.Compiler.Scala.Compile.Terms
   ( compileBodyTerm
@@ -54,6 +61,7 @@ import Agda.Compiler.Scala.Compile.Types
   ( CompileError(..)
   , TyEnv
   , compileDomTypeWith
+  , compileTypeTerm
   , ctorArgTypesFromTypeWith
   , dataTyParamsFromType
   , fromQName
@@ -63,6 +71,7 @@ import Agda.Compiler.Scala.Compile.Types
   , pushTermBinder
   , pushTyParam
   , recordTyParamsFromType
+  , substituteType
   , typeParameterArity
   , unrollPi
   )
@@ -79,6 +88,9 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaTypeBinder(..)
   , ScalaTypeScheme(..)
   , SeVar(..)
+  , ScalaInstanceMember(..)
+  , ScalaTerm(..)
+  , ScalaType(..)
   )
 
 -- `Definition` is Agda's checked top-level definition
@@ -101,7 +113,7 @@ toAgdaExpr def pragma = case def of
         }
     , defName = qn
     , defType = ty
-    } -> pure (DFun <$> lowerFun qn ty cc clauses)
+    } -> fmap DFun <$> lowerFun qn ty cc clauses
 
   Defn{defName = qn} ->
     pure (Left (UnsupportedDefinition qn))
@@ -226,23 +238,154 @@ lowerFun :: QName
   -> Type
   -> Maybe CompiledClauses
   -> [Clause]
-  -> Either CompileError AgdaFun
-lowerFun qn defTy mcc clauses = do
-  (args, scheme) <- funSchemeFromType defTy
-  let tyParamNames = map stbName (ssTyParams scheme)
-  body <-
-    case directRecordConstructor mcc clauses of
-      Just term | null args -> compileBodyTerm (envFromFunction tyParamNames []) term
-      _ -> compileFunctionBody tyParamNames (argNames args) mcc
-  pure
-    AgdaFun
-      { afName = fromQName qn
-      , afArgs = args
-      , afScheme = scheme
-      , afBody = body
-      }
+  -> TCM (Either CompileError AgdaFun)
+lowerFun qn defTy mcc clauses =
+  case funSchemeFromType defTy of
+    Left err ->
+      pure (Left err)
+    Right (args, scheme) -> do
+      let names = map stbName (ssTyParams scheme)
+          env = envFromFunction names (map argName args)
+      eBody <-
+        case directRecordConstructor mcc clauses of
+          Just term@(Con con _ elims)
+            | null args -> do
+                special <-
+                  lowerPathRecordValue
+                    con
+                    elims
+                    (ssType scheme)
+                pure $
+                  fromMaybe (compileBodyTerm env term) special
+          Just term
+            | null args ->
+                pure (compileBodyTerm env term)
+          _ ->
+            pure $
+              compileFunctionBody
+                names
+                (map argName args)
+                mcc
+      pure $ do
+        body <- eBody
+        pure AgdaFun
+          { afName = fromQName qn
+          , afArgs = args
+          , afScheme = scheme
+          , afBody = body
+          }
   where
-    argNames = map (\(SeVar n _) -> n)
+    argName (SeVar name _) = name
+
+lowerPathRecordValue
+  :: ConHead
+  -> [Elim' Term]
+  -> ScalaType
+  -> TCM (Maybe (Either CompileError ScalaTerm))
+lowerPathRecordValue con elims resultType = do
+  constructorDef <- getConstInfo (conName con)
+  case theDef constructorDef of
+    Constructor{conData = parent} -> do
+      recordDef <- getConstInfo parent
+
+      case theDef recordDef of
+        RecordDefn recordData ->
+          case lowerRecord
+                 PathDependentRecord
+                 parent
+                 (defType recordDef)
+                 recordData of
+            Left err ->
+              pure (Just (Left err))
+            Right recordIR
+              | any isTypeMember (arFields recordIR) ->
+                  pure $ Just $
+                    compileMembers recordIR
+            _ ->
+              pure Nothing
+        _ ->
+          pure Nothing
+    _ ->
+      pure Nothing
+  where
+    isTypeMember :: ScalaMember -> Bool
+    isTypeMember MemberType{} = True
+    isTypeMember _ = False
+    compileMembers :: AgdaRecord -> Either CompileError ScalaTerm
+    compileMembers recordIR = do
+      actualTypes <-
+        case resultType of
+          STyApp name args
+            | name == arName recordIR -> Right args
+          STyName name
+            | name == arName recordIR -> Right []
+          _ ->
+            Left $
+              UnsupportedDependentRecordValue
+                "Record result type mismatch"
+      let parameters =
+            map stbName (arTyParams recordIR)
+          substitutions =
+            zip parameters actualTypes
+          fields = arFields recordIR
+      if length parameters /= length actualTypes
+        then
+          Left $
+            UnsupportedDependentRecordValue
+              "Record type parameter arity mismatch"
+        else do
+          values <- visibleArguments elims
+          if length fields /= length values
+            then
+              Left $
+                UnsupportedDependentRecordValue
+                  "Record field arity mismatch"
+            else do
+              members <-
+                traverse
+                  (uncurry (compileMember substitutions))
+                  (zip fields values)
+              pure $
+                STeNewWithTypes resultType members
+    compileMember
+      :: [(String, ScalaType)]
+      -> ScalaMember
+      -> Term
+      -> Either CompileError ScalaInstanceMember
+    compileMember substitutions member value =
+      case member of
+        MemberType name ->
+          case value of
+            Def{} ->
+              InstanceType name <$> compileTypeTerm value
+            _ ->
+              Left $
+                UnsupportedDependentRecordValue
+                  ("Unsupported concrete type for " <> name)
+        MemberValue (SeVar name ty) -> do
+          body <- compileBodyTerm (envFromFunction [] []) value
+          pure $
+            InstanceValue
+              (SeVar name (substituteType substitutions ty))
+              body
+        MemberMethod name _ _ _ ->
+          Left $
+            UnsupportedDependentRecordValue
+              ("Polymorphic method: " <> name)
+
+visibleArguments
+  :: [Elim' Term]
+  -> Either CompileError [Term]
+visibleArguments =
+  fmap catMaybes . traverse step
+  where
+    step (Apply arg)
+      | getHiding arg == NotHidden =
+          Right (Just (unArg arg))
+      | otherwise =
+          Right Nothing
+    step elim =
+      Left (UnsupportedElimination (show elim))
 
 -- Agda may compile a record value into a projection-pattern case tree,
 -- even when its original definition is just a record constructor.

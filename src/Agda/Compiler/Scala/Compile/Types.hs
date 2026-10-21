@@ -22,12 +22,14 @@ module Agda.Compiler.Scala.Compile.Types (
     lookupTyVar,
     pushTermBinder,
     pushTyParam
+    , substituteType
     , typeParameterArity
     , recordTyParamsFromType
     , unrollPi
 ) where
 
 import Control.Monad (foldM)
+import Data.Maybe (fromMaybe)
 import Agda.Syntax.Abstract.Name (QName)
 import Agda.Syntax.Common (Arg (..), Hiding (..), NamedName, Ranged (..), WithOrigin (..), getHiding)
 import Agda.Syntax.Common.Pretty (prettyShow)
@@ -79,6 +81,7 @@ data CompileError
   | UnsupportedProperty String
   | UnsupportedRecordStrategy String
   | UnsupportedDependentRecordField ScalaName
+  | UnsupportedDependentRecordValue String
   | VarOutOfRange Int Int
   | ErasedVarReferenced Int
   deriving (Eq, Show)
@@ -376,3 +379,24 @@ mapBuiltinTypeName qn =
         "Agda.Builtin.List.List"   -> "List"
         "Agda.Builtin.Maybe.Maybe" -> "Option"
         _                          -> fromQName qn
+
+substituteType :: [(String, ScalaType)]
+  -> ScalaType
+  -> ScalaType
+substituteType substitutions ty =
+  case ty of
+    STyVar name -> fromMaybe ty (lookup name substitutions)
+    STyApp name args ->
+      let newName =
+            case lookup name substitutions of
+              Just (STyName n) -> n
+              Just (STyVar n)  -> n
+              _                -> name
+      in STyApp
+          newName
+          (map (substituteType substitutions) args)
+    STyFun input output ->
+      STyFun
+        (substituteType substitutions input)
+        (substituteType substitutions output)
+    STyName _ -> ty

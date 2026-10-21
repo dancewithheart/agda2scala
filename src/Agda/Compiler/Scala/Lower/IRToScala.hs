@@ -19,6 +19,7 @@ import Agda.Compiler.Scala.Name.NamePolicy
 import Agda.Compiler.Scala.IR.ScalaExpr
   ( ScalaCtor(..)
   , ScalaExpr(..)
+  , ScalaInstanceMember(..)
   , ScalaMember(..)
   , ScalaPat(..)
   , ScalaTerm(..)
@@ -108,6 +109,8 @@ lowerTerm policy term = case term of
       STeMatch
         (lowerTerm policy scrut)
         [ (lowerPat policy pat, lowerTerm policy rhs) | (pat, rhs) <- alts ]
+    STeNewWithTypes ty members ->
+          STeNewWithTypes ty (map lowerInstance members)
     STeSelect target field ->
       STeSelect
         (lowerTerm policy target)
@@ -117,6 +120,13 @@ lowerTerm policy term = case term of
         [ (lowerField policy field, lowerTerm policy body)
         | (field, body) <- members
         ]
+    where
+      lowerInstance :: ScalaInstanceMember -> ScalaInstanceMember
+      lowerInstance member =
+        case member of
+          InstanceType name ty -> InstanceType name ty
+          InstanceValue field body ->
+            InstanceValue (lowerField policy field) (lowerTerm policy body)
 
 lowerPat :: NamePolicy -> ScalaPat -> ScalaPat
 lowerPat policy pat = case pat of
