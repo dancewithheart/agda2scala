@@ -15,7 +15,8 @@ import Agda.Compiler.Scala.Compile.Types (CompileError(..), compileTypeTerm)
 import Agda.Compiler.Scala.Lower.AgdaToIR (toAgdaExpr)
 import Agda.Compiler.Scala.Lower.IRToScala (toScalaExpr)
 import Agda.Compiler.Scala.Name.NamePolicy (defaultNamePolicy)
-import Agda.Compiler.Scala.IR.ScalaExpr (ScalaExpr)
+import Agda.Compiler.Scala.Lower.Property (lowerEqualityProperty)
+import Agda.Compiler.Scala.IR.ScalaExpr (ScalaExpr(..))
 
 -- compile definition produced by agda compiler
 -- into AgdaIR (representation close to Agda compiler)
@@ -24,5 +25,10 @@ import Agda.Compiler.Scala.IR.ScalaExpr (ScalaExpr)
 -- Definition ----------> AgdaIR ------------> ScalaIR
 compileDefinition :: Definition -> CompilerPragma -> TCM (Either CompileError ScalaExpr)
 compileDefinition definition pragma = do
-  agdaRep <- toAgdaExpr definition pragma
-  pure (toScalaExpr defaultNamePolicy <$> agdaRep)
+  property <- lowerEqualityProperty definition
+  case property of
+    Left err -> pure (Left err)
+    Right (Just law) -> pure (Right (SeProperty law))
+    Right Nothing -> do
+      agdaRep <- toAgdaExpr definition pragma
+      pure (toScalaExpr defaultNamePolicy <$> agdaRep)

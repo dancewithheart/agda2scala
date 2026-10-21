@@ -76,6 +76,7 @@ data CompileError
   | UnsupportedCompiledClauses
   | UnsupportedCaseShape CaseUnsupported
   | UnsupportedHigherKindedNullaryConstructor ScalaName
+  | UnsupportedProperty String
   | VarOutOfRange Int Int
   | ErasedVarReferenced Int
   deriving (Eq, Show)

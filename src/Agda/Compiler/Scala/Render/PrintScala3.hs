@@ -2,6 +2,7 @@ module Agda.Compiler.Scala.Render.PrintScala3 (
     printScala3,
     printCaseObject,
     printSealedTrait,
+    printScala3Term,
     printPackageAndObject,
     printCaseClass,
 ) where
@@ -64,6 +65,7 @@ printScala3 def = case def of
       printCaseClass name tyParams args <> defsSeparator
     (SeTrait name tyParams fields) ->
       printTrait name tyParams fields <> defsSeparator
+    SeProperty _ -> ""
     (SeUnhandled "" _payload) -> ""
     (SeUnhandled name payload) -> "/* TODO In printScala3 got SeUnhandled "
       <> show name
@@ -71,6 +73,9 @@ printScala3 def = case def of
       <> show payload
       <> "*/"
       <> defsSeparator
+
+printScala3Term :: ScalaTerm -> String
+printScala3Term = printTermBlock
 
 -- ===== Sum types ============================================================
 

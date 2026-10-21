@@ -1,5 +1,6 @@
 module Agda.Compiler.Scala.Render.PrintScala2 (
     printScala2,
+    printScala2Term,
     printCaseObject,
     printSealedTrait,
     printPackageAndObject,
@@ -71,6 +72,7 @@ printScala2 def = case def of
         printCaseClass name tyParams args <> nl
     SeTrait name tyParams fields ->
         printTrait name tyParams fields <> nl
+    SeProperty _ -> ""
     SeUnhandled "" _payload ->
         "" -- filtered out
     SeUnhandled name payload ->
@@ -82,6 +84,9 @@ printScala2 def = case def of
         <> " "
         <> multiLineCommentEnd
         <> nl
+
+printScala2Term :: ScalaTerm -> String
+printScala2Term = printTermBlock
 
 printTrait :: ScalaName -> [ScalaTypeBinder] -> [ScalaMember] -> String
 printTrait name tyParams fields =
