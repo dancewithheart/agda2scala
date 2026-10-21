@@ -83,7 +83,7 @@ data ScalaMember
 
 data ScalaProperty = ScalaProperty
   { spName  :: ScalaName
-  , spArg   :: SeVar
+  , spArgs  :: [SeVar]
   , spLeft  :: ScalaTerm
   , spRight :: ScalaTerm
   }

@@ -41,7 +41,7 @@ printPropertySuite render moduleParts properties =
 
     printProperty p =
       [ "    test(" <> show (spName p) <> ") {"
-      , "      check(Gen.long(0L, 1000000L)) { " <> arg <> " =>"
+      , "      check(" <> generators <> ") { " <> parameters <> " =>"
       , "        assertTrue(("
           <> render (spLeft p)
           <> ") == ("
@@ -51,4 +51,11 @@ printPropertySuite render moduleParts properties =
       , "    }"
       ]
       where
-        SeVar arg _ = spArg p
+        names = [name | SeVar name _ <- spArgs p]
+        generators =
+          intercalate ", " $
+            replicate (length names) "Gen.long(0L, 1000000L)"
+        parameters =
+          case names of
+            [name] -> name
+            _ -> "(" <> intercalate ", " names <> ")"

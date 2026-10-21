@@ -76,7 +76,6 @@ import Agda.Compiler.Scala.IR.ScalaExpr
   , ScalaInstanceMember (..)
   , ScalaMember (..)
   , ScalaPat (..)
-  , ScalaProperty (..)
   , ScalaTerm (..)
   , ScalaType(..)
   , ScalaTypeBinder (..)
