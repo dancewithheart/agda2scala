@@ -281,7 +281,12 @@ lowerRecordConstruction ne resultType body =
     requireValueMember :: ScalaMember -> Either String SeVar
     requireValueMember member =
       case member of
-        MemberValue field -> Right field
+        MemberValue field ->
+          Right field
+        MemberType name ->
+          Left $
+            "Abstract type member implementation is not supported: "
+              <> name
         MemberMethod name _ _ _ ->
           Left $
             "Polymorphic member implementation requires method lowering: "

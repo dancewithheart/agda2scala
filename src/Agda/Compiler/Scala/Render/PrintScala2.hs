@@ -100,6 +100,7 @@ printTrait name tyParams fields =
 printAbstractMember :: ScalaMember -> String
 printAbstractMember member =
   case member of
+    MemberType name -> "type " <> name
     MemberValue (SeVar name ty) ->
       "def " <> name <> ": " <> printType ty
     MemberMethod name binders args result ->

@@ -53,6 +53,7 @@ toScalaExpr policy decl = case decl of
 lowerMember :: NamePolicy -> ScalaMember -> ScalaMember
 lowerMember policy member =
   case member of
+    MemberType name -> MemberType name
     MemberValue field -> MemberValue (lowerField policy field)
     MemberMethod name tyParams args result ->
       MemberMethod
@@ -68,6 +69,7 @@ valueMember _ = Nothing
 isOperationMember :: ScalaMember -> Bool
 isOperationMember MemberMethod {} = True
 isOperationMember (MemberValue (SeVar _ STyFun{})) = True
+isOperationMember (MemberType _) = True
 isOperationMember _ = False
 
 lowerCtor :: NamePolicy -> ScalaCtor -> ScalaCtor

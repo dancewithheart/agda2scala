@@ -65,6 +65,7 @@ tests =
             [ testCase "prints if then else" test_print_if_then_else
             , testCase "printer breaks if/else branches" test_print_if_breaks_branches
             ]
+          , testCase "renders abstract type members" test_printDependentPackage
         ]
 
 test_printCaseObject :: IO ()
@@ -335,4 +336,22 @@ test_printMonoidTrait =
       "trait Monoid[A] {\n"
         <> "  def empty: A\n"
         <> "  def combine: A => A => A\n"
+        <> "}\n"
+
+test_printDependentPackage :: IO ()
+test_printDependentPackage =
+  assertStringEqual
+    "Path-dependent record"
+    expected
+    (printScala2 package)
+  where
+    package =
+      SeTrait "Package" []
+        [ MemberType "Carrier"
+        , MemberValue (SeVar "item" (STyVar "Carrier"))
+        ]
+    expected =
+      "trait Package {\n"
+        <> "  type Carrier\n"
+        <> "  def item: Carrier\n"
         <> "}\n"

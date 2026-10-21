@@ -71,6 +71,7 @@ data ScalaCtor = ScalaCtor
 
 data ScalaMember
   = MemberValue SeVar
+  | MemberType ScalaName
   | MemberMethod
       ScalaName
       [ScalaTypeBinder]

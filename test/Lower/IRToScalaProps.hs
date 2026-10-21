@@ -36,9 +36,8 @@ iRToScalaProps =
     [ ("data lowering preserves constructor arity", prop_dataCtorArityPreserved)
     , ("data lowering applies constructor NamePolicy", prop_dataCtorNamePolicy)
     , ("record lowering preserves field count", prop_recordFieldCountPreserved)
-    , ( "operation records lower to Scala traits"
-      , prop_operationRecordLowersToTrait
-      )
+    , ( "operation records lower to Scala traits", prop_operationRecordLowersToTrait)
+    , ("abstract type members produce a trait", prop_pathRecordLowersToTrait)
     ]
 
 prop_dataCtorArityPreserved :: Property
@@ -107,9 +106,7 @@ prop_operationRecordLowersToTrait = property $ do
   let a = STyVar "A"
       fields =
         [ MemberValue (SeVar "empty" a)
-        , MemberValue
-            (SeVar "combine" (STyFun a (STyFun a a)))
-        ]
+        , MemberValue (SeVar "combine" (STyFun a (STyFun a a))) ]
       decl =
         DRecord
           AgdaRecord
@@ -122,3 +119,16 @@ prop_operationRecordLowersToTrait = property $ do
 
   toScalaExpr defaultNamePolicy decl
     === SeTrait "Monoid" [ScalaTypeBinder "A" 0] fields
+
+prop_pathRecordLowersToTrait :: Property
+prop_pathRecordLowersToTrait = property $ do
+  let fields =
+        [ MemberType "Carrier"
+        , MemberValue (SeVar "item" (STyVar "Carrier")) ]
+      decl =
+        DRecord AgdaRecord
+          { arName = "Package"
+          , arTyParams = []
+          , arFields = fields
+          }
+  toScalaExpr defaultNamePolicy decl === SeTrait "Package" [] fields

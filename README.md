@@ -8,77 +8,80 @@ For Agda code you want to convert to Scala add pragma `AGDA2SCALA:
 ```
 ## Supported features
 
+## Supported features
+
 * ✅ Sum types / ADTs
-  * ✅ simple ADTs
-  * ✅ polymorphic ADTs, e.g. `Maybe[A]`, `List[A]`
+  * ✅ simple and polymorphic ADTs
   * ✅ constructors with arguments
-  * ✅ inferred covariance for generated ADTs (`RedBlackTree[+V]`)
-  * ✅ nullary polymorphic constructors lowered with `Nothing`, e.g. `EmptyRBT extends RedBlackTree[Nothing]`
+  * ✅ recursive datatypes
+  * ✅ inferred covariance (`RedBlackTree[+V]`)
+  * ✅ polymorphic nullary constructors using `Nothing`
+
 * ✅ Product types / records
-  * ✅ simple records
-  * ✅ records with polymorphic parameters
-* ✅ Simple and polymorphic functions, e.g. `id[A]`
-* ✅ Literals
-  * ✅ `Int` / `Nat`
-  * ✅ `Bool`
-  * ✅ `String`
-  * 🚧 more literal
-* ✅ Function application
-  * ✅ normal visible arguments
-  * ✅ erased hidden/type-level Agda arguments
-  * ✅ constructor application
-  * ✅ recursive function calls
-* ✅ Pattern matching on constructors
-  * ✅ zero-arity constructors
-  * ✅ flat constructor patterns with arguments
-  * ✅ constructor branch binders
-  * ✅ nested constructor patterns
-  * ✅ catch-all branches
-  * ✅ inherited catch-all propagation through nested matches
-  * ✅ fresh pattern-variable generation without lexical shadowing
-  * ✅ correct replacement of scrutinized arguments in Agda case environments
-  * ✅ rejection of case splits with no runtime alternatives
-  * 🚧 literal branches
-  * 🚧 projection-pattern cases
-  * 🚧 exhaustive-match simplification and removal of unreachable wildcard branches
-* ✅ Basic conditionals and operators
-  * ✅ Agda `if_then_else_` lowered to Scala `if ... then ... else ...`
-  * ✅ selected binary operators
-  * ✅ natural-number boolean comparison `_ <ᵇ _` lowered to Scala `<`
-  * 🚧 more operators
-* ✅ Generated Scala 2 and Scala 3
-  * ✅ Scala 2 sealed traits, case classes, and case objects
-  * ✅ Scala 3 enums and enum cases
-  * ✅ nested pattern matches in both dialects
-  * ✅ polymorphic ADTs with variance in both dialects
-  * ✅ generated Red-Black Tree `lookup`
-  * ✅ generated Red-Black Tree `insert` and balancing
-  * ✅ runtime tests for lookup after single and multiple inserts
-* ✅ 🚧 Mapping selected Agda stdlib names to Scala stdlib-like output
-  * ✅ `Nat`
-  * ✅ `List`
-  * ✅ pairs / products
-  * 🚧 more stdlib
-  * 🚧 mapping table with types, constructors, functions, and operators
-* 🚧 Variance inference
-  * ✅ positive occurrences
-  * ✅ negative occurrences through function inputs
-  * ✅ mixed occurrences lowered invariantly
-  * ✅ conservative treatment of unknown type constructors
-  * ✅ algebraic occurrence accumulation using a `Monoid`
-  * 🚧 variance propagation through known Scala and Agda type constructors
-  * 🚧 contravariant parameters
-  * 🚧 variance validation for records and other generated declarations
-* 🚧 Larger language features
-  * 🚧 local `let` bindings
-  * 🚧 lambda expressions
-  * 🚧 higher-order functions
+  * ✅ simple and polymorphic records
+  * ✅ operation records -> Scala traits
+  * ✅ record values -> Scala trait implementations (`Monoid`)
+  * ✅ higher-kinded parameters (`F[_]`)
+  * ✅ polymorphic method declarations (`Functor.map`)
+  * 🚧 polymorphic method implementations (`Functor` instances)
+
+* ✅ Functions
+  * ✅ simple and polymorphic functions (`id[A]`)
+  * ✅ higher-kinded type parameters
+  * ✅ visible arguments and erased implicit type arguments
+  * ✅ constructor application and recursive calls
+  * ✅ selected higher-order functions
+  * 🚧 general lambda expressions and local `let` bindings
   * 🚧 mutually recursive functions
-  * 🚧 recursive and mutually recursive datatypes
-  * 🚧 dependent pairs and indexed datatypes
-  * 🚧 type classes / Agda instance arguments
-  * 🚧 modules, imports, and namespace mapping
-  * 🚧 termination and totality assumptions in generated Scala
+
+* ✅ Pattern matching
+  * ✅ nullary, flat, and nested constructor patterns
+  * ✅ catch-all branches and fallback propagation
+  * ✅ capture-avoiding pattern-variable generation
+  * ✅ correct handling of Agda case environments
+  * 🚧 literal branches and projection patterns
+
+* ✅ Literals and operators
+  * ✅ `Nat` -> `Long`, `Bool`, `String`
+  * ✅ conditionals and selected binary operators
+  * ✅ natural-number comparisons
+  * 🚧 more literals and operators
+
+* ✅ Scala 2 and Scala 3
+  * ✅ sealed traits, case classes, and case objects (Scala 2)
+  * ✅ enums and enum cases (Scala 3)
+  * ✅ polymorphic ADTs with variance
+  * ✅ Red-Black Tree lookup, insertion, and balancing
+  * ✅ end-to-end Scala tests
+
+* 🚧 Property-based testing from Agda specifications
+  * ✅ prototype: equality propositions → ZIO Test properties (#148)
+  * ✅ generated tests for Scala 2 and Scala 3
+  * ✅ one quantified `Nat` argument
+  * 🚧 separate `AGDA2SCALA_TEST` pragma and property-test IR
+  * 🚧 multiple quantified arguments and type-directed generators
+  * 🚧 Monoid and Functor laws
+
+* 🚧 Variance inference
+  * ✅ positive and negative occurrences
+  * ✅ invariant fallback for mixed occurrences
+  * ✅ conservative handling of unknown type constructors
+  * 🚧 variance propagation through known type constructors
+  * 🚧 contravariance and record variance validation
+
+* 🚧 typeclasses
+  * 🚧 Agda instance arguments -> Scala 3 `given` / `using`
+
+* 🚧 advanced types (dependent types, HKTs)
+  * 🚧 partial type application -> type lambdas (`[X] =>> ...`)
+  * ✅ dependent records -> path-dependent types
+  * 🚧 dependent types / type-level computation -> match types
+  * 🚧 general copatterns and coinduction (e.g. for Streams in Scala)
+  * 🚧 existential types (?)
+
+* Agda type guarantees -> Scala representation
+  * 🚧 (?) termination and totality guarantees
+  * 🚧 (?) Agda Pos => wrappend Int with smart constructor with assertions / library refined (?)
 
 
 Planed milestones:
