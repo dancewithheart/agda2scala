@@ -161,7 +161,8 @@ printTermBlock term =
         STeLitBool b -> if b then "true" else "false"
         STeLitString s -> "\"" <> escapeScalaString s <> "\""
         STeIf cond thenBranch elseBranch -> printIf cond thenBranch elseBranch
-        STeBinOp lhs op rhs -> printTermInline lhs <> exprSeparator <> op <> exprSeparator <> printTermInline rhs
+        STeBinOp lhs op rhs ->
+          printOperatorOperand lhs <> exprSeparator <> op <> exprSeparator <> printOperatorOperand rhs
         STeError err -> "sys.error(" <> "\"" <> escapeScalaString err <> "\"" <> ")"
         STeMatch scrut alts ->
             printTermInline scrut <> sp <> "match" <> nl
@@ -174,6 +175,12 @@ printTermBlock term =
           "new " <> printType ty <> ":" <> nl
             <> indentBlock 2
                  (intercalate nl (map printInstanceMember members))
+
+printOperatorOperand :: ScalaTerm -> String
+printOperatorOperand term =
+  case term of
+    STeBinOp{} -> "(" <> printTermBlock term <> ")"
+    _ -> printTermInline term
 
 printInstanceMember :: ScalaInstanceMember -> String
 printInstanceMember member =

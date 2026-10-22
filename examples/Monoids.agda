@@ -43,6 +43,7 @@ record MonoidLaws (A : Set) : Set where
     assoc : (x y z : A) →
       combine (combine x y) z ≡
       combine x (combine y z)
+-- {-# COMPILE AGDA2SCALA MonoidLaws #-}
 
 NatPlusMonoidLaws : MonoidLaws ℕ
 NatPlusMonoidLaws = record
@@ -51,3 +52,17 @@ NatPlusMonoidLaws = record
   ; left-unit  = +-identityˡ
   ; assoc      = +-assoc
   }
+-- {-# COMPILE AGDA2SCALA NatPlusMonoidLaws #-}
+
+natPlusRightUnit : (x : ℕ) → x + zero ≡ x
+natPlusRightUnit x = +-identityʳ x
+{-# COMPILE AGDA2SCALA natPlusRightUnit #-}
+
+natPlusLeftUnit : (x : ℕ) → zero + x ≡ x
+natPlusLeftUnit x = +-identityˡ x
+{-# COMPILE AGDA2SCALA natPlusLeftUnit #-}
+
+natPlusAssoc : (x y z : ℕ) →
+  (x + y) + z ≡ x + (y + z)
+natPlusAssoc x y z = +-assoc x y z
+{-# COMPILE AGDA2SCALA natPlusAssoc #-}

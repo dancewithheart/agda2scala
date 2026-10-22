@@ -84,7 +84,7 @@ jobs:
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/rbt.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/ConstructiveSat.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/higher_order_fun.agda
-          cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/Monoids.agda
+          cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala  --test-out-dir=scala2/src/test/scala   ./examples/Monoids.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/hk_typs.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala ./examples/Functors.agda
           cabal run -- agda2scala --scala-dialect=Scala2 --out-dir=scala2/src/main/scala --test-out-dir=scala2/src/test/scala  ./examples/Properties.agda
@@ -97,7 +97,7 @@ jobs:
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/rbt.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/ConstructiveSat.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/higher_order_fun.agda
-          cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/Monoids.agda
+          cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala  --test-out-dir=scala3/src/test/scala   ./examples/Monoids.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/hk_typs.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala ./examples/Functors.agda
           cabal run -- agda2scala --scala-dialect=Scala3 --out-dir=scala3/src/main/scala --test-out-dir=scala3/src/test/scala  ./examples/Properties.agda

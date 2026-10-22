@@ -184,7 +184,8 @@ printTermBlock x = case x of
     STeLitBool b -> if b then "true" else "false"
     STeLitString s -> "\"" <> escapeScalaString s <> "\""
     STeIf cond thenBranch elseBranch -> printIf cond thenBranch elseBranch
-    STeBinOp lhs op rhs -> printTermInline lhs <> sp <> op <> sp <> printTermInline rhs
+    STeBinOp lhs op rhs ->
+      printOperatorOperand lhs <> sp <> op <> sp <> printOperatorOperand rhs
     STeMatch scrut alts ->
       printTermInline scrut <> sp <> "match" <> sp <> "{\n"
         <> intercalate "\n" (map (indentBlock 2 . printCase) alts)
@@ -203,6 +204,12 @@ printTermBlock x = case x of
         <> indentBlock 2
              (intercalate "\n" (map printInstanceMember members))
         <> "\n}" -- TODO unify creating new instances
+
+printOperatorOperand :: ScalaTerm -> String
+printOperatorOperand term =
+  case term of
+    STeBinOp{} -> "(" <> printTermBlock term <> ")"
+    _ -> printTermInline term
 
 printInstanceMember :: ScalaInstanceMember -> String
 printInstanceMember member =
