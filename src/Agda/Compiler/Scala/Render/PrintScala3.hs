@@ -190,6 +190,16 @@ printInstanceMember member =
     InstanceValue (SeVar name ty) body ->
       "def " <> name <> ": " <> printType ty
         <> " = " <> printTermBlock body
+    InstanceMethod name tyParams args result body ->
+      "def "
+        <> name
+        <> printTypeBinders tyParams
+        <> "("
+        <> intercalate ", " (map printVar args)
+        <> "): "
+        <> printType result
+        <> " = "
+        <> printTermBlock body
 
 printNewMember :: (SeVar, ScalaTerm) -> String
 printNewMember (SeVar name ty, body) =

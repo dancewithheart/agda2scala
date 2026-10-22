@@ -25,7 +25,8 @@ import Agda.Compiler.Scala.IR.ScalaExpr
     , ScalaPat (..)
     , ScalaTerm (..)
     , ScalaType (..)
-    , ScalaTypeBinder(..)
+    , ScalaTypeBinder (..)
+    , ScalaInstanceMember (..)
     , SeVar (..)
     )
 import Agda.Compiler.Scala.Name.NameEnv
@@ -54,7 +55,7 @@ tests =
         , testCase "record construction rejects incorrect type arity" test_recordTypeArity
         , testCase "record construction rejects incorrect field arity" test_recordFieldArity
         , testCase "record construction rejects mismatched result type" test_recordResultTypeMismatch
-        , testCase "polymorphic method implementations require lowering" test_polymorphicMethodRequiresLowering
+        , testCase "polymorphic method implementations" test_polymorphicMethodImplementation
         ]
 
 test_isEnabled :: IO ()
@@ -223,27 +224,43 @@ test_recordResultTypeMismatch =
             (STyApp "Other" [STyName "Long"])
             (STeApp (STeVar "mkMonoid") monoidValues))
 
-test_polymorphicMethodRequiresLowering :: IO ()
-test_polymorphicMethodRequiresLowering =
+test_polymorphicMethodImplementation :: IO ()
+test_polymorphicMethodImplementation =
   assertEqual
-    "polymorphic method implementations require explicit lowering"
-    (Left "Polymorphic member implementation requires method lowering: map")
+    "Functor method delegates to the translated implementation"
+    (Right expected)
     (lowerRecordConstruction
       functorEnv
-      (STyApp "Functor" [STyName "Option"])
+      functorType
       (STeApp (STeVar "mkFunctor") [STeVar "mapMaybe"]))
   where
+    functorType = STyApp "Functor" [STyName "Option"]
+    tyParams =
+      [ ScalaTypeBinder "A" 0
+      , ScalaTypeBinder "B" 0
+      ]
+    inputArgs =
+      [ SeVar "f" (STyFun (STyVar "A") (STyVar "B"))
+      , SeVar "fa" (STyApp "F" [STyVar "A"])
+      ]
+    resultType = STyApp "F" [STyVar "B"]
     functorEnv =
       registerTraitCtor
         "Functor"
         "mkFunctor"
         ["F"]
-        [ MemberMethod
-            "map"
-            [ ScalaTypeBinder "A" 0 , ScalaTypeBinder "B" 0 ]
-            [ SeVar "f" (STyFun (STyVar "A") (STyVar "B"))
-            , SeVar "fa" (STyApp "F" [STyVar "A"])
-            ]
-            (STyApp "F" [STyVar "B"])
-        ]
+        [MemberMethod "map" tyParams inputArgs resultType]
         emptyNameEnv
+    expected =
+      STeNewWithTypes functorType
+        [ InstanceMethod
+            "map"
+            tyParams
+            [ SeVar "f" (STyFun (STyVar "A") (STyVar "B"))
+            , SeVar "fa" (STyApp "Option" [STyVar "A"])
+            ]
+            (STyApp "Option" [STyVar "B"])
+            (STeApp
+              (STeVar "mapMaybe")
+              [STeVar "f", STeVar "fa"])
+        ]
