@@ -124,9 +124,19 @@ lowerTerm policy term = case term of
       lowerInstance :: ScalaInstanceMember -> ScalaInstanceMember
       lowerInstance member =
         case member of
-          InstanceType name ty -> InstanceType name ty
+          InstanceType name ty ->
+            InstanceType name ty
           InstanceValue field body ->
-            InstanceValue (lowerField policy field) (lowerTerm policy body)
+            InstanceValue
+              (lowerField policy field)
+              (lowerTerm policy body)
+          InstanceMethod name tyParams args result body ->
+            InstanceMethod
+              (termName policy name)
+              tyParams
+              (map (lowerField policy) args)
+              result
+              (lowerTerm policy body)
 
 lowerPat :: NamePolicy -> ScalaPat -> ScalaPat
 lowerPat policy pat = case pat of

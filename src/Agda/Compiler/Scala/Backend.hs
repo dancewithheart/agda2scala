@@ -263,34 +263,66 @@ lowerRecordConstruction ne resultType body =
           STyApp name args | name == tcParent info -> Right args
           _ -> Left "Record constructor result type mismatch"
       let params = tcTyParams info
-          members = tcFields info
+          fields = tcFields info
       if length params /= length actualTypes
         then Left "Record type parameter arity mismatch"
-        else if length members /= length values
+        else if length fields /= length values
           then Left "Record field arity mismatch"
           else do
-            fields <- traverse requireValueMember members
             let substitutions = zip params actualTypes
-                instantiate (SeVar name ty) =
-                  SeVar name (substituteType substitutions ty)
-                implementations =
-                  zip
-                    (map instantiate fields)
-                    (map (qualifyTermWithEnv ne) values)
-            Right (STeNew resultType implementations)
-    requireValueMember :: ScalaMember -> Either String SeVar
-    requireValueMember member =
+            members <-
+              traverse
+                (uncurry (lowerImplementation substitutions))
+                (zip fields values)
+            case traverse valueMember members of
+              Just ordinary ->
+                -- Ordinary records
+                Right (STeNew resultType ordinary)
+              Nothing ->
+                -- Records containing polymorphic methods
+                Right (STeNewWithTypes resultType members)
+
+    valueMember :: ScalaInstanceMember -> Maybe (SeVar, ScalaTerm)
+    valueMember member =
       case member of
-        MemberValue field ->
-          Right field
+        InstanceValue field ibody -> Just (field, ibody)
+        _ -> Nothing
+
+    lowerImplementation
+      :: [(String, ScalaType)]
+      -> ScalaMember
+      -> ScalaTerm
+      -> Either String ScalaInstanceMember
+    lowerImplementation substitutions member value =
+      case member of
+        MemberValue (SeVar name ty) ->
+          Right $
+            InstanceValue
+              (SeVar name (substituteType substitutions ty))
+              (qualifyTermWithEnv ne value)
         MemberType name ->
           Left $
             "Abstract type member implementation is not supported: "
               <> name
-        MemberMethod name _ _ _ ->
-          Left $
-            "Polymorphic member implementation requires method lowering: "
-              <> name
+        MemberMethod name tyParams args result ->
+          case value of
+            STeVar function ->
+              let instantiate (SeVar argName ty) =
+                    SeVar argName (substituteType substitutions ty)
+                  methodArgs = map instantiate args
+                  callArgs =
+                    [ STeVar argName
+                    | SeVar argName _ <- methodArgs
+                    ]
+                  ibody = STeApp (STeVar function) callArgs
+              in Right $
+                   InstanceMethod
+                     name
+                     tyParams
+                     methodArgs
+                     (substituteType substitutions result)
+                     (qualifyTermWithEnv ne ibody)
+            _ -> Left $ "Unsupported polymorphic method implementation: " <> name
 
 qualifyTermWithEnv :: NameEnv -> ScalaTerm -> ScalaTerm
 qualifyTermWithEnv ne = go
@@ -338,6 +370,13 @@ qualifyTermWithEnv ne = go
           InstanceType name ty
         InstanceValue field body ->
           InstanceValue field (go body)
+        InstanceMethod name tyParams args result body ->
+          InstanceMethod
+            name
+            tyParams
+            args
+            result
+            (go body)
 
 ---------------------------------------------
 -- pragmas specific for agda2scala

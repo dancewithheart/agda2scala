@@ -92,6 +92,12 @@ data ScalaProperty = ScalaProperty
 data ScalaInstanceMember
   = InstanceType ScalaName ScalaType
   | InstanceValue SeVar ScalaTerm
+  | InstanceMethod
+      ScalaName
+      [ScalaTypeBinder]
+      [SeVar]
+      ScalaType
+      ScalaTerm -- method body
   deriving (Eq, Show)
 
 data ScalaExpr

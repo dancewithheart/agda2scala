@@ -15,3 +15,9 @@ object Functors:
       Nil
     case p0 :: p1 =>
       x2(p0) :: mapList(x2, p1)
+
+  def optionFunctor(): Functor[Option] = new Functor[Option]:
+    def map[A, B](x2: A => B, x3: Option[A]): Option[B] = mapMaybe(x2, x3)
+
+  def listFunctor(): Functor[List] = new Functor[List]:
+    def map[A, B](x2: A => B, x3: List[A]): List[B] = mapList(x2, x3)
