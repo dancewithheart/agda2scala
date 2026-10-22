@@ -47,8 +47,7 @@ inferDataTyParams dataName params ctors =
       | stbArity binder > 0 = Invariant
       | otherwise = inferParamVariance dataName (stbName binder) ctors
 
-inferParamVariance
-  :: ScalaName
+inferParamVariance :: ScalaName
   -> ScalaName
   -> [ScalaCtor]
   -> ScalaVariance
