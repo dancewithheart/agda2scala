@@ -23,9 +23,9 @@ import Data.Maybe (catMaybes)
 import Data.List (isPrefixOf, isSuffixOf)
 import qualified Data.Map as Map
 import Agda.Syntax.Abstract.Name ( QName )
-import Agda.Syntax.Common ( Arg(..), Hiding(..), getHiding )
+import Agda.Syntax.Common ( Arg(..), ArgInfo, Hiding(..), Quantity(..), getHiding, getQuantity )
 import Agda.Syntax.Common.Pretty (prettyShow)
-import Agda.Syntax.Internal (ConHead (..), Elim' (..), Term (..))
+import Agda.Syntax.Internal (Abs (..), ConHead (..), Elim' (..), Term (..))
 import Agda.Syntax.Literal (Literal (..))
 import Agda.TypeChecking.CompiledClause
   ( Case(..)
@@ -242,7 +242,29 @@ compileBodyTerm env = \case
           applyDefinitionElims env function elims
     Con constructor _ eliminations -> compileConApp env constructor eliminations
     Lit literal -> compileLiteral literal
+    Lam info abstraction -> compileLambda env info abstraction
     term -> Left (UnsupportedTerm term)
+
+compileLambda :: Env -> ArgInfo -> Abs Term -> Either CompileError ScalaTerm
+compileLambda env info abstraction
+  | isErasedQuantity (getQuantity info) =
+      case abstraction of
+        Abs _ body -> compileBodyTerm (Env (Nothing : unEnv env)) body
+        NoAbs _ body -> compileBodyTerm env body
+  | getHiding info == NotHidden = do
+      let name = head (freshNumberedNamesAvoiding (HS.fromList (envNames env)) "lambdaArg" 1)
+          bodyEnv = case abstraction of
+            Abs{} -> extendEnv [name] env
+            NoAbs{} -> env
+          body = case abstraction of
+            Abs _ term -> term
+            NoAbs _ term -> term
+      STeLam [name] <$> compileBodyTerm bodyEnv body
+  | otherwise = Left (UnsupportedTerm (Lam info abstraction))
+
+isErasedQuantity :: Quantity -> Bool
+isErasedQuantity Quantity0{} = True
+isErasedQuantity _ = False
 
 compileNatAddition :: Env
   -> QName
@@ -297,6 +319,7 @@ compileVisibleElim :: Env -> Elim' Term -> Either CompileError (Maybe ScalaTerm)
 compileVisibleElim env elim = case elim of
     Apply arg
       | getHiding arg /= NotHidden -> Right Nothing
+      | isErasedQuantity (getQuantity arg) -> Right Nothing
       | isErasedTypeArgument (unArg arg) -> Right Nothing
       | otherwise -> Just <$> compileBodyTerm env (unArg arg)
     _ -> Left (UnsupportedElimination (show elim))
