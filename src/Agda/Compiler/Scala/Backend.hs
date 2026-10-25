@@ -14,6 +14,8 @@ module Agda.Compiler.Scala.Backend
   , scalaDialectOpt
   , selectPrinter
   , shouldWriteModule
+  , checkCompile
+  , unhandledErrors
 ) where
 
 import Control.DeepSeq (NFData (..))
@@ -46,13 +48,14 @@ import Agda.Compiler.Common (compileDir)
 import Agda.Main (runAgda)
 import Agda.Syntax.Abstract.Name( QName(..) )
 import Agda.Syntax.Common (moduleNameParts)
+import Agda.Syntax.Common.Pretty (prettyShow)
 import Agda.Syntax.Internal (ConHead (..))
 import Agda.Syntax.TopLevelModuleName (TopLevelModuleName, moduleNameToFileName)
 import Agda.TypeChecking.Monad.Env ( withCurrentModule )
 import Agda.TypeChecking.Monad.Signature (getUniqueCompilerPragma)
 import Agda.Utils.GetOpt (ArgDescr (ReqArg), OptDescr (Option))
 
-import Agda.Compiler.Scala.Compile (CompileError, compileDefinition)
+import Agda.Compiler.Scala.Compile (CompileError (..), compileDefinition)
 import Agda.Compiler.Scala.Name.NameEnv
   ( NameEnv
   , emptyNameEnv
@@ -192,7 +195,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
             Nothing -> pure (noPragmaResult def)
             Just pragma -> do
                 e <- compileDefinition def pragma
-                let expr = lowerCompile qn e -- ScalaExpr
+                expr <- either compileFailure pure (checkCompile (prettyShow qn) e)
                 case expr of
                     SeSum parent _tyParams ctors -> do
                         -- record ctor->parent mapping for later functions
@@ -209,7 +212,7 @@ scalaCompileDef _env modEnv _isMain def@Defn{defName = qn} =
                                     _  -> current
                              in (updated, updated)
                         case lowerRecordConstruction ne (ssType scheme) body of
-                          Left err -> pure (SeUnhandled fName err)
+                          Left err -> compileFailure (compileErrorMessage (prettyShow qn) err)
                           Right body' -> pure (SeFun fName args scheme body')
                     -- register the record constructor
                     SeProd parent _tyParams _fields -> do
@@ -243,8 +246,18 @@ lookupScalaPragmaForDefinition def@Defn{defName = qn} = do
           Function{funWith = Just parentFunction} -> lookupScalaPragma parentFunction
           _ -> pure Nothing
 
-lowerCompile :: QName -> Either CompileError ScalaExpr -> ScalaExpr
-lowerCompile qn = either (\err -> SeUnhandled (show qn) (show err)) id
+checkCompile :: String -> Either CompileError a -> Either String a
+checkCompile name = either (Left . compileErrorMessage name . renderCompileError) Right
+
+renderCompileError :: CompileError -> String
+renderCompileError (UnsupportedDefinition _) = "UnsupportedDefinition (expected data, record, or function)"
+renderCompileError err = show err
+
+compileErrorMessage :: String -> String -> String
+compileErrorMessage name err = "agda2scala: failed to compile " <> name <> ": " <> err
+
+compileFailure :: String -> TCM a
+compileFailure = liftIO . ioError . userError
 
 lowerRecordConstruction :: NameEnv
   -> ScalaType
@@ -419,6 +432,8 @@ scalaPostModule env modEnv _isMain mName cdefs = do
           Just "Scala2" -> printScala2Term
           Just "scala2" -> printScala2Term
           _             -> printScala3Term
+      errors = unhandledErrors cdefs
+  unless (null errors) (compileFailure (unlines errors))
   when (shouldWriteModule cdefs) $ liftIO $ do
     createDirectoryIfMissing True (takeDirectory sourcePath)
     writeFile sourcePath (selectPrinter env scalaExprs)
@@ -450,6 +465,13 @@ selectPrinter env = case scalaDialect env of
 
 shouldWriteModule :: [ScalaDefinition] -> Bool
 shouldWriteModule defs = not (all unHandled defs)
+
+unhandledErrors :: [ScalaDefinition] -> [String]
+unhandledErrors defs =
+  [ compileErrorMessage name err
+  | SeUnhandled name err <- defs
+  , not (null name && null err)
+  ]
 
 scalaFileName :: TopLevelModuleName -> FilePath
 scalaFileName mName = moduleNameToFileName mName "scala"
