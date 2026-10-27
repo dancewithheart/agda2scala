@@ -7,3 +7,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "sbt"
+    directory: "/scala2"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "sbt"
+    directory: "/scala3"
+    schedule:
+      interval: "weekly"
