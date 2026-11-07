@@ -113,7 +113,7 @@ jobs:
           java-version: '21'
           cache: 'sbt'
       - name: Set up Scala and SBT
-        uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1
+        uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1
       - name: compile & test result Scala 2 code
         run: sbt ";clean;testFull"
         working-directory: ./scala2
