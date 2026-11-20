@@ -5,7 +5,9 @@
     "helpers:pinGitHubActionDigests"
   ],
   "timezone": "Europe/Warsaw",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "labels": ["dependencies"],
   "prHourlyLimit": 2,
   "prConcurrentLimit": 5,
